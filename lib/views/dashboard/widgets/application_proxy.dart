@@ -1,9 +1,9 @@
 part of 'connections_table.dart';
 
 class _ApplicationProxyView extends ConsumerStatefulWidget {
-  const _ApplicationProxyView({required this.scrollController});
+  const _ApplicationProxyView({this.scrollController});
 
-  final ScrollController scrollController;
+  final ScrollController? scrollController;
 
   @override
   ConsumerState<_ApplicationProxyView> createState() =>
@@ -92,6 +92,8 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
       _saving = application.key;
       _error = null;
     });
+    // ignore: avoid_print
+    print('>>> _change start key=${application.key} mounted=$mounted');
     try {
       final applied = await ref
           .read(setupActionProvider.notifier)
@@ -100,14 +102,20 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
             application: application,
             target: target,
           );
+      // ignore: avoid_print
+      print('>>> _change returned applied=$applied');
       if (!applied && mounted && ref.read(currentProfileIdProvider) == profileId) {
         setState(() => _error = l.applicationProxyApplyFailed);
       }
     } catch (error) {
+      // ignore: avoid_print
+      print('>>> _change error $error');
       if (mounted && ref.read(currentProfileIdProvider) == profileId) {
         setState(() => _error = error.toString());
       }
     } finally {
+      // ignore: avoid_print
+      print('>>> _change finally mounted=$mounted');
       if (mounted) setState(() => _saving = null);
     }
   }
@@ -126,6 +134,11 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
       String value => value,
     };
     final enabled = editable && identity?.canRoute == true && _saving == null;
+    // ignore: avoid_print
+    print(
+      '>>> _policy saving=$_saving identityKey=${identity?.key} '
+      'identityNull=${identity == null} enabled=$enabled',
+    );
     return CommonPopupBox(
       targetBuilder: (open) => TextButton(
         onPressed: enabled ? open : null,
@@ -171,6 +184,8 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
   @override
   Widget build(BuildContext context) {
     final l = context.appLocalizations;
+    // ignore: avoid_print
+    print('>>> panel build saving=$_saving');
     final profile = ref.watch(currentProfileProvider);
     final profileId = profile?.id;
     final editable = profile != null &&
@@ -365,6 +380,8 @@ class _ApplicationRowsState extends State<_ApplicationRows>
   @override
   Widget build(BuildContext context) {
     final l = context.appLocalizations;
+    // ignore: avoid_print
+    print('>>> rows build');
     if (_failed) return Center(child: Text(l.error));
     final applications = _snapshot?.applications;
     if (applications == null) return const SizedBox.shrink();
