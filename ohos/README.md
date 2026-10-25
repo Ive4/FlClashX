@@ -58,3 +58,21 @@ Current boundaries:
   require adaptation. UI-process termination currently closes the control channel
   and stops the VPN; reconnecting a new UI to a surviving Core is not implemented.
 - The separate Go Core probe is not the application Core integration.
+
+## Core fork and upstream updates
+
+The submodule uses `https://github.com/Ive4/Clash.Meta.git`, branch `FlClash`.
+The original upstream is `https://github.com/chen08209/Clash.Meta.git`.
+The local submodule keeps that original address as the `upstream` remote.
+After a fresh clone, add it once before fetching updates:
+
+```sh
+git -C core/Clash.Meta remote add upstream https://github.com/chen08209/Clash.Meta.git
+git -C core/Clash.Meta fetch upstream
+git -C core/Clash.Meta switch FlClash
+git -C core/Clash.Meta merge upstream/FlClash
+```
+
+Resolve conflicts, run the relevant Core checks, push the updated `FlClash` branch
+to `origin`, and commit the new submodule revision in this repository. Keep the
+HarmonyOS package-owner hook when merging upstream changes.
