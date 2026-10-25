@@ -1,3 +1,5 @@
+import 'package:fl_clash/common/app_update.dart';
+import 'package:fl_clash/widgets/app_update_dialog.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';

@@ -289,6 +289,13 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("暂无历史应用，识别到应用连接后会自动记录"),
     "applicationNoMatches": MessageLookupByLibrary.simpleMessage("没有匹配的应用"),
     "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("清空应用历史记录？已设置的代理规则会保留。"),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("尚未配置 FlClashX 专属更新仓库，请在构建时设置 FLCLASHX_UPDATE_REPOSITORY。"),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("当前自动安装更新仅支持 Windows。"),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("更新包校验失败，请重新下载。"),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("下载并安装更新"),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage("正在校验安装包…"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("当前已是最新版本。"),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。"),
     "applicationProxy": MessageLookupByLibrary.simpleMessage("应用"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "规则已保存，但应用失败。请重新应用当前配置后重试。",

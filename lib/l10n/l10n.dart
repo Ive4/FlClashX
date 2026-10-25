@@ -82,6 +82,20 @@ class AppLocalizations {
 
   String get applicationClearConfirm => Intl.message("Clear application history? Proxy rules will be kept.", name: 'applicationClearConfirm', args: []);
 
+  String get updateSourceMissing => Intl.message("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.", name: 'updateSourceMissing', args: []);
+
+  String get updateWindowsOnly => Intl.message("Automatic update installation currently supports Windows only.", name: 'updateWindowsOnly', args: []);
+
+  String get updateVerificationFailed => Intl.message("Update verification failed. Please download again.", name: 'updateVerificationFailed', args: []);
+
+  String get updateDownloadInstall => Intl.message("Download and install update", name: 'updateDownloadInstall', args: []);
+
+  String get updateVerifying => Intl.message("Verifying installer…", name: 'updateVerifying', args: []);
+
+  String get updateAlreadyCurrent => Intl.message("You are up to date.", name: 'updateAlreadyCurrent', args: []);
+
+  String get updateRestartNotice => Intl.message("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.", name: 'updateRestartNotice', args: []);
+
   String get applicationProxy {
     return Intl.message(
       'Apps',

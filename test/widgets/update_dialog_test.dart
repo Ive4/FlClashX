@@ -1,3 +1,4 @@
+import 'package:fl_clash/common/app_update.dart';
 import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/providers/app.dart';
 import 'package:fl_clash/providers/config.dart';
@@ -27,10 +28,12 @@ const _bulletsOnly =
 String _bodyWith(String payload) =>
     '$_bulletsOnly\n<!-- flclash:changelog:json\n$payload\n-->\n';
 
-Map<String, dynamic> release(String? body) => <String, dynamic>{
-  'tag_name': 'v0.8.96',
-  'body': body,
-};
+AppUpdateRelease release(String? body) => AppUpdateRelease(
+  version: '0.8.96', build: 1, notes: body ?? '', size: 100,
+  url: Uri.parse('https://github.com/example/FlClashX/releases/download/v0.8.96/FlClashX-update.exe'),
+  sha256Hex: '0' * 64,
+);
+
 
 Future<ProviderContainer> pumpApp(WidgetTester tester, {Locale? locale}) async {
   final container = ProviderContainer();

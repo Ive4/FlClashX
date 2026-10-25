@@ -2,7 +2,7 @@ script_template: inno_setup.iss
 app_id: 728B3532-C74B-4870-9068-BE70FE12A3E6
 app_name: FlClashX
 publisher: chen08209
-publisher_url: https://github.com/chen08209/FlClash
+publisher_url: https://github.com/Ive4/FlClashX
 display_name: FlClashX
 executable_name: FlClashX.exe
 output_base_file_name: FlClashX.exe

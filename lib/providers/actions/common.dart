@@ -4,6 +4,7 @@ part of '../action.dart';
 class CommonAction extends _$CommonAction {
   CoreController get _core => ref.read(coreHandlerProvider);
   bool _isUpdatingTraffic = false;
+  bool _isInstallingUpdate = false;
 
   @override
   void build() {}
@@ -84,9 +85,9 @@ class CommonAction extends _$CommonAction {
 
   Future<bool> autoCheckUpdate() async {
     if (!ref.read(appSettingProvider).autoCheckUpdate) return false;
-    final Map<String, dynamic>? res;
+    final AppUpdateRelease? res;
     try {
-      res = await request.checkForUpdate();
+      res = await appUpdater.check();
     } catch (error) {
       commonPrint.log(
         'checkForUpdate failed: ${compactError(error)}',
@@ -143,39 +144,54 @@ class CommonAction extends _$CommonAction {
   }
 
   Future<void> checkUpdateResultHandle({
-    Map<String, dynamic>? data,
+    AppUpdateRelease? data,
     bool isUser = false,
   }) async {
-    if (data != null) {
+    if (_isInstallingUpdate) return;
+    _isInstallingUpdate = true;
+    try {
       final context = globalState.navigatorKey.currentContext!;
-      final res = await dialogs.showMessage(
-        title: currentAppLocalizations.discoverNewVersion,
-        message: _releaseSpan(
-          context,
-          data['tag_name'] as String,
-          data['body'] as String?,
-        ),
-        confirmText: currentAppLocalizations.goDownload,
-        cancelText: isUser ? null : currentAppLocalizations.noLongerRemind,
-      );
-      if (res == true) {
-        unawaited(
-          launchUrl(
-            Uri.parse('https://github.com/$repository/releases/latest'),
-          ),
-        );
-      } else if (!isUser && res == false) {
-        ref
-            .read(appSettingProvider.notifier)
-            .update((state) => state.copyWith(autoCheckUpdate: false));
+      final l = currentAppLocalizations;
+      if (data == null) {
+        if (isUser) await dialogs.showAlert(
+          title: l.checkUpdate, message: TextSpan(text: l.updateAlreadyCurrent));
+        return;
       }
-    } else if (isUser) {
-      unawaited(
-        dialogs.showAlert(
-          title: currentAppLocalizations.checkUpdate,
-          message: TextSpan(text: currentAppLocalizations.checkUpdateError),
-        ),
+      final result = await dialogs.showMessage(
+        title: l.discoverNewVersion,
+        message: TextSpan(children: [
+          _releaseSpan(context, 'v${data.version}', data.notes),
+          TextSpan(text: '\n\n${l.updateRestartNotice}'),
+        ]),
+        confirmText: l.updateDownloadInstall,
+        cancelText: isUser ? null : l.noLongerRemind,
       );
+      if (result != true) {
+        if (!isUser && result == false) {
+          ref.read(appSettingProvider.notifier).update(
+            (state) => state.copyWith(autoCheckUpdate: false));
+        }
+        return;
+      }
+      if (!context.mounted) return;
+      final installer = await showDialog<File>(context: context,
+        barrierDismissible: false,
+        builder: (_) => AppUpdateDialog(release: data));
+      if (installer == null) return;
+      // Persist before launching a worker; a failed save must not shut down the app.
+      await preferences.saveConfig(ref.read(configProvider));
+      await preferences.setUpdateResume(ref.read(isStartProvider));
+      try {
+        await appUpdater.scheduleInstall(installer);
+      } catch (_) {
+        await preferences.clearUpdateResume();
+        rethrow;
+      }
+      await ref.read(systemActionProvider.notifier).handleExit();
+    } catch (error) {
+      dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+    } finally {
+      _isInstallingUpdate = false;
     }
   }
 }

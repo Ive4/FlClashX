@@ -293,6 +293,13 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("No history yet. Identified app connections are recorded automatically"),
     "applicationNoMatches": MessageLookupByLibrary.simpleMessage("No matching apps"),
     "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("Clear application history? Proxy rules will be kept."),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building."),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("Automatic update installation currently supports Windows only."),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("Update verification failed. Please download again."),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("Download and install update"),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage("Verifying installer…"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("You are up to date."),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."),
     "applicationProxy": MessageLookupByLibrary.simpleMessage("앱"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "규칙이 저장되었지만 적용하지 못했습니다. 현재 프로필을 다시 적용하세요.",

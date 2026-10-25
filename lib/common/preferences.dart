@@ -36,6 +36,24 @@ class Preferences {
     return _instance!;
   }
 
+  Future<void> setUpdateResume(bool running) async {
+    final store = await _store.value;
+    if (store == null || !await store.setBool('resumeAfterUpdate', running)) {
+      throw StateError('Could not save update state');
+    }
+  }
+
+  Future<void> clearUpdateResume() async {
+    await (await _store.value)?.remove('resumeAfterUpdate');
+  }
+
+  Future<bool?> takeUpdateResume() async {
+    final store = await _store.value;
+    final value = store?.getBool('resumeAfterUpdate');
+    await store?.remove('resumeAfterUpdate');
+    return value;
+  }
+
   Future<String?> getApplicationHistory() async =>
       (await _store.value)?.getString('applicationHistory');
 

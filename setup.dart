@@ -125,7 +125,11 @@ List<String> createFlutterBuildArgs({
 }
 
 Map<String, String> createBuildEnvironment(String env) {
-  return {'APP_ENV': env};
+  return {
+    'APP_ENV': env,
+    if (Platform.environment['FLCLASHX_UPDATE_REPOSITORY'] case final String repository)
+      'FLCLASHX_UPDATE_REPOSITORY': repository,
+  };
 }
 
 /// Packages whose build hook `pubspec.yaml` turns into a no-op.

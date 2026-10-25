@@ -990,5 +990,12 @@
   "applicationResetFailed": "Some connections could not be closed. Please retry",
   "applicationHistoryEmpty": "No history yet. Identified app connections are recorded automatically",
   "applicationNoMatches": "No matching apps",
-  "applicationClearConfirm": "Clear application history? Proxy rules will be kept."
+  "applicationClearConfirm": "Clear application history? Proxy rules will be kept.",
+  "updateSourceMissing": "The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.",
+  "updateWindowsOnly": "Automatic update installation currently supports Windows only.",
+  "updateVerificationFailed": "Update verification failed. Please download again.",
+  "updateDownloadInstall": "Download and install update",
+  "updateVerifying": "Verifying installer…",
+  "updateAlreadyCurrent": "You are up to date.",
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
 }

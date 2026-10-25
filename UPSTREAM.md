@@ -22,7 +22,7 @@ git merge v0.9.2
 
 发生冲突时保留 FlClashX 的品牌与增强功能，并结合上游改动解决；不要整文件选择 ours/theirs。完成后检查版本、本地化、测试和各平台打包。
 
-将来设置自己的发布仓库时，建议将官方远程命名为 `upstream`，自己的仓库命名为 `origin`；之后改用 `git fetch upstream`。不要把增强提交推送到官方仓库。
+增强版发布仓库为 https://github.com/Ive4/FlClashX 。建议将官方远程命名为 `upstream`，此仓库命名为 `origin`；配置远程后改用 `git fetch upstream`。不要把增强提交推送到官方仓库。
 
 ## 合并检查
 
@@ -32,5 +32,5 @@ git merge v0.9.2
 - 发布自己的安装包前，需配置自己的发布仓库及 Homebrew 下载地址；原有 CI 发布条件仍限定官方仓库，不会自动发布增强版。
 - Windows 的内部 ProductName 保持 `clash`，避免 path_provider 因更名切换用户数据目录；显示名称由 FileDescription 和窗口标题提供。
 - 核对本地新增的应用历史、代理策略和重置连接功能。
-- 原有关于页面与更新检查仍链接官方发布页；这些链接不是 FlClashX 的二进制更新源。在配置自己的发布仓库前，不把官方安装包当作增强版更新。
+- 关于页保留上游项目链接；更新检查只使用 `FLCLASHX_UPDATE_REPOSITORY` 指定的增强版发布仓库。配置和发布流程见 [自动更新](UPDATES.md)。
 - 不随品牌改名改写上游作者、许可证、依赖来源或子模块分支。
