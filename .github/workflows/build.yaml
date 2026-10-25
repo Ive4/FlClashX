@@ -37,6 +37,14 @@ jobs:
       - name: Test git hooks
         run: bash tool/hooks/test.sh
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test Gitee OAuth service
+        run: node --test services/gitee_oauth/server.test.mjs
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -441,6 +449,8 @@ jobs:
       - name: Setup
         env:
           ANDROID_NDK_HOME: ${{ steps.build-ndk.outputs.ndk-path }}
+          FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
+          FLCLASHX_GITEE_OAUTH_URL: ${{ vars.FLCLASHX_GITEE_OAUTH_URL }}
         run: dart setup.dart ${{ matrix.platform }} ${{ env.IS_STABLE == 'true' && '--env stable' || '' }} -v
 
       - name: Upload
