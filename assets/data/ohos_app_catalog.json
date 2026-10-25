@@ -1,0 +1,1394 @@
+[
+  {
+    "bundleName": "alook.browser.com",
+    "label": "Alook浏览器"
+  },
+  {
+    "bundleName": "cn.com.chsi.app",
+    "label": "学信网"
+  },
+  {
+    "bundleName": "cn.cyberIdentity.certificationharmonyos",
+    "label": "国家网络身份认证"
+  },
+  {
+    "bundleName": "cn.gov.tax.its.hm",
+    "label": "个人所得税"
+  },
+  {
+    "bundleName": "cn.ive.via",
+    "label": "Via"
+  },
+  {
+    "bundleName": "cn.ive4.mfa4",
+    "label": "MFA4"
+  },
+  {
+    "bundleName": "cn.polarz.inpaste",
+    "label": "Inpaste"
+  },
+  {
+    "bundleName": "cn.wps.mobileoffice.hap",
+    "label": "WPS移动版"
+  },
+  {
+    "bundleName": "com.alibaba.aliyunhmos",
+    "label": "阿里云"
+  },
+  {
+    "bundleName": "com.alicloud.hmdatabox",
+    "label": "阿里云盘"
+  },
+  {
+    "bundleName": "com.alipay.mobile.client",
+    "label": "支付宝"
+  },
+  {
+    "bundleName": "com.aliyun.tongyi4ohos",
+    "label": "千问"
+  },
+  {
+    "bundleName": "com.amap.hmapp",
+    "label": "高德地图"
+  },
+  {
+    "bundleName": "com.antgroup.aijk.hmos",
+    "label": "蚂蚁阿福"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207853275489",
+    "label": "手机充值"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207853275505",
+    "label": "优惠加油"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207853600243",
+    "label": "光大云缴费"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207853636497",
+    "label": "同程旅行"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854223125",
+    "label": "网上国网"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854241145",
+    "label": "Huawei Card"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854357741",
+    "label": "中国移动"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854372291",
+    "label": "奈雪点单"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854453125",
+    "label": "猫眼电影演出"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854781425",
+    "label": "快递100小助手"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854799389",
+    "label": "日历订阅服务"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207854805765",
+    "label": "东方财富Lite"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855083101",
+    "label": "快递"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855089845",
+    "label": "合肥公交"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855265549",
+    "label": "找穴位"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855314621",
+    "label": "喀纳斯景区"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855314689",
+    "label": "那拉提旅游风景区"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855357955",
+    "label": "龙门石窟"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855508271",
+    "label": "丰巢寄件"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855787677",
+    "label": "中国联通"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855877209",
+    "label": "出境服务"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855877353",
+    "label": "ETC+"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855960181",
+    "label": "灵活小组件"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207855960191",
+    "label": "Top小组件"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207856156145",
+    "label": "高铁管家"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207856196319",
+    "label": "完美桌面时钟"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207856208787",
+    "label": "Grab"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207856215589",
+    "label": "AI万能写作"
+  },
+  {
+    "bundleName": "com.atomicservice.5765880207856344205",
+    "label": "瑞幸咖啡"
+  },
+  {
+    "bundleName": "com.atomicservice.6917563362494077317",
+    "label": "花瓣测速"
+  },
+  {
+    "bundleName": "com.atomicservice.6917568146765197900",
+    "label": "短剧"
+  },
+  {
+    "bundleName": "com.atomicservice.6917568531856903167",
+    "label": "NFC标签工具"
+  },
+  {
+    "bundleName": "com.atomicservice.6917569400003006179",
+    "label": "贝壳找房-二手房新房装修"
+  },
+  {
+    "bundleName": "com.atomicservice.6917571507280781886",
+    "label": "Petal One"
+  },
+  {
+    "bundleName": "com.atomicservice.6917576281833361266",
+    "label": "免费小说"
+  },
+  {
+    "bundleName": "com.atomicservice.6917578686874830472",
+    "label": "百度实时公交"
+  },
+  {
+    "bundleName": "com.atomicservice.6917586487652198050",
+    "label": "顺丰速运"
+  },
+  {
+    "bundleName": "com.atomicservice.6917587889453404644",
+    "label": "京东快递"
+  },
+  {
+    "bundleName": "com.atomicservice.6917588158831852577",
+    "label": "T3出行"
+  },
+  {
+    "bundleName": "com.atomicservice.6917592585938897283",
+    "label": "吉利锁行"
+  },
+  {
+    "bundleName": "com.atomicservice.6917594172732814448",
+    "label": "京东购物"
+  },
+  {
+    "bundleName": "com.atomicservice.6917596459609800769",
+    "label": "MBTI人格专业测试"
+  },
+  {
+    "bundleName": "com.atomicservice.6917598863075778687",
+    "label": "番茄轻断食"
+  },
+  {
+    "bundleName": "com.baidu.hmmap",
+    "label": "百度地图"
+  },
+  {
+    "bundleName": "com.baidu.netdisk.hmos",
+    "label": "百度网盘"
+  },
+  {
+    "bundleName": "com.bankcomm.mobshos",
+    "label": "交通银行"
+  },
+  {
+    "bundleName": "com.boohee.one.hm",
+    "label": "薄荷健康"
+  },
+  {
+    "bundleName": "com.byd.hauto",
+    "label": "比亚迪"
+  },
+  {
+    "bundleName": "com.bzl.bosszhipin",
+    "label": "BOSS直聘"
+  },
+  {
+    "bundleName": "com.cainiao.cainiao4hmos",
+    "label": "菜鸟"
+  },
+  {
+    "bundleName": "com.chinamobile.cmcc",
+    "label": "中国移动"
+  },
+  {
+    "bundleName": "com.chinarailway.ticketingHM",
+    "label": "铁路12306"
+  },
+  {
+    "bundleName": "com.cmbchina.ccc.cmblife",
+    "label": "掌上生活"
+  },
+  {
+    "bundleName": "com.cmbchina.harmony",
+    "label": "招商银行"
+  },
+  {
+    "bundleName": "com.cmcc.DigitalHome",
+    "label": "移动爱家"
+  },
+  {
+    "bundleName": "com.ct.client.hm",
+    "label": "中国电信"
+  },
+  {
+    "bundleName": "com.ctrip.harmonynext",
+    "label": "携程旅行"
+  },
+  {
+    "bundleName": "com.dingtalk.hmos",
+    "label": "钉钉"
+  },
+  {
+    "bundleName": "com.dragon.read.next",
+    "label": "番茄免费小说"
+  },
+  {
+    "bundleName": "com.droi.tong",
+    "label": "卓易通"
+  },
+  {
+    "bundleName": "com.easy.hmos.abroad",
+    "label": "出境易"
+  },
+  {
+    "bundleName": "com.edifier.echms",
+    "label": "EDIFIER Connect"
+  },
+  {
+    "bundleName": "com.ericple.onekey",
+    "label": "一日MFA"
+  },
+  {
+    "bundleName": "com.example.instructionmagic",
+    "label": "指令魔方"
+  },
+  {
+    "bundleName": "com.ezviz.videogo",
+    "label": "萤石云视频"
+  },
+  {
+    "bundleName": "com.fliggy.hmos",
+    "label": "飞猪旅行"
+  },
+  {
+    "bundleName": "com.follow.fl_clash",
+    "label": "FlClashX"
+  },
+  {
+    "bundleName": "com.geelygalaxy.customer.hy",
+    "label": "吉利银河"
+  },
+  {
+    "bundleName": "com.haier.uhome.uplus.hm",
+    "label": "海尔智家"
+  },
+  {
+    "bundleName": "com.hellobike.app",
+    "label": "哈啰"
+  },
+  {
+    "bundleName": "com.hexin.hmn.sjcg",
+    "label": "同花顺"
+  },
+  {
+    "bundleName": "com.hos.moonshot.kimichat",
+    "label": "Kimi"
+  },
+  {
+    "bundleName": "com.huawei.associateassistant",
+    "label": "键鼠共享"
+  },
+  {
+    "bundleName": "com.huawei.batterycare",
+    "label": "电池健康"
+  },
+  {
+    "bundleName": "com.huawei.file_assistant",
+    "label": "file_assistant"
+  },
+  {
+    "bundleName": "com.huawei.hmos.AutoRegService",
+    "label": "AutoRegService"
+  },
+  {
+    "bundleName": "com.huawei.hmos.accessorymanager",
+    "label": "配件管理"
+  },
+  {
+    "bundleName": "com.huawei.hmos.accountcontactsservice",
+    "label": "Account contacts service"
+  },
+  {
+    "bundleName": "com.huawei.hmos.advisor",
+    "label": "智能提醒"
+  },
+  {
+    "bundleName": "com.huawei.hmos.advsecmode",
+    "label": "坚盾守护模式"
+  },
+  {
+    "bundleName": "com.huawei.hmos.aibase",
+    "label": "AiBase"
+  },
+  {
+    "bundleName": "com.huawei.hmos.aidataservice",
+    "label": "AiDataService"
+  },
+  {
+    "bundleName": "com.huawei.hmos.aidispatchservice",
+    "label": "智慧分发服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.ailife",
+    "label": "智慧生活"
+  },
+  {
+    "bundleName": "com.huawei.hmos.ailifesvc",
+    "label": "鸿蒙智联基础服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.airtouchservice",
+    "label": "AirTouchServiceForHarmonyOS"
+  },
+  {
+    "bundleName": "com.huawei.hmos.aml",
+    "label": "华为紧急位置服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.applock",
+    "label": "应用锁"
+  },
+  {
+    "bundleName": "com.huawei.hmos.arkwebcore",
+    "label": "方舟Web"
+  },
+  {
+    "bundleName": "com.huawei.hmos.arkwebcorelegacy",
+    "label": "方舟WebLegacy"
+  },
+  {
+    "bundleName": "com.huawei.hmos.asde",
+    "label": "元服务能力中心"
+  },
+  {
+    "bundleName": "com.huawei.hmos.audioaccessorymanager",
+    "label": "音频管家"
+  },
+  {
+    "bundleName": "com.huawei.hmos.authcredmgr",
+    "label": "DeviceAuthCredMgr"
+  },
+  {
+    "bundleName": "com.huawei.hmos.brid",
+    "label": "设备安全服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.browser",
+    "label": "浏览器"
+  },
+  {
+    "bundleName": "com.huawei.hmos.calculator",
+    "label": "计算器"
+  },
+  {
+    "bundleName": "com.huawei.hmos.calendar",
+    "label": "日历"
+  },
+  {
+    "bundleName": "com.huawei.hmos.calendardata",
+    "label": "日历存储"
+  },
+  {
+    "bundleName": "com.huawei.hmos.callaiservice",
+    "label": "CallAIService"
+  },
+  {
+    "bundleName": "com.huawei.hmos.callrecorder",
+    "label": "通话录音"
+  },
+  {
+    "bundleName": "com.huawei.hmos.callsetting",
+    "label": "通话设置"
+  },
+  {
+    "bundleName": "com.huawei.hmos.camera",
+    "label": "相机"
+  },
+  {
+    "bundleName": "com.huawei.hmos.cardistributedassist",
+    "label": "鸿蒙车联"
+  },
+  {
+    "bundleName": "com.huawei.hmos.carrescueassist",
+    "label": "出行护航"
+  },
+  {
+    "bundleName": "com.huawei.hmos.carsatelliteassist",
+    "label": "车载卫星通信助手"
+  },
+  {
+    "bundleName": "com.huawei.hmos.cellbroadcast",
+    "label": "小区广播"
+  },
+  {
+    "bundleName": "com.huawei.hmos.clock",
+    "label": "时钟"
+  },
+  {
+    "bundleName": "com.huawei.hmos.clouddrive",
+    "label": "云空间"
+  },
+  {
+    "bundleName": "com.huawei.hmos.cloudshare",
+    "label": "CloudShareService"
+  },
+  {
+    "bundleName": "com.huawei.hmos.collaborationanimationeffect",
+    "label": "协同动效"
+  },
+  {
+    "bundleName": "com.huawei.hmos.communicationsetting",
+    "label": "communicationsetting"
+  },
+  {
+    "bundleName": "com.huawei.hmos.databackup",
+    "label": "备份和恢复"
+  },
+  {
+    "bundleName": "com.huawei.hmos.devicecollaboration",
+    "label": "多屏协同"
+  },
+  {
+    "bundleName": "com.huawei.hmos.deviceinterconnectivity",
+    "label": "跨设备互通"
+  },
+  {
+    "bundleName": "com.huawei.hmos.dlpcredmgr",
+    "label": "加密分享文件"
+  },
+  {
+    "bundleName": "com.huawei.hmos.ecaengine",
+    "label": "智慧场景服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.emergencycommunication",
+    "label": "紧急通信"
+  },
+  {
+    "bundleName": "com.huawei.hmos.esimmanager",
+    "label": "eSIM"
+  },
+  {
+    "bundleName": "com.huawei.hmos.fido",
+    "label": "FIDO"
+  },
+  {
+    "bundleName": "com.huawei.hmos.filemanager",
+    "label": "文件服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.files",
+    "label": "文件管理"
+  },
+  {
+    "bundleName": "com.huawei.hmos.finddevice",
+    "label": "查找设备"
+  },
+  {
+    "bundleName": "com.huawei.hmos.findservice",
+    "label": "查找服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.fontinstaller",
+    "label": "字体安装管理"
+  },
+  {
+    "bundleName": "com.huawei.hmos.fusionawareness",
+    "label": "FusionAwareness"
+  },
+  {
+    "bundleName": "com.huawei.hmos.glasses.service",
+    "label": "华为眼镜服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.health",
+    "label": "运动健康"
+  },
+  {
+    "bundleName": "com.huawei.hmos.health.core",
+    "label": "运动健康服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.helpfeedback",
+    "label": "帮助和反馈"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hicar",
+    "label": "HUAWEI HiCar"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hipreview",
+    "label": "文件预览"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hipreviewext",
+    "label": "文件预览扩展应用"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hiskytone",
+    "label": "天际通"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hisuite",
+    "label": "华为手机助手"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hiviewcare",
+    "label": "智能检测"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hiviewpage",
+    "label": "用户体验改进计划"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hiviewx",
+    "label": "用户体验改进计划服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hiwrite",
+    "label": "华为全局手写"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hsdr",
+    "label": "HSDRFwk"
+  },
+  {
+    "bundleName": "com.huawei.hmos.huaweicast",
+    "label": "无线投屏"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hwdac",
+    "label": "设备激活服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hwquickaccessmenu",
+    "label": "QuickAccessMenu"
+  },
+  {
+    "bundleName": "com.huawei.hmos.hwstartupguide",
+    "label": "开机向导"
+  },
+  {
+    "bundleName": "com.huawei.hmos.inputmethod",
+    "label": "小艺输入法"
+  },
+  {
+    "bundleName": "com.huawei.hmos.instantshare",
+    "label": "华为分享"
+  },
+  {
+    "bundleName": "com.huawei.hmos.intelligentscene",
+    "label": "情景模式"
+  },
+  {
+    "bundleName": "com.huawei.hmos.location",
+    "label": "LocationEnhanceService"
+  },
+  {
+    "bundleName": "com.huawei.hmos.maps.app",
+    "label": "地图"
+  },
+  {
+    "bundleName": "com.huawei.hmos.mediacontroller",
+    "label": "媒体播控中心"
+  },
+  {
+    "bundleName": "com.huawei.hmos.meetime",
+    "label": "畅连"
+  },
+  {
+    "bundleName": "com.huawei.hmos.meetimeservice",
+    "label": "畅连通信"
+  },
+  {
+    "bundleName": "com.huawei.hmos.migrateclient",
+    "label": "升级数据迁移"
+  },
+  {
+    "bundleName": "com.huawei.hmos.minorsprotection",
+    "label": "未成年人模式"
+  },
+  {
+    "bundleName": "com.huawei.hmos.mmiautotest",
+    "label": "HwAutoTest"
+  },
+  {
+    "bundleName": "com.huawei.hmos.mmitest",
+    "label": "HwMMITest"
+  },
+  {
+    "bundleName": "com.huawei.hmos.motiongesture",
+    "label": "隔空手势"
+  },
+  {
+    "bundleName": "com.huawei.hmos.myhuawei",
+    "label": "我的华为"
+  },
+  {
+    "bundleName": "com.huawei.hmos.newcallingdcsdk",
+    "label": "增强通话"
+  },
+  {
+    "bundleName": "com.huawei.hmos.notepad",
+    "label": "备忘录"
+  },
+  {
+    "bundleName": "com.huawei.hmos.numberidentity",
+    "label": "NumberIdentity"
+  },
+  {
+    "bundleName": "com.huawei.hmos.onehopsvchost",
+    "label": "OneHopSvcHost"
+  },
+  {
+    "bundleName": "com.huawei.hmos.ouc",
+    "label": "软件更新"
+  },
+  {
+    "bundleName": "com.huawei.hmos.parentcontrol",
+    "label": "健康使用设备"
+  },
+  {
+    "bundleName": "com.huawei.hmos.passwordvault",
+    "label": "密码保险箱"
+  },
+  {
+    "bundleName": "com.huawei.hmos.penglaimodeassistant",
+    "label": "户外探索模式"
+  },
+  {
+    "bundleName": "com.huawei.hmos.photos",
+    "label": "图库"
+  },
+  {
+    "bundleName": "com.huawei.hmos.privatespacemanager",
+    "label": "隐私空间"
+  },
+  {
+    "bundleName": "com.huawei.hmos.projectmenu",
+    "label": "工程菜单"
+  },
+  {
+    "bundleName": "com.huawei.hmos.quickpay",
+    "label": "智感支付"
+  },
+  {
+    "bundleName": "com.huawei.hmos.remotecontroller",
+    "label": "智能遥控"
+  },
+  {
+    "bundleName": "com.huawei.hmos.restores",
+    "label": "预置应用管理"
+  },
+  {
+    "bundleName": "com.huawei.hmos.screenreader",
+    "label": "屏幕朗读"
+  },
+  {
+    "bundleName": "com.huawei.hmos.screenrecorder",
+    "label": "屏幕录制"
+  },
+  {
+    "bundleName": "com.huawei.hmos.screenshot",
+    "label": "截屏"
+  },
+  {
+    "bundleName": "com.huawei.hmos.secureaccessfence",
+    "label": "SecureAccessFence"
+  },
+  {
+    "bundleName": "com.huawei.hmos.security.privacycenter",
+    "label": "隐私和安全"
+  },
+  {
+    "bundleName": "com.huawei.hmos.securityguardassistant",
+    "label": "SecurityGuardAssistant"
+  },
+  {
+    "bundleName": "com.huawei.hmos.settings",
+    "label": "设置"
+  },
+  {
+    "bundleName": "com.huawei.hmos.simcardmanagement",
+    "label": "SIM 卡管理"
+  },
+  {
+    "bundleName": "com.huawei.hmos.simtoolkits",
+    "label": "SIM 卡应用程序"
+  },
+  {
+    "bundleName": "com.huawei.hmos.skytone",
+    "label": "天际通引擎服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.slassistant",
+    "label": "超级桌面助手"
+  },
+  {
+    "bundleName": "com.huawei.hmos.smartmmsservice",
+    "label": "智能信息"
+  },
+  {
+    "bundleName": "com.huawei.hmos.soundrecorder",
+    "label": "录音机"
+  },
+  {
+    "bundleName": "com.huawei.hmos.spamshield",
+    "label": "星盾防诈"
+  },
+  {
+    "bundleName": "com.huawei.hmos.spooler",
+    "label": "打印"
+  },
+  {
+    "bundleName": "com.huawei.hmos.suggestion",
+    "label": "小艺建议"
+  },
+  {
+    "bundleName": "com.huawei.hmos.superdevice",
+    "label": "超级终端"
+  },
+  {
+    "bundleName": "com.huawei.hmos.superhub",
+    "label": "中转站"
+  },
+  {
+    "bundleName": "com.huawei.hmos.systemmanagerform",
+    "label": "手机管家"
+  },
+  {
+    "bundleName": "com.huawei.hmos.telephonyenhanced",
+    "label": "TelephonyEnhanced"
+  },
+  {
+    "bundleName": "com.huawei.hmos.themedataservice",
+    "label": "主题服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.tips",
+    "label": "玩机技巧"
+  },
+  {
+    "bundleName": "com.huawei.hmos.trustedring",
+    "label": "TrustedRing"
+  },
+  {
+    "bundleName": "com.huawei.hmos.useriam.idmwidget",
+    "label": "用户凭据录入控件"
+  },
+  {
+    "bundleName": "com.huawei.hmos.vassistant",
+    "label": "小艺服务"
+  },
+  {
+    "bundleName": "com.huawei.hmos.vassistant.launcher",
+    "label": "小艺"
+  },
+  {
+    "bundleName": "com.huawei.hmos.videoplayer",
+    "label": "视频播放器"
+  },
+  {
+    "bundleName": "com.huawei.hmos.visionglass",
+    "label": "华为眼镜"
+  },
+  {
+    "bundleName": "com.huawei.hmos.vpndialog",
+    "label": "VpnAuthorizationDialog"
+  },
+  {
+    "bundleName": "com.huawei.hmos.wallet",
+    "label": "钱包"
+  },
+  {
+    "bundleName": "com.huawei.hmos.walletservice",
+    "label": "WalletService"
+  },
+  {
+    "bundleName": "com.huawei.hms.accountglobalservice",
+    "label": "AccountGlobalService"
+  },
+  {
+    "bundleName": "com.huawei.hms.adsservice",
+    "label": "智慧营销服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.analyticsservice",
+    "label": "AnalyticsKitService"
+  },
+  {
+    "bundleName": "com.huawei.hms.findnetwork_ui",
+    "label": "FindNetwork_UI"
+  },
+  {
+    "bundleName": "com.huawei.hms.floatingnavigation",
+    "label": "FloatingNavigation"
+  },
+  {
+    "bundleName": "com.huawei.hms.gameservice",
+    "label": "游戏服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.huaweiid",
+    "label": "华为账号"
+  },
+  {
+    "bundleName": "com.huawei.hms.iapservice",
+    "label": "华为应用内支付"
+  },
+  {
+    "bundleName": "com.huawei.hms.invoiceservice",
+    "label": "invoiceservice"
+  },
+  {
+    "bundleName": "com.huawei.hms.mapservice",
+    "label": "地图服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.musicservice",
+    "label": "音乐服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.myfamily",
+    "label": "亲密圈"
+  },
+  {
+    "bundleName": "com.huawei.hms.pafservice",
+    "label": "PAFService"
+  },
+  {
+    "bundleName": "com.huawei.hms.payment",
+    "label": "华为支付"
+  },
+  {
+    "bundleName": "com.huawei.hms.pushservice",
+    "label": "推送服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.scanservice",
+    "label": "扫码服务"
+  },
+  {
+    "bundleName": "com.huawei.hms.serviceaccess",
+    "label": "Jumper"
+  },
+  {
+    "bundleName": "com.huawei.hms.textautofill",
+    "label": "智能填充"
+  },
+  {
+    "bundleName": "com.huawei.hms.weather",
+    "label": "com.huawei.hms.weather"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.adminprovisioning",
+    "label": "AdminProvisioning"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.alliance",
+    "label": "开发者联盟"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.appassistant",
+    "label": "应用助手"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.appgallery",
+    "label": "应用市场"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.books",
+    "label": "阅读"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.compass",
+    "label": "指南针"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.gamecenter",
+    "label": "游戏中心"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.hiai",
+    "label": "语音视觉服务"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.hisearch",
+    "label": "小艺搜索"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.intelligent",
+    "label": "智慧助手·今天"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.litegamelauncher",
+    "label": "小游戏服务"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.litegames",
+    "label": "小游戏"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.thememanager",
+    "label": "主题"
+  },
+  {
+    "bundleName": "com.huawei.hmsapp.totemweather",
+    "label": "天气"
+  },
+  {
+    "bundleName": "com.huawei.msdp.antimisoperation",
+    "label": "口袋防误触"
+  },
+  {
+    "bundleName": "com.huawei.msdp.hmringdiscriminator",
+    "label": "鸿蒙环扫码器"
+  },
+  {
+    "bundleName": "com.huawei.msdp.hmringgenerator",
+    "label": "鸿蒙环生成器"
+  },
+  {
+    "bundleName": "com.huawei.sceneboardres.overlay",
+    "label": "SceneBoardResOverlay"
+  },
+  {
+    "bundleName": "com.huawei.shell_assistant",
+    "label": "shell_assistant"
+  },
+  {
+    "bundleName": "com.icbc.harmonyclient",
+    "label": "中国工商银行"
+  },
+  {
+    "bundleName": "com.ifreedomer.flix",
+    "label": "Flix"
+  },
+  {
+    "bundleName": "com.jd.hm.mall",
+    "label": "京东"
+  },
+  {
+    "bundleName": "com.jd.jrapp.hongmeng",
+    "label": "京东金融"
+  },
+  {
+    "bundleName": "com.jdcar.jch.hm",
+    "label": "京东养车"
+  },
+  {
+    "bundleName": "com.job.hm51job",
+    "label": "前程无忧51Job"
+  },
+  {
+    "bundleName": "com.kaadas.lock",
+    "label": "凯迪仕智能"
+  },
+  {
+    "bundleName": "com.kanyun.hos.leo",
+    "label": "小猿AI"
+  },
+  {
+    "bundleName": "com.kiri.remy",
+    "label": "Remy"
+  },
+  {
+    "bundleName": "com.larus.nova.hm",
+    "label": "豆包"
+  },
+  {
+    "bundleName": "com.liepin.mishu.hm",
+    "label": "猎聘"
+  },
+  {
+    "bundleName": "com.luna.hm.music",
+    "label": "汽水音乐"
+  },
+  {
+    "bundleName": "com.luyuanhw.intelligence",
+    "label": "绿源智能"
+  },
+  {
+    "bundleName": "com.meituan.takeaway",
+    "label": "美团外卖"
+  },
+  {
+    "bundleName": "com.mgtv.phone",
+    "label": "芒果TV"
+  },
+  {
+    "bundleName": "com.ml.airlook",
+    "label": "Air-Look"
+  },
+  {
+    "bundleName": "com.ohos.FusionSearch",
+    "label": "FusionSearch"
+  },
+  {
+    "bundleName": "com.ohos.UserFile.ExternalFileManager",
+    "label": "label"
+  },
+  {
+    "bundleName": "com.ohos.amsdialog",
+    "label": "AmsSystemDialog"
+  },
+  {
+    "bundleName": "com.ohos.backgroundtaskmgr.resources",
+    "label": "长时任务通知提示资源"
+  },
+  {
+    "bundleName": "com.ohos.bluetooth",
+    "label": "蓝牙"
+  },
+  {
+    "bundleName": "com.ohos.callui",
+    "label": "电话"
+  },
+  {
+    "bundleName": "com.ohos.certmanager",
+    "label": "证书管理"
+  },
+  {
+    "bundleName": "com.ohos.commondialog",
+    "label": "CommonDialog"
+  },
+  {
+    "bundleName": "com.ohos.contacts",
+    "label": "联系人"
+  },
+  {
+    "bundleName": "com.ohos.contactsdataability",
+    "label": "联系人存储"
+  },
+  {
+    "bundleName": "com.ohos.devicemanagerui",
+    "label": "devicemanagerui"
+  },
+  {
+    "bundleName": "com.ohos.dhardwareui",
+    "label": "分布式硬件控制UI"
+  },
+  {
+    "bundleName": "com.ohos.dlpmanager",
+    "label": "DLP加密保护"
+  },
+  {
+    "bundleName": "com.ohos.formrenderservice",
+    "label": "FormRenderService"
+  },
+  {
+    "bundleName": "com.ohos.inputmethodchoosedialog",
+    "label": "inputmethodchoosedialog"
+  },
+  {
+    "bundleName": "com.ohos.locationdialog",
+    "label": "蓝牙"
+  },
+  {
+    "bundleName": "com.ohos.medialibrary.medialibrarydata",
+    "label": "MeidaLibraryExt"
+  },
+  {
+    "bundleName": "com.ohos.mms",
+    "label": "信息"
+  },
+  {
+    "bundleName": "com.ohos.notificationdialog",
+    "label": "EnableNotificationDialog"
+  },
+  {
+    "bundleName": "com.ohos.pasteboarddialog",
+    "label": "PasteboardDialog"
+  },
+  {
+    "bundleName": "com.ohos.permissionmanager",
+    "label": "权限管理"
+  },
+  {
+    "bundleName": "com.ohos.powerdialog",
+    "label": "power_dialog"
+  },
+  {
+    "bundleName": "com.ohos.ringtonelibrary.ringtonelibrarydata",
+    "label": "RingtoneLibraryExt"
+  },
+  {
+    "bundleName": "com.ohos.sceneboard",
+    "label": "主屏幕与桌面"
+  },
+  {
+    "bundleName": "com.ohos.settingsdata",
+    "label": "settingdata"
+  },
+  {
+    "bundleName": "com.ohos.telephonydataability",
+    "label": "短信存储"
+  },
+  {
+    "bundleName": "com.ohos.useriam.authwidget",
+    "label": "用户身份认证控件"
+  },
+  {
+    "bundleName": "com.phoenix.read.next",
+    "label": "红果免费短剧"
+  },
+  {
+    "bundleName": "com.psbc.mbank.hm",
+    "label": "邮储银行"
+  },
+  {
+    "bundleName": "com.pupu.app",
+    "label": "朴朴超市"
+  },
+  {
+    "bundleName": "com.qiyi.video.hmy",
+    "label": "爱奇艺"
+  },
+  {
+    "bundleName": "com.quark.ohosbrowser",
+    "label": "夸克"
+  },
+  {
+    "bundleName": "com.sankuai.dianping",
+    "label": "大众点评"
+  },
+  {
+    "bundleName": "com.sankuai.hmeituan",
+    "label": "美团"
+  },
+  {
+    "bundleName": "com.sdu.didi.hmos.psnger",
+    "label": "滴滴"
+  },
+  {
+    "bundleName": "com.sgcc.evs.charge",
+    "label": "e充电"
+  },
+  {
+    "bundleName": "com.shengteng.qxb.hap",
+    "label": "启信宝"
+  },
+  {
+    "bundleName": "com.sina.weibo.stage",
+    "label": "微博"
+  },
+  {
+    "bundleName": "com.sinovatech.unicom.ha",
+    "label": "中国联通"
+  },
+  {
+    "bundleName": "com.smzdm.client.hmos",
+    "label": "什么值得买"
+  },
+  {
+    "bundleName": "com.ss.feishu",
+    "label": "飞书"
+  },
+  {
+    "bundleName": "com.ss.hm.article.news",
+    "label": "今日头条"
+  },
+  {
+    "bundleName": "com.ss.hm.ugc.aweme",
+    "label": "抖音"
+  },
+  {
+    "bundleName": "com.ss.hm.ugc.aweme.jingxuan",
+    "label": "抖音精选"
+  },
+  {
+    "bundleName": "com.taobao.etao4hmos",
+    "label": "一淘"
+  },
+  {
+    "bundleName": "com.taobao.idlefish4ohos",
+    "label": "闲鱼"
+  },
+  {
+    "bundleName": "com.taobao.taobao4hmos",
+    "label": "淘宝"
+  },
+  {
+    "bundleName": "com.taou.oh_neitui",
+    "label": "脉脉"
+  },
+  {
+    "bundleName": "com.tencent.docsohos",
+    "label": "腾讯文档"
+  },
+  {
+    "bundleName": "com.tencent.hm.qqmusic",
+    "label": "QQ音乐"
+  },
+  {
+    "bundleName": "com.tencent.meeting.app",
+    "label": "腾讯会议"
+  },
+  {
+    "bundleName": "com.tencent.mqq",
+    "label": "QQ"
+  },
+  {
+    "bundleName": "com.tencent.qqmail.hmos",
+    "label": "QQ邮箱"
+  },
+  {
+    "bundleName": "com.tencent.tmgp.sgame.hw",
+    "label": "王者荣耀"
+  },
+  {
+    "bundleName": "com.tencent.videohm",
+    "label": "腾讯视频"
+  },
+  {
+    "bundleName": "com.tencent.wechat",
+    "label": "微信"
+  },
+  {
+    "bundleName": "com.tencent.wework.hmos",
+    "label": "企业微信"
+  },
+  {
+    "bundleName": "com.termnext.hos",
+    "label": "TermNext"
+  },
+  {
+    "bundleName": "com.tmri.app.harmony12123",
+    "label": "交管12123"
+  },
+  {
+    "bundleName": "com.tuhu.tuhuharmony",
+    "label": "途虎养车"
+  },
+  {
+    "bundleName": "com.uc.mobile",
+    "label": "UC浏览器"
+  },
+  {
+    "bundleName": "com.umetrip.hm.app",
+    "label": "航旅纵横"
+  },
+  {
+    "bundleName": "com.unionpay.hmos.wallet",
+    "label": "云闪付"
+  },
+  {
+    "bundleName": "com.usb.right",
+    "label": "UsbAuthorizationDialog"
+  },
+  {
+    "bundleName": "com.wifiservice.portallogin",
+    "label": "PortalLogin"
+  },
+  {
+    "bundleName": "com.wsgw.harmonyAPP",
+    "label": "网上国网"
+  },
+  {
+    "bundleName": "com.wudaokou.hippo_hmos",
+    "label": "盒马"
+  },
+  {
+    "bundleName": "com.xingin.xhs_hos",
+    "label": "小红书"
+  },
+  {
+    "bundleName": "com.xunji.hm",
+    "label": "训记"
+  },
+  {
+    "bundleName": "com.xunlei.thunder",
+    "label": "迅雷"
+  },
+  {
+    "bundleName": "com.xunmeng.pinduoduo.hos",
+    "label": "拼多多"
+  },
+  {
+    "bundleName": "com.zhihu.hmos",
+    "label": "知乎"
+  },
+  {
+    "bundleName": "com.zhilian.zhaopin",
+    "label": "智联招聘"
+  },
+  {
+    "bundleName": "com.zhipuai.qingyan.glm",
+    "label": "智谱清言"
+  },
+  {
+    "bundleName": "com.zhuanzhuan.hmoszz",
+    "label": "转转"
+  },
+  {
+    "bundleName": "com.zuler.ohosapp.todesk",
+    "label": "ToDesk"
+  },
+  {
+    "bundleName": "ohos.global.systemres",
+    "label": "系统"
+  },
+  {
+    "bundleName": "yylx.danmaku.bili",
+    "label": "哔哩哔哩"
+  }
+]
