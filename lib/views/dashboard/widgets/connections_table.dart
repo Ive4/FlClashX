@@ -1,13 +1,19 @@
 import 'dart:async';
 
+import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/method.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
+import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/providers/app.dart';
+import 'package:fl_clash/providers/application_proxy.dart';
+import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/providers/core.dart';
+import 'package:fl_clash/providers/state.dart';
+import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/connection/connections.dart';
 import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/views/dashboard/layout.dart';
@@ -19,6 +25,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'card.dart';
 import 'current_outbound.dart';
+
+part 'application_proxy.dart';
 
 /// Enough to fill the tallest card several times over; the full feed is a
 /// tap away.
@@ -50,21 +58,24 @@ double connectionsTableMinHeight(DashboardDensity density, double scale) =>
 enum DashboardFeed {
   connections,
   requests,
-  dns;
+  dns,
+  applications;
 
-  PageLabel get page => switch (this) {
-    connections => PageLabel.connections,
-    requests => PageLabel.requests,
-    dns => PageLabel.dns,
+  String get label => switch (this) {
+    connections => PageLabel.connections.label,
+    requests => PageLabel.requests.label,
+    dns => PageLabel.dns.label,
+    applications => currentAppLocalizations.applicationProxy,
   };
 }
 
 void openDashboardFeed(BuildContext context, DashboardFeed feed) {
   showSnapSheet(
     context,
-    initialScrollOffset: feed == DashboardFeed.connections
-        ? 0
-        : double.maxFinite,
+    initialScrollOffset: switch (feed) {
+      DashboardFeed.connections || DashboardFeed.applications => 0,
+      DashboardFeed.requests || DashboardFeed.dns => double.maxFinite,
+    },
     builder: (_, controller) => NestedPagedSheet(
       builder: (_) => switch (feed) {
         DashboardFeed.connections => ConnectionsView(
@@ -72,6 +83,9 @@ void openDashboardFeed(BuildContext context, DashboardFeed feed) {
         ),
         DashboardFeed.requests => RequestsView(scrollController: controller),
         DashboardFeed.dns => DnsQueriesView(scrollController: controller),
+        DashboardFeed.applications => ApplicationProxyView(
+          scrollController: controller,
+        ),
       },
     ),
   );
@@ -87,10 +101,14 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
         RouteMotionHoldMixin<T> {
   final connectionCount = ValueNotifier(0);
   List<TrackerInfo> connections = const [];
+  DateTime? connectionsSampledAt;
+  bool connectionsStale = false;
   var tcpCount = 0;
   var udpCount = 0;
 
   bool get pollsConnections;
+
+  bool get sortsConnections => true;
 
   CoreController get _core => ref.read(coreHandlerProvider);
 
@@ -107,10 +125,15 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
   Future<void> poll(PollGuard isCurrent) async {
     if (ref.read(coreStatusProvider) != CoreStatus.connected) {
       connectionCount.value = 0;
-      if (connections.isNotEmpty && isCurrent()) {
+      if ((connections.isNotEmpty ||
+              connectionsSampledAt != null ||
+              connectionsStale) &&
+          isCurrent()) {
         updateWhenRouteSettled(
           () => setState(() {
             connections = const [];
+            connectionsSampledAt = null;
+            connectionsStale = false;
             tcpCount = 0;
             udpCount = 0;
           }),
@@ -122,7 +145,10 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
       if (pollsConnections) {
         final next = [...await _core.getConnections()];
         if (!isCurrent()) return;
-        next.sort((a, b) => b.start.compareTo(a.start));
+        final sampledAt = DateTime.now();
+        if (sortsConnections) {
+          next.sort((a, b) => b.start.compareTo(a.start));
+        }
         final tcp = next
             .where((item) => item.metadata.network.toLowerCase() == 'tcp')
             .length;
@@ -130,6 +156,8 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
         updateWhenRouteSettled(
           () => setState(() {
             connections = next;
+            connectionsSampledAt = sampledAt;
+            connectionsStale = false;
             tcpCount = tcp;
             udpCount = next.length - tcp;
           }),
@@ -140,6 +168,11 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
         connectionCount.value = count;
       }
     } catch (error) {
+      if (pollsConnections && isCurrent()) {
+        updateWhenRouteSettled(
+          () => setState(() => connectionsStale = true),
+        );
+      }
       commonPrint.log(
         'dashboard connections error: $error',
         logLevel: coreFailureLogLevel(error),
@@ -230,10 +263,15 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
   var _feed = DashboardFeed.connections;
   List<TrackerInfo> _requests = const [];
   List<DnsQuery> _queries = const [];
+  var _applicationCount = 0;
   Timer? _snapshot;
 
   @override
-  bool get pollsConnections => _feed == DashboardFeed.connections;
+  bool get pollsConnections =>
+      _feed == DashboardFeed.connections || _feed == DashboardFeed.applications;
+
+  @override
+  bool get sortsConnections => _feed != DashboardFeed.applications;
 
   @override
   void initState() {
@@ -270,23 +308,24 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
       case DashboardFeed.dns:
         _queries = ref.read(dnsQueriesProvider).list.reversed.toList();
       case DashboardFeed.connections:
+      case DashboardFeed.applications:
         break;
     }
   }
 
   void _select(DashboardFeed feed) {
     if (feed == _feed) return;
+    stopPolling();
     setState(() {
       _feed = feed;
-      if (feed != DashboardFeed.connections) {
+      if (!pollsConnections) {
         connections = const [];
+        connectionsSampledAt = null;
+        connectionsStale = false;
       }
       _takeSnapshot();
     });
-    if (feed == DashboardFeed.connections) {
-      stopPolling();
-      startPolling();
-    }
+    startPolling();
   }
 
   @override
@@ -298,7 +337,7 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
     final headerHeight = _tabHeightOf(density) * scale;
     final tabInset = _tabInsetOf(density);
     final cellStart = dashboardCardPadding(density).left - _cellInset;
-    Widget segment(DashboardFeed feed, Widget count) =>
+    Widget segment(DashboardFeed feed, Widget? count) =>
         DashboardConnectedButton(
           selected: _feed == feed,
           first: feed == DashboardFeed.values.first,
@@ -306,10 +345,10 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
           outer: headerHeight / 2,
           inner: 8,
           background: DashboardColors.of(context).tone,
-          semanticLabel: feed.page.label,
+          semanticLabel: feed.label,
           onTap: () => _select(feed),
           builder: (foreground) => _FeedSegment(
-            label: feed.page.label,
+            label: feed.label,
             count: count,
             height: headerHeight,
             foreground: foreground,
@@ -327,9 +366,8 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
             child: LayoutBuilder(
               builder: (context, constraints) => DashboardCappedRow(
                 share: 0.45,
-                start: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
+                start: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
                   child: DashboardConnectedGroup(
                     children: [
                       segment(
@@ -352,6 +390,12 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
                           provider: dnsQueryCountProvider,
                           builder: (_, count) => _TabCount(count),
                         ),
+                      ),
+                      segment(
+                        DashboardFeed.applications,
+                        _feed == DashboardFeed.applications
+                            ? _TabCount(_applicationCount)
+                            : null,
                       ),
                     ],
                   ),
@@ -401,6 +445,20 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
                 rowHeight: rowHeight,
                 columnsOf: (_) => _dnsColumns(context),
               ),
+              DashboardFeed.applications => ApplicationProxyPanel(
+                connections: connections,
+                sampledAt: connectionsSampledAt,
+                stale: connectionsStale,
+                rowHeight: rowHeight,
+                onCountChanged: (count) {
+                  if (!mounted ||
+                      _feed != DashboardFeed.applications ||
+                      _applicationCount == count) {
+                    return;
+                  }
+                  setState(() => _applicationCount = count);
+                },
+              ),
             },
           ),
         ],
@@ -436,7 +494,7 @@ class _FeedSegment extends StatelessWidget {
   });
 
   final String label;
-  final Widget count;
+  final Widget? count;
   final double height;
   final Color foreground;
 
@@ -450,10 +508,11 @@ class _FeedSegment extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 6,
           children: [
-            DefaultTextStyle.merge(
-              style: TextStyle(color: foreground),
-              child: count,
-            ),
+            if (count != null)
+              DefaultTextStyle.merge(
+                style: TextStyle(color: foreground),
+                child: count!,
+              ),
             Text(
               label,
               maxLines: 1,
@@ -475,12 +534,16 @@ class _Table<T> extends ConsumerStatefulWidget {
     required this.items,
     required this.rowHeight,
     required this.columnsOf,
+    this.scrollController,
+    this.maxRows = _maxFeedRows,
   });
 
   final String tableId;
   final List<T> items;
   final double rowHeight;
   final List<RecordColumn<T>> Function(double width) columnsOf;
+  final ScrollController? scrollController;
+  final int? maxRows;
 
   @override
   ConsumerState<_Table<T>> createState() => _TableState<T>();
@@ -508,8 +571,9 @@ class _TableState<T> extends ConsumerState<_Table<T>>
           columnWidths,
         );
         final sorted = _sorter.sort(widget.items, columns, _sort);
-        final items = sorted.length > _maxFeedRows
-            ? sorted.sublist(0, _maxFeedRows)
+        final maxRows = widget.maxRows;
+        final items = maxRows != null && sorted.length > maxRows
+            ? sorted.sublist(0, maxRows)
             : sorted;
         final headerStyle = AppTextStyle.caption1
             .of(context, emphasized: true)
@@ -524,6 +588,7 @@ class _TableState<T> extends ConsumerState<_Table<T>>
           shape: shape,
         );
         final body = ListView.builder(
+          controller: widget.scrollController,
           padding: const EdgeInsets.only(top: 2),
           itemExtent: rowHeight,
           itemCount: items.length,

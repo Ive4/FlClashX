@@ -1,21 +1,21 @@
 part of 'connections_table.dart';
 
-class _ApplicationProxyView extends ConsumerStatefulWidget {
-  const _ApplicationProxyView({this.scrollController});
+class ApplicationProxyView extends ConsumerStatefulWidget {
+  const ApplicationProxyView({super.key, this.scrollController});
 
   final ScrollController? scrollController;
 
   @override
-  ConsumerState<_ApplicationProxyView> createState() =>
+  ConsumerState<ApplicationProxyView> createState() =>
       _ApplicationProxyViewState();
 }
 
-class _ApplicationProxyViewState extends ConsumerState<_ApplicationProxyView>
+class _ApplicationProxyViewState extends ConsumerState<ApplicationProxyView>
     with
         WidgetsBindingObserver,
-        ActivePollingMixin<_ApplicationProxyView>,
-        RouteMotionHoldMixin<_ApplicationProxyView>,
-        ConnectionsPolling<_ApplicationProxyView> {
+        ActivePollingMixin<ApplicationProxyView>,
+        RouteMotionHoldMixin<ApplicationProxyView>,
+        ConnectionsPolling<ApplicationProxyView> {
   @override
   bool get pollsConnections => true;
 
@@ -27,14 +27,16 @@ class _ApplicationProxyViewState extends ConsumerState<_ApplicationProxyView>
     return CommonScaffold(
       title: context.appLocalizations.applicationProxy,
       body: Builder(
-        builder: (context) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, context.bottomInset + 16),
-          child: ApplicationProxyPanel(
-            connections: connections,
-            sampledAt: connectionsSampledAt,
-            stale: connectionsStale,
-            rowHeight: 44 * MediaQuery.textScalerOf(context).scale(1),
-            scrollController: widget.scrollController,
+        builder: (context) => AppBarClearance(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, context.bottomInset + 16),
+            child: ApplicationProxyPanel(
+              connections: connections,
+              sampledAt: connectionsSampledAt,
+              stale: connectionsStale,
+              rowHeight: 44 * MediaQuery.textScalerOf(context).scale(1),
+              scrollController: widget.scrollController,
+            ),
           ),
         ),
       ),

@@ -9,7 +9,9 @@ import 'package:fl_clash/providers/application_proxy.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/views/dashboard/layout.dart';
+import 'package:fl_clash/views/dashboard/widgets/connection_stats.dart';
 import 'package:fl_clash/views/dashboard/widgets/connections_table.dart';
+import 'package:fl_clash/views/navigation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -140,6 +142,28 @@ void main() {
     await waitForApply(tester);
   }
 
+  testWidgets('the desktop menu opens the application proxy page', (tester) async {
+    container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+    final items = Navigation().getItems();
+    final item = items.singleWhere(
+      (item) => item.label == PageLabel.applicationProxy,
+    );
+    expect(item.modes, contains(NavigationItemMode.desktop));
+    expect(item.modes, contains(NavigationItemMode.moreFull));
+    expect(
+      items.indexOf(item),
+      items.indexWhere((item) => item.label == PageLabel.profiles) + 1,
+    );
+
+    await pumpPanel(tester, child: Builder(builder: item.builder));
+
+    expect(find.byType(ApplicationProxyView), findsOneWidget);
+    expect(find.byType(ApplicationProxyPanel), findsOneWidget);
+    expect(find.text('App proxy'), findsOneWidget);
+    expect(find.text('No active connections'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('actual mixed routing and an idle configured policy stay separate', (tester) async {
     await database.rulesDao.putRule(
       const Rule(
@@ -246,6 +270,19 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.text('app-119'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the summary app shortcut opens its sheet', (tester) async {
+    container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+    await pumpPanel(tester, child: const ConnectionStatsCard());
+
+    expect(find.text('App proxy'), findsOneWidget);
+    await tester.tap(find.text('App proxy'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ApplicationProxyPanel), findsOneWidget);
+    expect(find.text('No active connections'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

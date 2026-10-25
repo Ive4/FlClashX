@@ -565,6 +565,7 @@ enum PageLabel {
   resources,
   connections,
   dns,
+  applicationProxy,
 }
 
 enum RuleAction {
