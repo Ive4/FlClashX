@@ -129,7 +129,11 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     List<String> groups,
   ) {
     final l = context.appLocalizations;
-    final identity = application.identity;
+    final source = application.policyIdentity ?? application.identity;
+    final identity = source != null && !source.canRoute
+        ? ApplicationIdentity(action: RuleAction.PROCESS_NAME,
+            content: source.name, windows: source.windows)
+        : source;
     String label(String? target) => switch (target) {
       null => l.applicationProxyFollowRules,
       'DIRECT' => l.direct,
@@ -291,7 +295,7 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
   }
 }
 
-class _ApplicationRows extends StatefulWidget {
+class _ApplicationRows extends ConsumerStatefulWidget {
   const _ApplicationRows({
     super.key,
     required this.connections,
@@ -318,11 +322,62 @@ class _ApplicationRows extends StatefulWidget {
   final ValueChanged<int>? onCountChanged;
 
   @override
-  State<_ApplicationRows> createState() => _ApplicationRowsState();
+  ConsumerState<_ApplicationRows> createState() => _ApplicationRowsState();
 }
 
-class _ApplicationRowsState extends State<_ApplicationRows>
+class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     with RouteMotionHoldMixin<_ApplicationRows> {
+  final _search = TextEditingController();
+  final _resetting = <String>{};
+
+  void _historyChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _historyAction(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+    }
+  }
+
+  Future<void> _reset(ApplicationProxyInfo item) async {
+    final key = item.identity?.key ?? '';
+    if (!_resetting.add(key)) return;
+    setState(() {});
+    final l = context.appLocalizations;
+    var failed = false;
+    final core = ref.read(coreHandlerProvider);
+    for (final id in List<String>.of(item.connectionIds)) {
+      try {
+        if (!await core.closeConnection(id)) failed = true;
+      } catch (_) {
+        failed = true;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _resetting.remove(key));
+    dialogs.showNotifier(failed ? l.applicationResetFailed : l.applicationResetDone);
+  }
+
+  Future<void> _clearHistory() async {
+    final l = context.appLocalizations;
+    final confirmed = await showDialog<bool>(context: context, builder: (context) =>
+      AlertDialog(content: Text(l.applicationClearConfirm), actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.cancel)),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l.applicationClearHistory)),
+      ]));
+    if (confirmed == true) await _historyAction(() => applicationHistory.remove(null));
+  }
+
+  @override
+  void dispose() {
+    applicationHistory.removeListener(_historyChanged);
+    _search.dispose();
+    super.dispose();
+  }
+
   ApplicationProxySnapshot? _snapshot;
   int _generation = 0;
   bool _failed = false;
@@ -330,6 +385,8 @@ class _ApplicationRowsState extends State<_ApplicationRows>
   @override
   void initState() {
     super.initState();
+    applicationHistory.addListener(_historyChanged);
+    unawaited(_historyAction(applicationHistory.load));
     unawaited(_refresh());
   }
 
@@ -361,7 +418,7 @@ class _ApplicationRowsState extends State<_ApplicationRows>
           _snapshot = snapshot;
           _failed = false;
         });
-        widget.onCountChanged?.call(snapshot.applications.length);
+        widget.onCountChanged?.call(snapshot.applications.where((item) => item.connections > 0).length);
       }
       if (_snapshot == null) {
         show();
@@ -375,7 +432,7 @@ class _ApplicationRowsState extends State<_ApplicationRows>
     }
   }
 
-  String _speed(ApplicationProxyInfo application, bool download) => widget.stale
+  String _speed(ApplicationProxyInfo application, bool download) => widget.stale || application.connections == 0
       ? '—'
       : '${dashboardTraffic(download ? application.downloadSpeed : application.uploadSpeed)}/s';
 
@@ -385,13 +442,56 @@ class _ApplicationRowsState extends State<_ApplicationRows>
     // ignore: avoid_print
     print('>>> rows build');
     if (_failed) return Center(child: Text(l.error));
-    final applications = _snapshot?.applications;
-    if (applications == null) return const SizedBox.shrink();
-    if (applications.isEmpty) {
-      return Center(child: Text(l.applicationProxyNoConnections));
+    final snapshot = _snapshot;
+    if (snapshot == null) return const SizedBox.shrink();
+    final live = snapshot.applications.where((item) => item.connections > 0).toList();
+    final history = applicationHistory;
+    final all = <String, ApplicationProxyInfo>{
+      for (final item in live) item.identity?.key ?? '': item,
+    };
+    for (final entry in history.entries.values) {
+      final identity = entry.identity;
+      final nameIdentity = ApplicationIdentity(action: RuleAction.PROCESS_NAME,
+        content: identity.name, windows: identity.windows);
+      final rule = widget.rules.where((rule) =>
+        identity.matchesRule(rule) || nameIdentity.matchesRule(rule)).firstOrNull;
+      all.putIfAbsent(identity.key, () => ApplicationProxyInfo(identity, target: rule?.ruleTarget,
+        policyIdentity: rule == null ? null : ApplicationIdentity(
+          action: rule.ruleAction, content: rule.content ?? '', windows: identity.windows)));
     }
-    return _Table<ApplicationProxyInfo>(
-      tableId: 'dashboard.applications',
+    final query = _search.text.trim().toLowerCase();
+    final applications = (history.showHistory ? all.values : live).where((item) =>
+      query.isEmpty || (item.identity?.content.toLowerCase().contains(query) ?? false)).toList();
+    if (history.showHistory) {
+      applications.sort((a, b) {
+        final active = (b.connections > 0 ? 1 : 0).compareTo(a.connections > 0 ? 1 : 0);
+        if (active != 0) return active;
+        final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+        return (history.entries[b.identity?.key]?.lastSeen ?? epoch)
+          .compareTo(history.entries[a.identity?.key]?.lastSeen ?? epoch);
+      });
+    }
+    return Column(children: [
+      Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        ChoiceChip(label: Text('${l.applicationCurrent} (${live.length})'),
+          selected: !history.showHistory,
+          onSelected: (_) => _historyAction(() => history.select(false))),
+        ChoiceChip(label: Text('${l.applicationHistory} (${all.length})'),
+          selected: history.showHistory,
+          onSelected: (_) => _historyAction(() => history.select(true))),
+        SizedBox(width: 220, child: TextField(controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(isDense: true, hintText: l.applicationSearch))),
+        if (history.showHistory)
+          TextButton(onPressed: history.entries.isEmpty ? null : _clearHistory,
+            child: Text(l.applicationClearHistory)),
+      ]),
+      const SizedBox(height: 8),
+      Expanded(child: applications.isEmpty
+        ? Center(child: Text(query.isNotEmpty ? l.applicationNoMatches
+            : history.showHistory ? l.applicationHistoryEmpty : l.applicationProxyNoConnections))
+        : _Table<ApplicationProxyInfo>(
+      tableId: history.showHistory ? 'applications.history' : 'applications.current',
       items: applications,
       rowHeight: widget.rowHeight,
       maxRows: null,
@@ -415,7 +515,12 @@ class _ApplicationRowsState extends State<_ApplicationRows>
           cell: (_, item) => widget.policyBuilder(item),
           sortKey: (item) => item.target ?? '',
         ),
-        if (width >= _midTableWidth) ...[
+        if (history.showHistory && width >= 1000)
+          RecordColumn(TableColumn('lastSeen', l.applicationLastSeen, width: 140),
+            cell: (_, item) => Text(history.entries[item.identity?.key]?.lastSeen
+                .toLocal().toString().substring(0, 16) ?? '—'),
+            sortKey: (item) => history.entries[item.identity?.key]?.lastSeen.millisecondsSinceEpoch ?? 0),
+        if (width >= 850) ...[
           RecordColumn(
             TableColumn('connections', l.liveConnections, width: 70, end: true),
             cell: (_, item) => _Number(dashboardCount(item.connections)),
@@ -457,8 +562,27 @@ class _ApplicationRowsState extends State<_ApplicationRows>
             sortKey: (item) => item.downloadSpeed + item.uploadSpeed,
             descendingFirst: true,
           ),
+        RecordColumn(
+          TableColumn('actions', '', width: history.showHistory ? 94 : 48),
+          cell: (_, item) => Row(children: [
+            IconButton(padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 32, height: 32), tooltip: l.applicationResetHint,
+              onPressed: widget.stale || item.connections == 0 || _resetting.contains(item.identity?.key ?? '')
+                ? null : () => _reset(item),
+              icon: _resetting.contains(item.identity?.key ?? '')
+                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const GlyphIcon(AppGlyphs.refresh, size: 18)),
+            if (history.showHistory && item.identity != null)
+              IconButton(padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 32, height: 32), tooltip: l.applicationRemoveHistory,
+                onPressed: () => _historyAction(() => history.remove(item.identity!.key)),
+                icon: const GlyphIcon(AppGlyphs.delete, size: 18)),
+          ]),
+          sortKey: (item) => item.connections,
+        ),
       ],
-    );
+    )),
+    ]);
   }
 }
 

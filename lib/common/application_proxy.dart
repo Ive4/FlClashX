@@ -69,10 +69,12 @@ List<ApplicationConnection> applicationConnectionsOf(
 ];
 
 class ApplicationProxyInfo {
-  ApplicationProxyInfo(this.identity, {this.target});
+  ApplicationProxyInfo(this.identity, {this.target, this.policyIdentity});
 
   final ApplicationIdentity? identity;
-  final String? target;
+  String? target;
+  ApplicationIdentity? policyIdentity;
+  final connectionIds = <String>[];
   int connections = 0;
   int proxy = 0;
   int direct = 0;
@@ -167,27 +169,27 @@ ApplicationProxySnapshot aggregateApplicationProxies(
     final pathRule = configured[path.key];
     final nameRule = configured[name.key];
     final ApplicationIdentity? identity;
-    if (pathRule != null &&
-        (nameRule == null || pathRule.index < nameRule.index)) {
-      identity = pathRule.identity;
-    } else if (nameRule != null) {
-      identity = nameRule.identity;
-    } else if (path.canRoute) {
+    if (path.content.trim().isNotEmpty) {
       identity = path;
-    } else if (name.canRoute) {
-      identity = name;
-    } else if (path.content.isNotEmpty) {
-      identity = path;
-    } else if (name.content.isNotEmpty) {
+    } else if (name.content.trim().isNotEmpty) {
       identity = name;
     } else {
       identity = null;
     }
+    final target = pathRule != null &&
+        (nameRule == null || pathRule.index < nameRule.index)
+        ? pathRule.rule.ruleTarget : nameRule?.rule.ruleTarget;
     final application = applications.putIfAbsent(
       identity?.key ?? '',
-      () => ApplicationProxyInfo(identity),
+      () => ApplicationProxyInfo(identity, target: target),
     );
+    application.target = target;
+    application.policyIdentity = pathRule != null &&
+        (nameRule == null || pathRule.index < nameRule.index)
+        ? pathRule.identity : nameRule?.identity ??
+            (!path.canRoute && name.canRoute ? name : null);
     application.connections++;
+    application.connectionIds.add(connection.id);
     application.upload += connection.upload;
     application.download += connection.download;
     switch (connection.outbound) {

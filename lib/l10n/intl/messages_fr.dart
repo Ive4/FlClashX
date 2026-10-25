@@ -349,8 +349,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "appendSystemDns": MessageLookupByLibrary.simpleMessage(
       "Ajouter le DNS du système",
     ),
+    "applicationCurrent": MessageLookupByLibrary.simpleMessage("Current apps"),
+    "applicationHistory": MessageLookupByLibrary.simpleMessage("History"),
+    "applicationSearch": MessageLookupByLibrary.simpleMessage("Search name or path"),
+    "applicationLastSeen": MessageLookupByLibrary.simpleMessage("Last active"),
+    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("Clear history"),
+    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("Remove from history"),
+    "applicationReset": MessageLookupByLibrary.simpleMessage("Reset connections"),
+    "applicationResetHint": MessageLookupByLibrary.simpleMessage("Close this app’s current connections; new connections use the latest policy"),
+    "applicationResetDone": MessageLookupByLibrary.simpleMessage("Connections closed; waiting for the app to reconnect"),
+    "applicationResetFailed": MessageLookupByLibrary.simpleMessage("Some connections could not be closed. Please retry"),
+    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("No history yet. Identified app connections are recorded automatically"),
+    "applicationNoMatches": MessageLookupByLibrary.simpleMessage("No matching apps"),
+    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("Clear application history? Proxy rules will be kept."),
     "applicationProxy": MessageLookupByLibrary.simpleMessage(
-      "Proxy par application",
+      "Applications",
     ),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "La règle a été enregistrée, mais son application a échoué. Réappliquez le profil actuel.",

@@ -121,9 +121,11 @@ void main() {
       [byName, byPath],
       [byPath, byName],
     ]) {
-      final row = _snapshot([connection], rules: rules).applications.first;
+      final row = _snapshot([connection], rules: rules).applications.singleWhere((row) => row.connections > 0);
       expect(row.target, rules.first.ruleTarget);
-      expect(row.identity!.action, rules.first.ruleAction);
+      expect(row.identity!.action, RuleAction.PROCESS_PATH);
+      expect(row.policyIdentity!.action, rules.first.ruleAction);
+      expect(row.connectionIds, [connection.id]);
     }
   });
 
@@ -144,9 +146,10 @@ void main() {
     expect(unknown.route, ApplicationRoute.unknown);
     final fallback = _snapshot([
       _connection('3', path: '/apps/vendor, inc/browser'),
-    ]).applications.single.identity!;
-    expect(fallback.action, RuleAction.PROCESS_NAME);
-    expect(fallback.canRoute, isTrue);
+    ]).applications.single;
+    expect(fallback.identity!.action, RuleAction.PROCESS_PATH);
+    expect(fallback.policyIdentity!.action, RuleAction.PROCESS_NAME);
+    expect(fallback.policyIdentity!.canRoute, isTrue);
     for (final content in ['', 'app,other', 'app\nother']) {
       expect(
         ApplicationIdentity(

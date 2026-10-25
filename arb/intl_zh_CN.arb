@@ -1,5 +1,5 @@
 {
-  "applicationProxy": "应用代理",
+  "applicationProxy": "应用",
   "applicationProxyInvalidProcess": "无法为此进程设置应用规则。",
   "applicationProxyFollowRules": "跟随规则",
   "applicationProxyApplyFailed": "规则已保存，但应用失败。请重新应用当前配置后重试。",
@@ -977,5 +977,18 @@
   "preferred": "首选",
   "addToLocalProxies": "添加到本地代理",
   "addedToLocalProxies": "已将 {name} 添加到本地代理",
-  "alreadyInLocalProxies": "本地代理中已有 {name}"
+  "alreadyInLocalProxies": "本地代理中已有 {name}",
+  "applicationCurrent": "当前应用",
+  "applicationHistory": "历史应用",
+  "applicationSearch": "搜索应用名称或路径",
+  "applicationLastSeen": "最近活跃",
+  "applicationClearHistory": "清空历史",
+  "applicationRemoveHistory": "移除历史记录",
+  "applicationReset": "重置连接",
+  "applicationResetHint": "断开该应用的当前连接，后续连接按最新策略建立",
+  "applicationResetDone": "已断开连接，等待应用重新连接",
+  "applicationResetFailed": "部分连接未能断开，请重试",
+  "applicationHistoryEmpty": "暂无历史应用，识别到应用连接后会自动记录",
+  "applicationNoMatches": "没有匹配的应用",
+  "applicationClearConfirm": "清空应用历史记录？已设置的代理规则会保留。"
 }

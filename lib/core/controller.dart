@@ -1,3 +1,5 @@
+import 'package:fl_clash/common/application_history.dart';
+import 'package:fl_clash/common/application_proxy.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -216,15 +218,20 @@ class CoreController {
   }
 
   Future<List<TrackerInfo>> getConnections() async {
-    return _interface.getConnections();
+    final connections = await _interface.getConnections();
+    unawaited(applicationHistory.record(applicationConnectionsOf(connections),
+      system.isWindows, DateTime.now()).catchError((Object error) {
+        commonPrint.log('application history: $error');
+      }));
+    return connections;
   }
 
   Future<int> getConnectionCount() async {
     return _interface.getConnectionCount();
   }
 
-  Future<void> closeConnection(String id) async {
-    await _interface.closeConnection(id);
+  Future<bool> closeConnection(String id) async {
+    return await _interface.closeConnection(id);
   }
 
   Future<void> closeConnections() async {

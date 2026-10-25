@@ -1,5 +1,5 @@
 {
-  "applicationProxy": "アプリ別プロキシ",
+  "applicationProxy": "アプリ",
   "applicationProxyInvalidProcess": "このプロセスにはアプリのルールを設定できません。",
   "applicationProxyFollowRules": "ルールに従う",
   "applicationProxyApplyFailed": "ルールは保存されましたが、適用に失敗しました。現在のプロファイルを再適用してください。",
@@ -977,5 +977,18 @@
   "preferred": "優先",
   "addToLocalProxies": "ローカルプロキシに追加",
   "addedToLocalProxies": "{name} をローカルプロキシに追加しました",
-  "alreadyInLocalProxies": "{name} はすでにローカルプロキシにあります"
+  "alreadyInLocalProxies": "{name} はすでにローカルプロキシにあります",
+  "applicationCurrent": "Current apps",
+  "applicationHistory": "History",
+  "applicationSearch": "Search name or path",
+  "applicationLastSeen": "Last active",
+  "applicationClearHistory": "Clear history",
+  "applicationRemoveHistory": "Remove from history",
+  "applicationReset": "Reset connections",
+  "applicationResetHint": "Close this app’s current connections; new connections use the latest policy",
+  "applicationResetDone": "Connections closed; waiting for the app to reconnect",
+  "applicationResetFailed": "Some connections could not be closed. Please retry",
+  "applicationHistoryEmpty": "No history yet. Identified app connections are recorded automatically",
+  "applicationNoMatches": "No matching apps",
+  "applicationClearConfirm": "Clear application history? Proxy rules will be kept."
 }

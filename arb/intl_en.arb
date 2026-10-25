@@ -1,5 +1,5 @@
 {
-  "applicationProxy": "App proxy",
+  "applicationProxy": "Apps",
   "applicationProxyInvalidProcess": "This process cannot be used in an app rule.",
   "applicationProxyFollowRules": "Follow rules",
   "applicationProxyApplyFailed": "The rule was saved, but could not be applied. Apply the current profile to retry.",
@@ -977,5 +977,18 @@
   "preferred": "Preferred",
   "addToLocalProxies": "Add to local proxies",
   "addedToLocalProxies": "Added {name} to local proxies",
-  "alreadyInLocalProxies": "{name} is already in local proxies"
+  "alreadyInLocalProxies": "{name} is already in local proxies",
+  "applicationCurrent": "Current apps",
+  "applicationHistory": "History",
+  "applicationSearch": "Search name or path",
+  "applicationLastSeen": "Last active",
+  "applicationClearHistory": "Clear history",
+  "applicationRemoveHistory": "Remove from history",
+  "applicationReset": "Reset connections",
+  "applicationResetHint": "Close this app’s current connections; new connections use the latest policy",
+  "applicationResetDone": "Connections closed; waiting for the app to reconnect",
+  "applicationResetFailed": "Some connections could not be closed. Please retry",
+  "applicationHistoryEmpty": "No history yet. Identified app connections are recorded automatically",
+  "applicationNoMatches": "No matching apps",
+  "applicationClearConfirm": "Clear application history? Proxy rules will be kept."
 }

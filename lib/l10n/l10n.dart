@@ -56,9 +56,35 @@ class AppLocalizations {
   }
 
   /// `App proxy`
+  String get applicationCurrent => Intl.message("Current apps", name: 'applicationCurrent', args: []);
+
+  String get applicationHistory => Intl.message("History", name: 'applicationHistory', args: []);
+
+  String get applicationSearch => Intl.message("Search name or path", name: 'applicationSearch', args: []);
+
+  String get applicationLastSeen => Intl.message("Last active", name: 'applicationLastSeen', args: []);
+
+  String get applicationClearHistory => Intl.message("Clear history", name: 'applicationClearHistory', args: []);
+
+  String get applicationRemoveHistory => Intl.message("Remove from history", name: 'applicationRemoveHistory', args: []);
+
+  String get applicationReset => Intl.message("Reset connections", name: 'applicationReset', args: []);
+
+  String get applicationResetHint => Intl.message("Close this app\u2019s current connections; new connections use the latest policy", name: 'applicationResetHint', args: []);
+
+  String get applicationResetDone => Intl.message("Connections closed; waiting for the app to reconnect", name: 'applicationResetDone', args: []);
+
+  String get applicationResetFailed => Intl.message("Some connections could not be closed. Please retry", name: 'applicationResetFailed', args: []);
+
+  String get applicationHistoryEmpty => Intl.message("No history yet. Identified app connections are recorded automatically", name: 'applicationHistoryEmpty', args: []);
+
+  String get applicationNoMatches => Intl.message("No matching apps", name: 'applicationNoMatches', args: []);
+
+  String get applicationClearConfirm => Intl.message("Clear application history? Proxy rules will be kept.", name: 'applicationClearConfirm', args: []);
+
   String get applicationProxy {
     return Intl.message(
-      'App proxy',
+      'Apps',
       name: 'applicationProxy',
       desc: '',
       args: [],

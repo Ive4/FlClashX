@@ -7,10 +7,10 @@ cask "flclash" do
     sha256 arm:   "ARM_SHA256",
            intel: "AMD_SHA256"
 
-    url "https://github.com/chen08209/FlClash/releases/download/v#{version}/FlClash-#{version}-macos-#{arch}.dmg"
+    url "https://github.com/chen08209/FlClash/releases/download/v#{version}/FlClashX-#{version}-macos-#{arch}.dmg"
   end
 
-  name "FlClash"
+  name "FlClashX"
   desc "Multi-platform proxy client based on ClashMeta"
   homepage "https://github.com/chen08209/FlClash"
 
@@ -21,12 +21,12 @@ cask "flclash" do
 
   depends_on :macos
 
-  app "FlClash.app"
+  app "FlClashX.app"
 
   postflight_steps do
     run "/usr/bin/xattr",
-        args:           ["-rd", "com.apple.quarantine", "{{appdir}}/FlClash.app"],
-        writable_paths: ["FlClash.app"],
+        args:           ["-rd", "com.apple.quarantine", "{{appdir}}/FlClashX.app"],
+        writable_paths: ["FlClashX.app"],
         writable_base:  :appdir
   end
 

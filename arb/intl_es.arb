@@ -1,5 +1,5 @@
 {
-  "applicationProxy": "Proxy por aplicación",
+  "applicationProxy": "Aplicaciones",
   "applicationProxyInvalidProcess": "No se puede establecer una regla de aplicación para este proceso.",
   "applicationProxyFollowRules": "Seguir reglas",
   "applicationProxyApplyFailed": "La regla se guardó, pero no pudo aplicarse. Vuelva a aplicar el perfil actual.",
@@ -977,5 +977,18 @@
   "preferred": "Preferido",
   "addToLocalProxies": "Añadir a proxies locales",
   "addedToLocalProxies": "{name} añadido a proxies locales",
-  "alreadyInLocalProxies": "{name} ya está en proxies locales"
+  "alreadyInLocalProxies": "{name} ya está en proxies locales",
+  "applicationCurrent": "Current apps",
+  "applicationHistory": "History",
+  "applicationSearch": "Search name or path",
+  "applicationLastSeen": "Last active",
+  "applicationClearHistory": "Clear history",
+  "applicationRemoveHistory": "Remove from history",
+  "applicationReset": "Reset connections",
+  "applicationResetHint": "Close this app’s current connections; new connections use the latest policy",
+  "applicationResetDone": "Connections closed; waiting for the app to reconnect",
+  "applicationResetFailed": "Some connections could not be closed. Please retry",
+  "applicationHistoryEmpty": "No history yet. Identified app connections are recorded automatically",
+  "applicationNoMatches": "No matching apps",
+  "applicationClearConfirm": "Clear application history? Proxy rules will be kept."
 }

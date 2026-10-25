@@ -1,3 +1,4 @@
+import 'package:fl_clash/common/application_history.dart';
 import 'dart:async';
 
 import 'package:fl_clash/common/application_proxy.dart';

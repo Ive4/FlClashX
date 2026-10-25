@@ -1,3 +1,6 @@
+import 'package:mocktail/mocktail.dart';
+import 'package:fl_clash/core/controller.dart';
+import 'package:fl_clash/common/application_history.dart';
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -18,6 +21,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../helpers/test_app.dart';
 import '../../helpers/test_profiles.dart';
+
+class _Core extends Mock implements CoreController {}
 
 class _SetupAction extends SetupAction {
   Completer<bool>? pending;
@@ -55,8 +60,13 @@ void main() {
   late db.Database previousDatabase;
   late ProviderContainer container;
   late _SetupAction action;
+  late _Core core;
 
   setUp(() async {
+    await applicationHistory.remove(null);
+    await applicationHistory.select(false);
+    core = _Core();
+    when(() => core.closeConnection(any())).thenAnswer((_) async => true);
     previousDatabase = db.database;
     database = db.Database(NativeDatabase.memory());
     db.database = database;
@@ -65,6 +75,7 @@ void main() {
     action = _SetupAction();
     container = ProviderContainer(
       overrides: [
+        coreHandlerProvider.overrideWithValue(core),
         profilesProvider.overrideWith(() => TestProfiles(const [profile])),
         currentProfileIdProvider.overrideWithBuild((_, _) => 1),
         coreStatusProvider.overrideWithBuild((_, _) => CoreStatus.connected),
@@ -159,8 +170,38 @@ void main() {
 
     expect(find.byType(ApplicationProxyView), findsOneWidget);
     expect(find.byType(ApplicationProxyPanel), findsOneWidget);
-    expect(find.text('App proxy'), findsOneWidget);
+    expect(find.text('Apps'), findsOneWidget);
     expect(find.text('No active connections'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reset closes every connection belonging to the selected app', (tester) async {
+    await pumpPanel(tester, connections: [_connection('a'), _connection('b')]);
+    await tester.tap(find.byTooltip(
+      'Close this app’s current connections; new connections use the latest policy'));
+    await tester.pumpAndSettle();
+    verify(() => core.closeConnection('a')).called(1);
+    verify(() => core.closeConnection('b')).called(1);
+    verifyNever(() => core.closeConnections());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('history keeps an offline app searchable and editable', (tester) async {
+    await applicationHistory.record(applicationConnectionsOf([_connection('1')]), false, _time);
+    await pumpPanel(tester, connections: []);
+    expect(find.text('browser'), findsNothing);
+    await tester.tap(find.text('History (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('browser'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'missing');
+    await tester.pumpAndSettle();
+    expect(find.text('No matching apps'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'browser');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove from history'));
+    await tester.pumpAndSettle();
+    expect(applicationHistory.entries, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -182,9 +223,9 @@ void main() {
     expect(find.text('browser'), findsOneWidget);
     expect(find.text('Mixed'), findsOneWidget);
     expect(find.text('Follow rules'), findsOneWidget);
-    expect(find.text('idle'), findsOneWidget);
-    expect(find.text('No active connections'), findsOneWidget);
-    expect(find.text('Direct'), findsOneWidget);
+    expect(find.text('idle'), findsNothing);
+    expect(find.text('No active connections'), findsNothing);
+    expect(find.text('Direct'), findsNothing);
   });
 
   testWidgets('a failed apply releases the control and can return to following rules', (tester) async {
@@ -277,8 +318,8 @@ void main() {
     container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
     await pumpPanel(tester, child: const ConnectionStatsCard());
 
-    expect(find.text('App proxy'), findsOneWidget);
-    await tester.tap(find.text('App proxy'));
+    expect(find.text('Apps'), findsOneWidget);
+    await tester.tap(find.text('Apps'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ApplicationProxyPanel), findsOneWidget);
@@ -290,7 +331,7 @@ void main() {
     container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
     await pumpPanel(tester, child: const ConnectionsTableCard());
     final dns = find.text('DNS queries');
-    final apps = find.text('App proxy');
+    final apps = find.text('Apps');
     expect(tester.getCenter(apps).dx, greaterThan(tester.getCenter(dns).dx));
 
     await tester.tap(apps);

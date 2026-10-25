@@ -33,7 +33,8 @@ class DAVClient {
     }
   }
 
-  String get root => '/$appName';
+  // Keep existing backups accessible when the display name changes.
+  String get root => '/FlClash';
 
   String get backupFile => '$root/$fileName';
 

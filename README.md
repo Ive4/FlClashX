@@ -1,8 +1,10 @@
+FlClashX is an enhanced derivative of [FlClash](https://github.com/chen08209/FlClash). Its public version follows the upstream base version (for example, 0.9.2). See [upstream synchronization](UPSTREAM.md). The release, download, and community links below refer to upstream FlClash, not FlClashX builds.
+
 <div align="center">
 
 <img src="assets/images/icon.png" alt="FlClash" width="88">
 
-# FlClash
+# FlClashX
 
 A multi-platform proxy client based on ClashMeta. Simple to use, open source and ad-free.
 

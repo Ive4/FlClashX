@@ -36,6 +36,13 @@ class Preferences {
     return _instance!;
   }
 
+  Future<String?> getApplicationHistory() async =>
+      (await _store.value)?.getString('applicationHistory');
+
+  Future<void> saveApplicationHistory(String value) async {
+    await (await _store.value)?.setString('applicationHistory', value);
+  }
+
   Future<int> getVersion() async {
     final preferences = await _store.value;
     return preferences?.getInt('version') ?? 0;

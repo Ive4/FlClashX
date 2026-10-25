@@ -1,8 +1,10 @@
+FlClashX 基于 [FlClash](https://github.com/chen08209/FlClash) 持续进行功能增强与优化，对外版本号跟随所基于的上游版本，例如 0.9.2。同步方式见 [上游同步约定](UPSTREAM.md)。下方发布、下载与社区链接属于上游 FlClash，并非 FlClashX 安装包。
+
 <div align="center">
 
 <img src="assets/images/icon.png" alt="FlClash" width="88">
 
-# FlClash
+# FlClashX
 
 基于 ClashMeta 的多平台代理客户端，简单易用，开源无广告。
 
