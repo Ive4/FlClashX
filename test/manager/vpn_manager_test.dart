@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/l10n/l10n.dart';
@@ -15,6 +17,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _RestartRecordingSetupAction extends SetupAction {
   int restarts = 0;
+  int stops = 0;
+
+  @override
+  Future<bool> setRunning(bool running, {bool initialize = false}) async {
+    if (!running) stops++;
+    return true;
+  }
 
   @override
   Future<void> restartVpn() async {
@@ -43,7 +52,10 @@ void main() {
 
   tearDown(() => container.dispose());
 
-  Future<void> pumpVpnManager(WidgetTester tester) async {
+  Future<void> pumpVpnManager(
+    WidgetTester tester, {
+    Future<bool?> Function()? vpnStatusReader,
+  }) async {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -56,7 +68,12 @@ void main() {
           ],
           supportedLocales: AppLocalizations.delegate.supportedLocales,
           builder: (_, child) {
-            return StatusManager(child: VpnManager(child: child!));
+            return StatusManager(
+              child: VpnManager(
+                vpnStatusReader: vpnStatusReader,
+                child: child!,
+              ),
+            );
           },
           home: const SizedBox(),
         ),
@@ -91,6 +108,33 @@ void main() {
   }
 
   Finder tip() => find.text(currentAppLocalizations.vpnConfigChangeDetected);
+
+  testWidgets('revoked native VPN requests a stop from the setup owner', (
+    tester,
+  ) async {
+    await pumpVpnManager(tester, vpnStatusReader: () async => false);
+    startService();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(setupAction.stops, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a stale status result cannot stop a newer VPN session', (
+    tester,
+  ) async {
+    final status = Completer<bool?>();
+    await pumpVpnManager(tester, vpnStatusReader: () => status.future);
+    startService();
+    await tester.pump(const Duration(seconds: 2));
+    final previous = container.read(runningVpnOptionsProvider)!;
+    container.read(runningVpnOptionsProvider.notifier).value = previous
+        .copyWith(ipv6: !previous.ipv6);
+    status.complete(false);
+    await tester.pump();
+    expect(setupAction.stops, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('a change the running service reads asks for a restart', (
     tester,

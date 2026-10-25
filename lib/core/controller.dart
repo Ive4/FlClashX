@@ -2,6 +2,7 @@ import 'package:fl_clash/common/application_history.dart';
 import 'package:fl_clash/common/application_proxy.dart';
 import 'dart:async';
 import 'dart:io';
+import 'ohos/core.dart';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/core.dart';
@@ -18,7 +19,9 @@ class CoreController {
   late CoreHandlerInterface _interface;
 
   CoreController._internal() {
-    if (system.isAndroid) {
+    if (system.isOhos) {
+      _interface = OhosCore();
+    } else if (system.isAndroid) {
       _interface = coreLib!;
     } else {
       _interface = coreService!;
@@ -219,10 +222,17 @@ class CoreController {
 
   Future<List<TrackerInfo>> getConnections() async {
     final connections = await _interface.getConnections();
-    unawaited(applicationHistory.record(applicationConnectionsOf(connections),
-      system.isWindows, DateTime.now()).catchError((Object error) {
-        commonPrint.log('application history: $error');
-      }));
+    unawaited(
+      applicationHistory
+          .record(
+            applicationConnectionsOf(connections),
+            system.isWindows,
+            DateTime.now(),
+          )
+          .catchError((Object error) {
+            commonPrint.log('application history: $error');
+          }),
+    );
     return connections;
   }
 

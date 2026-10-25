@@ -56,13 +56,14 @@ class _ToolViewState extends ConsumerState<ToolsView> {
         const _ThemeItem(),
         const _BackupItem(),
         if (system.isDesktop) const _HotkeyItem(),
-        if (system.isAndroid) const _AccessItem(),
+        if (system.isAndroid || system.isOhos) const _AccessItem(),
         const _AdvancedConfigItem(),
         const _CustomResourcesItem(),
         const _GeneralItem(),
       ],
       footer: [
-        if (system.isAndroid) appLocalizations.accessControlDesc,
+        if (system.isAndroid || system.isOhos)
+          appLocalizations.accessControlDesc,
         appLocalizations.advancedConfigDesc,
         appLocalizations.customProfileResourcesDesc,
       ].join('\n'),

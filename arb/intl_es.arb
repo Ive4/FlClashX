@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Fragmentos de Gitee",
+  "snippetConnect": "Conectar con token",
+  "snippetToken": "Token de acceso personal",
+  "snippetTokenHelp": "GitHub: permiso gist. Gitee: gists y user_info. El token se guarda de forma segura en el dispositivo; no requiere una aplicación OAuth.",
+  "snippetSignedOut": "Conecta para sincronizar copias cifradas",
+  "snippetUpload": "Subir copia cifrada",
+  "snippetDownload": "Descifrar y restaurar",
+  "snippetNewBackup": "Se creará un fragmento no público con los datos cifrados.",
+  "snippetEncryptionHelp": "Se comprime con XZ y se cifra con AES-256-GCM antes de subir. La contraseña no se envía ni se guarda. No se puede recuperar si se olvida.",
+  "snippetPasswordHelp": "Usa una contraseña exclusiva y guárdala en tu gestor de contraseñas.",
+  "snippetLogout": "¿Eliminar el token del dispositivo? Las copias se conservarán. Puedes revocar el token en la web del servicio.",
+  "snippetNetworkError": "No se puede conectar. Revisa la red o el proxy.",
+  "snippetPermissionError": "Acceso denegado o límite alcanzado. Revisa los permisos o inténtalo más tarde."
 }

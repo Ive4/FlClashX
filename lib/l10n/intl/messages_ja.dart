@@ -283,26 +283,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "appIconDesign": MessageLookupByLibrary.simpleMessage("アプリアイコンのデザイン"),
     "appProxiesEmpty": MessageLookupByLibrary.simpleMessage("ローカルプロキシがありません"),
     "appendSystemDns": MessageLookupByLibrary.simpleMessage("システムDNSを追加"),
+    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage(
+      "Clear application history? Proxy rules will be kept.",
+    ),
+    "applicationClearHistory": MessageLookupByLibrary.simpleMessage(
+      "Clear history",
+    ),
     "applicationCurrent": MessageLookupByLibrary.simpleMessage("Current apps"),
     "applicationHistory": MessageLookupByLibrary.simpleMessage("History"),
-    "applicationSearch": MessageLookupByLibrary.simpleMessage("Search name or path"),
+    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage(
+      "No history yet. Identified app connections are recorded automatically",
+    ),
     "applicationLastSeen": MessageLookupByLibrary.simpleMessage("Last active"),
-    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("Clear history"),
-    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("Remove from history"),
-    "applicationReset": MessageLookupByLibrary.simpleMessage("Reset connections"),
-    "applicationResetHint": MessageLookupByLibrary.simpleMessage("Close this app’s current connections; new connections use the latest policy"),
-    "applicationResetDone": MessageLookupByLibrary.simpleMessage("Connections closed; waiting for the app to reconnect"),
-    "applicationResetFailed": MessageLookupByLibrary.simpleMessage("Some connections could not be closed. Please retry"),
-    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("No history yet. Identified app connections are recorded automatically"),
-    "applicationNoMatches": MessageLookupByLibrary.simpleMessage("No matching apps"),
-    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("Clear application history? Proxy rules will be kept."),
-    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building."),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("Automatic update installation currently supports Windows only."),
-    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("Update verification failed. Please download again."),
-    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("Download and install update"),
-    "updateVerifying": MessageLookupByLibrary.simpleMessage("Verifying installer…"),
-    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("You are up to date."),
-    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."),
+    "applicationNoMatches": MessageLookupByLibrary.simpleMessage(
+      "No matching apps",
+    ),
     "applicationProxy": MessageLookupByLibrary.simpleMessage("アプリ"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "ルールは保存されましたが、適用に失敗しました。現在のプロファイルを再適用してください。",
@@ -338,6 +333,24 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "applicationProxyScriptUnsupported": MessageLookupByLibrary.simpleMessage(
       "標準拡張とカスタムプロファイルではアプリのルールを変更できます。スクリプト拡張では表示のみ可能です。",
+    ),
+    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage(
+      "Remove from history",
+    ),
+    "applicationReset": MessageLookupByLibrary.simpleMessage(
+      "Reset connections",
+    ),
+    "applicationResetDone": MessageLookupByLibrary.simpleMessage(
+      "Connections closed; waiting for the app to reconnect",
+    ),
+    "applicationResetFailed": MessageLookupByLibrary.simpleMessage(
+      "Some connections could not be closed. Please retry",
+    ),
+    "applicationResetHint": MessageLookupByLibrary.simpleMessage(
+      "Close this app’s current connections; new connections use the latest policy",
+    ),
+    "applicationSearch": MessageLookupByLibrary.simpleMessage(
+      "Search name or path",
     ),
     "applied": MessageLookupByLibrary.simpleMessage("適用しました"),
     "applyNow": MessageLookupByLibrary.simpleMessage("今すぐ適用"),
@@ -1556,6 +1569,35 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "スニッファーは TLS・HTTP・QUIC の通信からドメインを読み取り、ルールで照合できるようにします。",
     ),
+    "snippetConnect": MessageLookupByLibrary.simpleMessage("トークンで接続"),
+    "snippetDownload": MessageLookupByLibrary.simpleMessage("復号して復元"),
+    "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
+      "送信前に XZ 圧縮と AES-256-GCM 暗号化を行います。パスワードは送信も保存もされず、忘れると復元できません。",
+    ),
+    "snippetGitee": MessageLookupByLibrary.simpleMessage("Gitee スニペット"),
+    "snippetLogout": MessageLookupByLibrary.simpleMessage(
+      "端末のトークンを削除しますか？クラウドのバックアップは保持されます。必要ならサービスのサイトで失効させてください。",
+    ),
+    "snippetNetworkError": MessageLookupByLibrary.simpleMessage(
+      "接続できません。ネットワークやプロキシを確認してください。",
+    ),
+    "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
+      "暗号化データを含む非公開スニペットを作成します。",
+    ),
+    "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "専用のパスワードを設定し、パスワード管理アプリで保管してください。",
+    ),
+    "snippetPermissionError": MessageLookupByLibrary.simpleMessage(
+      "権限不足または制限超過です。権限を確認するか後で再試行してください。",
+    ),
+    "snippetSignedOut": MessageLookupByLibrary.simpleMessage(
+      "接続して暗号化バックアップを端末間で同期",
+    ),
+    "snippetToken": MessageLookupByLibrary.simpleMessage("個人アクセストークン"),
+    "snippetTokenHelp": MessageLookupByLibrary.simpleMessage(
+      "GitHub は gist、Gitee は gists と user_info 権限が必要です。トークンは端末に安全に保存され、OAuth アプリ登録は不要です。",
+    ),
+    "snippetUpload": MessageLookupByLibrary.simpleMessage("暗号化バックアップを送信"),
     "socksPort": MessageLookupByLibrary.simpleMessage("SOCKSポート"),
     "softStyle": MessageLookupByLibrary.simpleMessage("ソフト"),
     "sort": MessageLookupByLibrary.simpleMessage("並べ替え"),
@@ -1661,6 +1703,27 @@ class MessageLookup extends MessageLookupByLibrary {
     "unnamed": MessageLookupByLibrary.simpleMessage("名称未設定"),
     "unpinWindow": MessageLookupByLibrary.simpleMessage("固定を解除"),
     "update": MessageLookupByLibrary.simpleMessage("更新"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage(
+      "You are up to date.",
+    ),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
+      "Download and install update",
+    ),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
+      "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+    ),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
+      "The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.",
+    ),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
+      "Update verification failed. Please download again.",
+    ),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage(
+      "Verifying installer…",
+    ),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
+      "Automatic update installation currently supports Windows only.",
+    ),
     "upload": MessageLookupByLibrary.simpleMessage("アップロード"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage("アップロード帯域幅"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),

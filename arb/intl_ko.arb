@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Gitee 코드 조각",
+  "snippetConnect": "토큰으로 연결",
+  "snippetToken": "개인 액세스 토큰",
+  "snippetTokenHelp": "GitHub: gist 권한. Gitee: gists 및 user_info 권한. 토큰은 기기의 보안 저장소에 저장되며 OAuth 앱은 필요하지 않습니다.",
+  "snippetSignedOut": "연결하여 기기 간 암호화 백업 동기화",
+  "snippetUpload": "암호화 백업 업로드",
+  "snippetDownload": "복호화 및 복원",
+  "snippetNewBackup": "암호화 데이터를 담은 비공개 코드 조각을 만듭니다.",
+  "snippetEncryptionHelp": "업로드 전에 XZ 압축 및 AES-256-GCM 암호화를 수행합니다. 비밀번호는 업로드하거나 저장하지 않으며 잊어버리면 복구할 수 없습니다.",
+  "snippetPasswordHelp": "별도의 백업 비밀번호를 설정하고 비밀번호 관리자에 보관하세요.",
+  "snippetLogout": "이 기기의 토큰을 삭제할까요? 클라우드 백업은 유지됩니다. 필요한 경우 서비스 웹사이트에서 토큰을 취소하세요.",
+  "snippetNetworkError": "연결할 수 없습니다. 네트워크 또는 프록시를 확인하세요.",
+  "snippetPermissionError": "권한이 없거나 한도에 도달했습니다. 토큰 권한을 확인하거나 나중에 다시 시도하세요."
 }

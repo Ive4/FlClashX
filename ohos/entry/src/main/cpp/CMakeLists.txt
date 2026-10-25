@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.5.0)
+project(flclash_vpn)
+set(CMAKE_CXX_STANDARD 17)
+add_library(flclash_vpn SHARED vpn_bridge.cpp)
+target_link_libraries(flclash_vpn PUBLIC libace_napi.z.so)

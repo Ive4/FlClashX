@@ -13,7 +13,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AccessView extends ConsumerStatefulWidget {
-  const AccessView({super.key});
+  const AccessView({super.key, this.isOhos});
+
+  final bool? isOhos;
 
   @override
   ConsumerState<AccessView> createState() => _AccessViewState();
@@ -25,6 +27,7 @@ class _AccessViewState extends ConsumerState<AccessView>
   List<String>? _pinedList;
   bool _isInit = false;
   bool _installedAppsPermissionGranted = true;
+  bool get _isOhos => widget.isOhos ?? system.isOhos;
 
   final _completer = Completer();
 
@@ -190,7 +193,7 @@ class _AccessViewState extends ConsumerState<AccessView>
     AccessControlProps accessControl,
   ) {
     final packages = ref.read(packagesProvider);
-    if (packages.isEmpty) {
+    if (packages.isEmpty || _isOhos) {
       return accessControl;
     }
     final viewPackageNames = packages
@@ -313,11 +316,19 @@ class _AccessViewState extends ConsumerState<AccessView>
         glyph: AppGlyphs.moreCircle,
         label: appLocalizations.action,
         subItems: [
-          CommonPopupMenuItem(
-            glyph: AppGlyphs.sparkle,
-            label: appLocalizations.intelligentSelected,
-            onPressed: _intelligentSelected,
-          ),
+          if (_isOhos)
+            CommonPopupMenuItem(
+              glyph: AppGlyphs.refresh,
+              label: appLocalizations.update,
+              onPressed: () =>
+                  globalState.loadingRun(_loadPackages, tag: LoadingTag.access),
+            ),
+          if (!_isOhos)
+            CommonPopupMenuItem(
+              glyph: AppGlyphs.sparkle,
+              label: appLocalizations.intelligentSelected,
+              onPressed: _intelligentSelected,
+            ),
           CommonPopupMenuItem(
             glyph: AppGlyphs.copy,
             label: appLocalizations.clipboardExport,
@@ -338,6 +349,12 @@ class _AccessViewState extends ConsumerState<AccessView>
     required Set<String> selected,
     required bool isSearching,
   }) {
+    final needsProcessLookup =
+        _isOhos &&
+        ref.watch(
+              patchClashConfigProvider.select((state) => state.findProcessMode),
+            ) !=
+            FindProcessMode.always;
     return FutureBuilder(
       future: _completer.future,
       builder: (context, snapshot) {
@@ -349,8 +366,29 @@ class _AccessViewState extends ConsumerState<AccessView>
           isEmpty: packages.isEmpty,
           isSearching: isSearching,
           nullStatus: NullStatus(
-            label: appLocalizations.noData,
+            label: snapshot.hasError
+                ? snapshot.error.toString()
+                : _isOhos
+                ? appLocalizations.applicationHistoryEmpty
+                : appLocalizations.noData,
             illustration: NullStatusIllustration.apps,
+            description: needsProcessLookup
+                ? appLocalizations.applicationProxyEnableProcess
+                : null,
+            action: needsProcessLookup
+                ? TonalButton(
+                    size: TonalButtonSize.bar,
+                    glyph: AppGlyphs.appsList,
+                    label: appLocalizations.findProcessMode,
+                    onPressed: () => ref
+                        .read(patchClashConfigProvider.notifier)
+                        .update(
+                          (state) => state.copyWith(
+                            findProcessMode: FindProcessMode.always,
+                          ),
+                        ),
+                  )
+                : null,
           ),
           child: CommonScrollBar(
             controller: _controller,

@@ -55,54 +55,9 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  /// `App proxy`
-  String get applicationCurrent => Intl.message("Current apps", name: 'applicationCurrent', args: []);
-
-  String get applicationHistory => Intl.message("History", name: 'applicationHistory', args: []);
-
-  String get applicationSearch => Intl.message("Search name or path", name: 'applicationSearch', args: []);
-
-  String get applicationLastSeen => Intl.message("Last active", name: 'applicationLastSeen', args: []);
-
-  String get applicationClearHistory => Intl.message("Clear history", name: 'applicationClearHistory', args: []);
-
-  String get applicationRemoveHistory => Intl.message("Remove from history", name: 'applicationRemoveHistory', args: []);
-
-  String get applicationReset => Intl.message("Reset connections", name: 'applicationReset', args: []);
-
-  String get applicationResetHint => Intl.message("Close this app\u2019s current connections; new connections use the latest policy", name: 'applicationResetHint', args: []);
-
-  String get applicationResetDone => Intl.message("Connections closed; waiting for the app to reconnect", name: 'applicationResetDone', args: []);
-
-  String get applicationResetFailed => Intl.message("Some connections could not be closed. Please retry", name: 'applicationResetFailed', args: []);
-
-  String get applicationHistoryEmpty => Intl.message("No history yet. Identified app connections are recorded automatically", name: 'applicationHistoryEmpty', args: []);
-
-  String get applicationNoMatches => Intl.message("No matching apps", name: 'applicationNoMatches', args: []);
-
-  String get applicationClearConfirm => Intl.message("Clear application history? Proxy rules will be kept.", name: 'applicationClearConfirm', args: []);
-
-  String get updateSourceMissing => Intl.message("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.", name: 'updateSourceMissing', args: []);
-
-  String get updateWindowsOnly => Intl.message("Automatic update installation currently supports Windows only.", name: 'updateWindowsOnly', args: []);
-
-  String get updateVerificationFailed => Intl.message("Update verification failed. Please download again.", name: 'updateVerificationFailed', args: []);
-
-  String get updateDownloadInstall => Intl.message("Download and install update", name: 'updateDownloadInstall', args: []);
-
-  String get updateVerifying => Intl.message("Verifying installer…", name: 'updateVerifying', args: []);
-
-  String get updateAlreadyCurrent => Intl.message("You are up to date.", name: 'updateAlreadyCurrent', args: []);
-
-  String get updateRestartNotice => Intl.message("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.", name: 'updateRestartNotice', args: []);
-
+  /// `Apps`
   String get applicationProxy {
-    return Intl.message(
-      'Apps',
-      name: 'applicationProxy',
-      desc: '',
-      args: [],
-    );
+    return Intl.message('Apps', name: 'applicationProxy', desc: '', args: []);
   }
 
   /// `This process cannot be used in an app rule.`
@@ -8229,6 +8184,336 @@ class AppLocalizations {
       name: 'alreadyInLocalProxies',
       desc: '',
       args: [name],
+    );
+  }
+
+  /// `Current apps`
+  String get applicationCurrent {
+    return Intl.message(
+      'Current apps',
+      name: 'applicationCurrent',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `History`
+  String get applicationHistory {
+    return Intl.message(
+      'History',
+      name: 'applicationHistory',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Search name or path`
+  String get applicationSearch {
+    return Intl.message(
+      'Search name or path',
+      name: 'applicationSearch',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last active`
+  String get applicationLastSeen {
+    return Intl.message(
+      'Last active',
+      name: 'applicationLastSeen',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Clear history`
+  String get applicationClearHistory {
+    return Intl.message(
+      'Clear history',
+      name: 'applicationClearHistory',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Remove from history`
+  String get applicationRemoveHistory {
+    return Intl.message(
+      'Remove from history',
+      name: 'applicationRemoveHistory',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Reset connections`
+  String get applicationReset {
+    return Intl.message(
+      'Reset connections',
+      name: 'applicationReset',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Close this app’s current connections; new connections use the latest policy`
+  String get applicationResetHint {
+    return Intl.message(
+      'Close this app’s current connections; new connections use the latest policy',
+      name: 'applicationResetHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connections closed; waiting for the app to reconnect`
+  String get applicationResetDone {
+    return Intl.message(
+      'Connections closed; waiting for the app to reconnect',
+      name: 'applicationResetDone',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Some connections could not be closed. Please retry`
+  String get applicationResetFailed {
+    return Intl.message(
+      'Some connections could not be closed. Please retry',
+      name: 'applicationResetFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No history yet. Identified app connections are recorded automatically`
+  String get applicationHistoryEmpty {
+    return Intl.message(
+      'No history yet. Identified app connections are recorded automatically',
+      name: 'applicationHistoryEmpty',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No matching apps`
+  String get applicationNoMatches {
+    return Intl.message(
+      'No matching apps',
+      name: 'applicationNoMatches',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Clear application history? Proxy rules will be kept.`
+  String get applicationClearConfirm {
+    return Intl.message(
+      'Clear application history? Proxy rules will be kept.',
+      name: 'applicationClearConfirm',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.`
+  String get updateSourceMissing {
+    return Intl.message(
+      'The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.',
+      name: 'updateSourceMissing',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Automatic update installation currently supports Windows only.`
+  String get updateWindowsOnly {
+    return Intl.message(
+      'Automatic update installation currently supports Windows only.',
+      name: 'updateWindowsOnly',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Update verification failed. Please download again.`
+  String get updateVerificationFailed {
+    return Intl.message(
+      'Update verification failed. Please download again.',
+      name: 'updateVerificationFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Download and install update`
+  String get updateDownloadInstall {
+    return Intl.message(
+      'Download and install update',
+      name: 'updateDownloadInstall',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Verifying installer…`
+  String get updateVerifying {
+    return Intl.message(
+      'Verifying installer…',
+      name: 'updateVerifying',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `You are up to date.`
+  String get updateAlreadyCurrent {
+    return Intl.message(
+      'You are up to date.',
+      name: 'updateAlreadyCurrent',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.`
+  String get updateRestartNotice {
+    return Intl.message(
+      'After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.',
+      name: 'updateRestartNotice',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Gitee snippets`
+  String get snippetGitee {
+    return Intl.message(
+      'Gitee snippets',
+      name: 'snippetGitee',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connect with token`
+  String get snippetConnect {
+    return Intl.message(
+      'Connect with token',
+      name: 'snippetConnect',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Personal access token`
+  String get snippetToken {
+    return Intl.message(
+      'Personal access token',
+      name: 'snippetToken',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `GitHub: gist permission. Gitee: gists and user_info permissions. Tokens stay in secure device storage; no OAuth app is required.`
+  String get snippetTokenHelp {
+    return Intl.message(
+      'GitHub: gist permission. Gitee: gists and user_info permissions. Tokens stay in secure device storage; no OAuth app is required.',
+      name: 'snippetTokenHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connect to sync encrypted backups between devices`
+  String get snippetSignedOut {
+    return Intl.message(
+      'Connect to sync encrypted backups between devices',
+      name: 'snippetSignedOut',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Upload encrypted backup`
+  String get snippetUpload {
+    return Intl.message(
+      'Upload encrypted backup',
+      name: 'snippetUpload',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Decrypt and restore`
+  String get snippetDownload {
+    return Intl.message(
+      'Decrypt and restore',
+      name: 'snippetDownload',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Create a non-public snippet containing encrypted backup data.`
+  String get snippetNewBackup {
+    return Intl.message(
+      'Create a non-public snippet containing encrypted backup data.',
+      name: 'snippetNewBackup',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `XZ compression and AES-256-GCM encryption happen before upload. Your password is never uploaded or stored. A forgotten password cannot be recovered.`
+  String get snippetEncryptionHelp {
+    return Intl.message(
+      'XZ compression and AES-256-GCM encryption happen before upload. Your password is never uploaded or stored. A forgotten password cannot be recovered.',
+      name: 'snippetEncryptionHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Use a separate backup password and keep it in your password manager.`
+  String get snippetPasswordHelp {
+    return Intl.message(
+      'Use a separate backup password and keep it in your password manager.',
+      name: 'snippetPasswordHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Remove this device’s token? Cloud backups are kept. Revoke the token on the service’s website if needed.`
+  String get snippetLogout {
+    return Intl.message(
+      'Remove this device’s token? Cloud backups are kept. Revoke the token on the service’s website if needed.',
+      name: 'snippetLogout',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Cannot reach the snippet service. Check your network or proxy.`
+  String get snippetNetworkError {
+    return Intl.message(
+      'Cannot reach the snippet service. Check your network or proxy.',
+      name: 'snippetNetworkError',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Access denied or rate limited. Check token permissions or retry later.`
+  String get snippetPermissionError {
+    return Intl.message(
+      'Access denied or rate limited. Check token permissions or retry later.',
+      name: 'snippetPermissionError',
+      desc: '',
+      args: [],
     );
   }
 }

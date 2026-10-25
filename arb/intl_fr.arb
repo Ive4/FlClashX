@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Extraits Gitee",
+  "snippetConnect": "Connexion par jeton",
+  "snippetToken": "Jeton d’accès personnel",
+  "snippetTokenHelp": "GitHub : droit gist. Gitee : gists et user_info. Le jeton reste dans le stockage sécurisé de l’appareil ; aucune application OAuth requise.",
+  "snippetSignedOut": "Connectez-vous pour synchroniser les sauvegardes chiffrées",
+  "snippetUpload": "Envoyer la sauvegarde chiffrée",
+  "snippetDownload": "Déchiffrer et restaurer",
+  "snippetNewBackup": "Un extrait non public contenant les données chiffrées sera créé.",
+  "snippetEncryptionHelp": "Compression XZ et chiffrement AES-256-GCM avant l’envoi. Le mot de passe n’est ni envoyé ni conservé. Il ne peut pas être récupéré en cas d’oubli.",
+  "snippetPasswordHelp": "Utilisez un mot de passe distinct et conservez-le dans votre gestionnaire.",
+  "snippetLogout": "Supprimer le jeton de cet appareil ? Les sauvegardes seront conservées. Révoquez le jeton sur le site du service si nécessaire.",
+  "snippetNetworkError": "Connexion impossible. Vérifiez le réseau ou le proxy.",
+  "snippetPermissionError": "Accès refusé ou limite atteinte. Vérifiez les droits du jeton ou réessayez plus tard."
 }

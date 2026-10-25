@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fl_clash/features/form/form.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
@@ -44,6 +45,7 @@ Finder _portField(String label) => find.descendant(
 );
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   final cases = <String, Widget>{
     'dashboard': const DashboardView(),
     'proxies': const ProxiesView(),

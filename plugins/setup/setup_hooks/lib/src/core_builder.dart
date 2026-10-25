@@ -96,6 +96,9 @@ final class CoreBuilder implements Builder {
   BuildRequest? requestFor(BuildInput input) {
     if (!input.config.buildCodeAssets) return null;
     final code = input.config.code;
+    if (code.cCompiler?.compiler.path.contains('openharmony') ?? false) {
+      return null;
+    }
     // Android's Core is the gomobile AAR the :core Gradle module builds.
     final platform = switch (code.targetOS) {
       OS.linux => 'linux',

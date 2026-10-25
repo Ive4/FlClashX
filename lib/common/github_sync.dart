@@ -14,6 +14,14 @@ const githubBackupDescription = 'FlClashX configuration backup';
 const githubBackupMaxBytes = 5 * 1024 * 1024;
 const _maxResponseBytes = 8 * 1024 * 1024;
 
+enum SnippetService {
+  github('https://api.github.com'),
+  gitee('https://gitee.com/api/v5');
+
+  const SnippetService(this.apiBase);
+  final String apiBase;
+}
+
 enum GitHubSyncFailure {
   network,
   unauthorized,
@@ -39,14 +47,18 @@ class GitHubSyncException implements Exception {
 
 class GitHubSession {
   const GitHubSession({
-    required this.token, required this.login, required this.userId,
+    required this.token,
+    required this.login,
+    required this.userId,
   });
   final String token;
   final String login;
   final int userId;
 
   Map<String, dynamic> toJson() => {
-    'token': token, 'login': login, 'userId': userId,
+    'token': token,
+    'login': login,
+    'userId': userId,
   };
 
   factory GitHubSession.fromJson(Map<String, dynamic> json) => GitHubSession(
@@ -68,7 +80,8 @@ class GitHubBackup {
   final DateTime updatedAt;
 
   factory GitHubBackup.fromJson(Map<String, dynamic> json) => GitHubBackup(
-    json['id'] as String, DateTime.parse(json['updated_at'] as String),
+    json['id'] as String,
+    DateTime.parse(json['updated_at'] as String),
   );
 }
 
@@ -102,7 +115,9 @@ Future<Uint8List> _cryptBackup(
   }
 }
 
-Future<String> _encryptBackupFile(({String path, String password}) request) async {
+Future<String> _encryptBackupFile(
+  ({String path, String password}) request,
+) async {
   final file = File(request.path);
   if (await file.length() > githubBackupMaxBytes) {
     throw const GitHubSyncException(GitHubSyncFailure.tooLarge);
@@ -120,9 +135,12 @@ Future<void> _decryptBackupFile(
 }
 
 class GitHubSyncClient {
-  GitHubSyncClient({Dio? dio, Future<void> Function(Duration)? delay})
-    : _dio = dio ?? _createDio(),
-      _delay = delay ?? Future<void>.delayed;
+  GitHubSyncClient({
+    Dio? dio,
+    Future<void> Function(Duration)? delay,
+    this.service = SnippetService.github,
+  }) : _dio = dio ?? _createDio(),
+       _delay = delay ?? Future<void>.delayed;
 
   static Dio _createDio() {
     final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 20)));
@@ -135,6 +153,7 @@ class GitHubSyncClient {
     return dio;
   }
 
+  final SnippetService service;
   final Dio _dio;
   final Future<void> Function(Duration) _delay;
 
@@ -142,21 +161,46 @@ class GitHubSyncClient {
 
   Future<dynamic> _request(
     String url, {
-    String method = 'GET', String? token, Object? data, CancelToken? cancel,
+    String method = 'GET',
+    String? token,
+    Object? data,
+    CancelToken? cancel,
   }) async {
     try {
+      final isGitee =
+          service == SnippetService.gitee &&
+          url.startsWith('${service.apiBase}/');
+      final uri = Uri.parse(url);
+      final requestUrl = isGitee && token != null && method == 'GET'
+          ? uri
+                .replace(
+                  queryParameters: {
+                    ...uri.queryParameters,
+                    'access_token': token,
+                  },
+                )
+                .toString()
+          : url;
+      final requestData = isGitee && token != null && method != 'GET'
+          ? {...?data as Map<String, dynamic>?, 'access_token': token}
+          : data;
       final response = await _dio.request<ResponseBody>(
-        url, data: data, cancelToken: cancel,
+        requestUrl,
+        data: requestData,
+        cancelToken: cancel,
         options: Options(
-          method: method, responseType: ResponseType.stream,
+          method: method,
+          responseType: ResponseType.stream,
           contentType: url.startsWith('https://github.com/login/')
-              ? Headers.formUrlEncodedContentType : Headers.jsonContentType,
+              ? Headers.formUrlEncodedContentType
+              : Headers.jsonContentType,
           followRedirects: false,
           sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 30),
           headers: {
-            'Accept': 'application/json', 'User-Agent': 'FlClashX',
-            if (token != null) 'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+            'User-Agent': 'FlClashX',
+            if (token != null && !isGitee) 'Authorization': 'Bearer $token',
           },
         ),
       );
@@ -169,7 +213,7 @@ class GitHubSyncClient {
       }
       final body = bytes.takeBytes();
       if (body.length > 64 * 1024) {
-        return Isolate.run(() => jsonDecode(utf8.decode(body)));
+        return await Isolate.run(() => jsonDecode(utf8.decode(body)));
       }
       return jsonDecode(utf8.decode(body));
     } on DioException catch (error) {
@@ -185,21 +229,43 @@ class GitHubSyncClient {
     }
   }
 
+  Future<GitHubSession> signInWithToken(String token) async {
+    token = token.trim();
+    if (token.isEmpty) {
+      throw const GitHubSyncException(GitHubSyncFailure.unauthorized);
+    }
+    final user =
+        await _request('${service.apiBase}/user', token: token)
+            as Map<String, dynamic>;
+    return GitHubSession(
+      token: token,
+      login: user['login'] as String,
+      userId: user['id'] as int,
+    );
+  }
+
   Future<GitHubSession> authorize(
     String clientId, {
     required CancelToken cancel,
     required Future<void> Function(GitHubDeviceCode) onCode,
   }) async {
-    final response = await _request(
-      'https://github.com/login/device/code', method: 'POST',
-      data: {'client_id': clientId, 'scope': 'gist'}, cancel: cancel,
-    ) as Map<String, dynamic>;
+    final response =
+        await _request(
+              'https://github.com/login/device/code',
+              method: 'POST',
+              data: {'client_id': clientId, 'scope': 'gist'},
+              cancel: cancel,
+            )
+            as Map<String, dynamic>;
     if (response['error'] != null) {
       throw const GitHubSyncException(GitHubSyncFailure.clientId);
     }
     final uri = Uri.parse(response['verification_uri'] as String);
-    if (uri.scheme != 'https' || uri.host != 'github.com' ||
-        uri.path != '/login/device' || uri.userInfo.isNotEmpty || uri.port != 443) {
+    if (uri.scheme != 'https' ||
+        uri.host != 'github.com' ||
+        uri.path != '/login/device' ||
+        uri.userInfo.isNotEmpty ||
+        uri.port != 443) {
       throw const GitHubSyncException(GitHubSyncFailure.network);
     }
     final deadline = DateTime.now().add(
@@ -215,14 +281,18 @@ class GitHubSyncClient {
       ]);
       if (cancel.isCancelled) throw cancel.cancelError!;
       if (!DateTime.now().isBefore(deadline)) break;
-      final result = await _request(
-        'https://github.com/login/oauth/access_token', method: 'POST',
-        cancel: cancel,
-        data: {
-          'client_id': clientId, 'device_code': response['device_code'],
-          'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-        },
-      ) as Map<String, dynamic>;
+      final result =
+          await _request(
+                'https://github.com/login/oauth/access_token',
+                method: 'POST',
+                cancel: cancel,
+                data: {
+                  'client_id': clientId,
+                  'device_code': response['device_code'],
+                  'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+                },
+              )
+              as Map<String, dynamic>;
       switch (result['error']) {
         case 'authorization_pending':
           continue;
@@ -243,29 +313,52 @@ class GitHubSyncClient {
       if (token is! String || token.isEmpty || !scopes.contains('gist')) {
         throw const GitHubSyncException(GitHubSyncFailure.forbidden);
       }
-      final user = await _request(
-        'https://api.github.com/user', token: token, cancel: cancel,
-      ) as Map<String, dynamic>;
+      final user =
+          await _request(
+                'https://api.github.com/user',
+                token: token,
+                cancel: cancel,
+              )
+              as Map<String, dynamic>;
       if (cancel.isCancelled) throw cancel.cancelError!;
       return GitHubSession(
-        token: token, login: user['login'] as String, userId: user['id'] as int,
+        token: token,
+        login: user['login'] as String,
+        userId: user['id'] as int,
       );
     }
     throw const GitHubSyncException(GitHubSyncFailure.expired);
+  }
+
+  Map<dynamic, dynamic> _files(Map<String, dynamic> gist) {
+    final files = gist['files'];
+    if (files is Map) return files;
+    if (service == SnippetService.gitee && files is String) {
+      try {
+        final decoded = jsonDecode(files);
+        if (decoded is Map) return decoded;
+      } on FormatException {
+        throw const GitHubSyncException(GitHubSyncFailure.invalidBackup);
+      }
+    }
+    throw const GitHubSyncException(GitHubSyncFailure.invalidBackup);
   }
 
   bool _isBackup(Map<String, dynamic> gist, GitHubSession session) =>
       gist['public'] == false &&
       (gist['owner'] as Map?)?['id'] == session.userId &&
       gist['description'] == githubBackupDescription &&
-      (gist['files'] as Map?)?.containsKey(githubBackupFile) == true;
+      _files(gist).containsKey(githubBackupFile);
 
   Future<List<GitHubBackup>> list(GitHubSession session) async {
     final backups = <GitHubBackup>[];
     for (var page = 1; ; page++) {
-      final rows = await _request(
-        'https://api.github.com/gists?per_page=100&page=$page', token: session.token,
-      ) as List;
+      final rows =
+          await _request(
+                '${service.apiBase}/gists?per_page=100&page=$page',
+                token: session.token,
+              )
+              as List;
       for (final row in rows.cast<Map<String, dynamic>>()) {
         if (_isBackup(row, session)) backups.add(GitHubBackup.fromJson(row));
       }
@@ -275,14 +368,18 @@ class GitHubSyncClient {
   }
 
   Future<Map<String, dynamic>> _get(
-    GitHubSession session, GitHubBackup backup,
+    GitHubSession session,
+    GitHubBackup backup,
   ) async {
-    if (!RegExp(r'^[a-fA-F0-9]+$').hasMatch(backup.id)) {
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(backup.id)) {
       throw const GitHubSyncException(GitHubSyncFailure.invalidBackup);
     }
-    final gist = await _request(
-      'https://api.github.com/gists/${backup.id}', token: session.token,
-    ) as Map<String, dynamic>;
+    final gist =
+        await _request(
+              '${service.apiBase}/gists/${backup.id}',
+              token: session.token,
+            )
+            as Map<String, dynamic>;
     if (!_isBackup(gist, session)) {
       throw const GitHubSyncException(GitHubSyncFailure.invalidBackup);
     }
@@ -293,37 +390,53 @@ class GitHubSyncClient {
   }
 
   Future<GitHubBackup> upload(
-    GitHubSession session, String path, GitHubBackup? backup, {
+    GitHubSession session,
+    String path,
+    GitHubBackup? backup, {
     required String password,
   }) async {
     final content = await runBackupWorker(_encryptBackupFile, (
-      path: path, password: password,
+      path: path,
+      password: password,
     ));
     if (backup != null) await _get(session, backup);
-    final gist = await _request(
-      backup == null ? 'https://api.github.com/gists'
-          : 'https://api.github.com/gists/${backup.id}',
-      method: backup == null ? 'POST' : 'PATCH', token: session.token,
-      data: {
-        if (backup == null) 'public': false,
-        'description': githubBackupDescription,
-        'files': {githubBackupFile: {'content': content}},
-      },
-    ) as Map<String, dynamic>;
+    final gist =
+        await _request(
+              backup == null
+                  ? '${service.apiBase}/gists'
+                  : '${service.apiBase}/gists/${backup.id}',
+              method: backup == null ? 'POST' : 'PATCH',
+              token: session.token,
+              data: {
+                if (backup == null) 'public': false,
+                'description': githubBackupDescription,
+                'files': {
+                  githubBackupFile: {'content': content},
+                },
+              },
+            )
+            as Map<String, dynamic>;
     return GitHubBackup.fromJson(gist);
   }
 
   Future<void> download(
-    GitHubSession session, GitHubBackup backup, String path, {
+    GitHubSession session,
+    GitHubBackup backup,
+    String path, {
     required String password,
   }) async {
     final gist = await _get(session, backup);
-    final file = (gist['files'] as Map)[githubBackupFile] as Map;
+    final file = _files(gist)[githubBackupFile] as Map;
     final Object? payload;
     if (file['truncated'] == true) {
       final uri = Uri.parse(file['raw_url'] as String);
-      if (uri.scheme != 'https' || uri.host != 'gist.githubusercontent.com' ||
-          uri.port != 443 || uri.userInfo.isNotEmpty) {
+      if (uri.scheme != 'https' ||
+          uri.host !=
+              (service == SnippetService.github
+                  ? 'gist.githubusercontent.com'
+                  : 'gitee.com') ||
+          uri.port != 443 ||
+          uri.userInfo.isNotEmpty) {
         throw const GitHubSyncException(GitHubSyncFailure.invalidBackup);
       }
       // Raw URLs are untrusted API data; never forward the OAuth token.
@@ -332,7 +445,9 @@ class GitHubSyncClient {
       payload = file['content'];
     }
     await runBackupWorker(_decryptBackupFile, (
-      payload: payload, password: password, path: path,
+      payload: payload,
+      password: password,
+      path: path,
     ));
   }
 }

@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'package:fl_clash/common/github_sync.dart';
+import 'package:fl_clash/views/github_sync.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/form/form.dart';
 import 'package:fl_clash/models/models.dart';
@@ -75,6 +79,103 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Save'));
     await tester.pumpAndSettle();
   }
+
+  group('snippet sync', () {
+    setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+    Future<void> pumpSync(
+      WidgetTester tester,
+      SnippetService service,
+      _SnippetClient client,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: TestApp(
+            child: Scaffold(
+              body: ListView(
+                children: [
+                  GitHubSyncSection(
+                    service: service,
+                    client: client,
+                    onBackup: (_, _) async {},
+                    onRestore: (_, _) async {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    for (final service in SnippetService.values) {
+      testWidgets(
+        '${service.name} token connection persists only its session',
+        (tester) async {
+          final client = _SnippetClient(service);
+          await pumpSync(tester, service, client);
+          expect(
+            find.text(
+              service == SnippetService.github
+                  ? 'GitHub Gist'
+                  : 'Gitee snippets',
+            ),
+            findsWidgets,
+          );
+          await tester.tap(find.text('Connect with token'));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          await tester.enterText(find.byType(TextFormField), 'personal-token');
+          await tester.tap(find.text('Confirm'));
+          await tester.pumpAndSettle();
+          expect(find.text('tester'), findsOneWidget);
+          expect(find.text('No cloud backup yet'), findsOneWidget);
+          expect(find.text('Upload encrypted backup'), findsOneWidget);
+          const storage = FlutterSecureStorage();
+          final stored = await storage.readAll();
+          expect(stored.keys, ['flclashx.${service.name}.session.v1']);
+          expect(
+            (jsonDecode(stored.values.single) as Map)['token'],
+            'personal-token',
+          );
+          await tester.pumpWidget(const SizedBox());
+          expect(client.closed, true);
+        },
+      );
+    }
+
+    testWidgets(
+      'failed token connection returns to an enabled sign-in control',
+      (tester) async {
+        final client = _SnippetClient(SnippetService.gitee)..fail = true;
+        await pumpSync(tester, SnippetService.gitee, client);
+        await tester.tap(find.text('Connect with token'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.enterText(find.byType(TextFormField), 'bad-token');
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+        expect(find.text('Connect with token'), findsOneWidget);
+        expect(find.textContaining('Session expired'), findsOneWidget);
+        expect(await const FlutterSecureStorage().readAll(), isEmpty);
+        client.fail = false;
+        await tester.tap(find.text('Connect with token'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(TextFormField), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.byType(TextFormField), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
 
   group('RestoreOptionsDialog', () {
     Future<RestoreOption?> openAndChoose(
@@ -245,4 +346,25 @@ void main() {
       expect(find.byGlyph(AppGlyphs.eyeOff), findsOneWidget);
     });
   });
+}
+
+class _SnippetClient extends GitHubSyncClient {
+  _SnippetClient(SnippetService service) : super(service: service);
+  bool fail = false;
+  bool closed = false;
+
+  @override
+  Future<GitHubSession> signInWithToken(String token) async {
+    if (fail) throw const GitHubSyncException(GitHubSyncFailure.unauthorized);
+    return GitHubSession(token: token, login: 'tester', userId: 7);
+  }
+
+  @override
+  Future<List<GitHubBackup>> list(GitHubSession session) async => [];
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
 }

@@ -3,10 +3,18 @@ import 'dart:io';
 import 'package:code_assets/code_assets.dart';
 import 'package:flutter_rust_bridge_hooks/flutter_rust_bridge_hooks.dart';
 
+import 'ohos.dart';
+
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (input.userDefines['build_assets'] == false) {
       stdout.writeln('Skipping the Rust build: user-define build_assets=false');
+      return;
+    }
+    if (input.config.buildCodeAssets &&
+        (input.config.code.cCompiler?.compiler.path.contains('openharmony') ??
+            false)) {
+      await buildOhos(input, output);
       return;
     }
     await FlutterRustBridgeNativeAssetsBuilder(

@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Gitee スニペット",
+  "snippetConnect": "トークンで接続",
+  "snippetToken": "個人アクセストークン",
+  "snippetTokenHelp": "GitHub は gist、Gitee は gists と user_info 権限が必要です。トークンは端末に安全に保存され、OAuth アプリ登録は不要です。",
+  "snippetSignedOut": "接続して暗号化バックアップを端末間で同期",
+  "snippetUpload": "暗号化バックアップを送信",
+  "snippetDownload": "復号して復元",
+  "snippetNewBackup": "暗号化データを含む非公開スニペットを作成します。",
+  "snippetEncryptionHelp": "送信前に XZ 圧縮と AES-256-GCM 暗号化を行います。パスワードは送信も保存もされず、忘れると復元できません。",
+  "snippetPasswordHelp": "専用のパスワードを設定し、パスワード管理アプリで保管してください。",
+  "snippetLogout": "端末のトークンを削除しますか？クラウドのバックアップは保持されます。必要ならサービスのサイトで失効させてください。",
+  "snippetNetworkError": "接続できません。ネットワークやプロキシを確認してください。",
+  "snippetPermissionError": "権限不足または制限超過です。権限を確認するか後で再試行してください。"
 }

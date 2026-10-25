@@ -997,5 +997,18 @@
   "updateDownloadInstall": "下载并安装更新",
   "updateVerifying": "正在校验安装包…",
   "updateAlreadyCurrent": "当前已是最新版本。",
-  "updateRestartNotice": "下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。"
+  "updateRestartNotice": "下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。",
+  "snippetGitee": "Gitee 代码片段",
+  "snippetConnect": "使用令牌连接",
+  "snippetToken": "私人访问令牌",
+  "snippetTokenHelp": "GitHub 需要 gist 权限；Gitee 需要 gists 和 user_info 权限。令牌保存在本机安全存储中，无需注册 OAuth 应用。",
+  "snippetSignedOut": "连接后可在设备之间同步加密备份",
+  "snippetUpload": "上传加密备份",
+  "snippetDownload": "解密并恢复",
+  "snippetNewBackup": "将创建非公开代码片段，保存加密后的备份数据。",
+  "snippetEncryptionHelp": "上传前先压缩为 XZ，再使用 AES-256-GCM 加密。密码不会上传或保存，忘记密码将无法恢复。",
+  "snippetPasswordHelp": "请设置独立的备份密码，并使用密码管理器妥善保存。",
+  "snippetLogout": "清除此设备保存的令牌？云端备份将保留。如需撤销令牌，请前往对应平台的网站。",
+  "snippetNetworkError": "无法连接代码片段服务，请检查网络或代理。",
+  "snippetPermissionError": "权限不足或请求过于频繁，请检查令牌权限或稍后重试。"
 }

@@ -276,26 +276,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "appIconDesign": MessageLookupByLibrary.simpleMessage("应用图标设计"),
     "appProxiesEmpty": MessageLookupByLibrary.simpleMessage("暂无本地代理"),
     "appendSystemDns": MessageLookupByLibrary.simpleMessage("追加系统DNS"),
+    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage(
+      "清空应用历史记录？已设置的代理规则会保留。",
+    ),
+    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("清空历史"),
     "applicationCurrent": MessageLookupByLibrary.simpleMessage("当前应用"),
     "applicationHistory": MessageLookupByLibrary.simpleMessage("历史应用"),
-    "applicationSearch": MessageLookupByLibrary.simpleMessage("搜索应用名称或路径"),
+    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage(
+      "暂无历史应用，识别到应用连接后会自动记录",
+    ),
     "applicationLastSeen": MessageLookupByLibrary.simpleMessage("最近活跃"),
-    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("清空历史"),
-    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("移除历史记录"),
-    "applicationReset": MessageLookupByLibrary.simpleMessage("重置连接"),
-    "applicationResetHint": MessageLookupByLibrary.simpleMessage("断开该应用的当前连接，后续连接按最新策略建立"),
-    "applicationResetDone": MessageLookupByLibrary.simpleMessage("已断开连接，等待应用重新连接"),
-    "applicationResetFailed": MessageLookupByLibrary.simpleMessage("部分连接未能断开，请重试"),
-    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("暂无历史应用，识别到应用连接后会自动记录"),
     "applicationNoMatches": MessageLookupByLibrary.simpleMessage("没有匹配的应用"),
-    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("清空应用历史记录？已设置的代理规则会保留。"),
-    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("尚未配置 FlClashX 专属更新仓库，请在构建时设置 FLCLASHX_UPDATE_REPOSITORY。"),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("当前自动安装更新仅支持 Windows。"),
-    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("更新包校验失败，请重新下载。"),
-    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("下载并安装更新"),
-    "updateVerifying": MessageLookupByLibrary.simpleMessage("正在校验安装包…"),
-    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("当前已是最新版本。"),
-    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。"),
     "applicationProxy": MessageLookupByLibrary.simpleMessage("应用"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "规则已保存，但应用失败。请重新应用当前配置后重试。",
@@ -330,6 +321,18 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyScriptUnsupported": MessageLookupByLibrary.simpleMessage(
       "标准扩展和自定义配置支持调整应用规则；脚本扩展在此仅支持查看。",
     ),
+    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("移除历史记录"),
+    "applicationReset": MessageLookupByLibrary.simpleMessage("重置连接"),
+    "applicationResetDone": MessageLookupByLibrary.simpleMessage(
+      "已断开连接，等待应用重新连接",
+    ),
+    "applicationResetFailed": MessageLookupByLibrary.simpleMessage(
+      "部分连接未能断开，请重试",
+    ),
+    "applicationResetHint": MessageLookupByLibrary.simpleMessage(
+      "断开该应用的当前连接，后续连接按最新策略建立",
+    ),
+    "applicationSearch": MessageLookupByLibrary.simpleMessage("搜索应用名称或路径"),
     "applied": MessageLookupByLibrary.simpleMessage("已应用"),
     "applyNow": MessageLookupByLibrary.simpleMessage("立即应用"),
     "authentication": MessageLookupByLibrary.simpleMessage("认证"),
@@ -1413,6 +1416,33 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "域名嗅探从 TLS、HTTP、QUIC 流量中识别域名，供规则匹配。",
     ),
+    "snippetConnect": MessageLookupByLibrary.simpleMessage("使用令牌连接"),
+    "snippetDownload": MessageLookupByLibrary.simpleMessage("解密并恢复"),
+    "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
+      "上传前先压缩为 XZ，再使用 AES-256-GCM 加密。密码不会上传或保存，忘记密码将无法恢复。",
+    ),
+    "snippetGitee": MessageLookupByLibrary.simpleMessage("Gitee 代码片段"),
+    "snippetLogout": MessageLookupByLibrary.simpleMessage(
+      "清除此设备保存的令牌？云端备份将保留。如需撤销令牌，请前往对应平台的网站。",
+    ),
+    "snippetNetworkError": MessageLookupByLibrary.simpleMessage(
+      "无法连接代码片段服务，请检查网络或代理。",
+    ),
+    "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
+      "将创建非公开代码片段，保存加密后的备份数据。",
+    ),
+    "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "请设置独立的备份密码，并使用密码管理器妥善保存。",
+    ),
+    "snippetPermissionError": MessageLookupByLibrary.simpleMessage(
+      "权限不足或请求过于频繁，请检查令牌权限或稍后重试。",
+    ),
+    "snippetSignedOut": MessageLookupByLibrary.simpleMessage("连接后可在设备之间同步加密备份"),
+    "snippetToken": MessageLookupByLibrary.simpleMessage("私人访问令牌"),
+    "snippetTokenHelp": MessageLookupByLibrary.simpleMessage(
+      "GitHub 需要 gist 权限；Gitee 需要 gists 和 user_info 权限。令牌保存在本机安全存储中，无需注册 OAuth 应用。",
+    ),
+    "snippetUpload": MessageLookupByLibrary.simpleMessage("上传加密备份"),
     "socksPort": MessageLookupByLibrary.simpleMessage("Socks端口"),
     "softStyle": MessageLookupByLibrary.simpleMessage("柔和"),
     "sort": MessageLookupByLibrary.simpleMessage("排序"),
@@ -1512,6 +1542,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "unnamed": MessageLookupByLibrary.simpleMessage("未命名"),
     "unpinWindow": MessageLookupByLibrary.simpleMessage("取消置顶"),
     "update": MessageLookupByLibrary.simpleMessage("更新"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("当前已是最新版本。"),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("下载并安装更新"),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
+      "下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。",
+    ),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
+      "尚未配置 FlClashX 专属更新仓库，请在构建时设置 FLCLASHX_UPDATE_REPOSITORY。",
+    ),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
+      "更新包校验失败，请重新下载。",
+    ),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage("正在校验安装包…"),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
+      "当前自动安装更新仅支持 Windows。",
+    ),
     "upload": MessageLookupByLibrary.simpleMessage("上传"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage("上行带宽"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),

@@ -44,9 +44,12 @@ class App {
     return methodChannel.invokeMethod<bool>('moveTaskToBack');
   }
 
-  Future<List<Package>> getPackages() async {
+  Future<List<Package>> getPackages({
+    List<String> knownPackages = const [],
+  }) async {
     final packagesString = await methodChannel.invokeMethod<String>(
       'getPackages',
+      {'knownPackages': knownPackages},
     );
     final List<dynamic> packagesRaw =
         (await packagesString?.decodeJson<List<dynamic>>()) ?? [];
@@ -172,4 +175,4 @@ class App {
   }
 }
 
-final app = system.isAndroid ? App() : null;
+final app = system.isAndroid || system.isOhos ? App() : null;

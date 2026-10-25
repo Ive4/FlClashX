@@ -10,7 +10,14 @@ class SystemAction extends _$SystemAction {
   void build() {}
 
   Future<List<Package>> getPackages() async {
-    ref.read(packagesProvider.notifier).value = await app?.getPackages() ?? [];
+    final access = ref.read(vpnSettingProvider).accessControlProps;
+    ref.read(packagesProvider.notifier).value =
+        await app?.getPackages(
+          knownPackages: system.isOhos
+              ? {...access.acceptList, ...access.rejectList}.toList()
+              : const [],
+        ) ??
+        [];
     return ref.read(packagesProvider);
   }
 

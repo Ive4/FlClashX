@@ -72,6 +72,21 @@ void main() {
   }
 
   group('requestFor', () {
+    test('does not build desktop assets for HarmonyOS Linux hook inputs', () {
+      expect(
+        const CoreBuilder().requestFor(
+          buildInput(
+            os: OS.linux,
+            architecture: Architecture.arm64,
+            compiler: Uri.file(
+              p.join(repository.path, 'openharmony', 'native', 'bin', 'clang'),
+            ),
+          ),
+        ),
+        isNull,
+      );
+    });
+
     test('has nothing to build without code assets or on iOS', () {
       const builder = CoreBuilder();
 

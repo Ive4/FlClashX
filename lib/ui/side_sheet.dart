@@ -250,10 +250,7 @@ class _ModalSideSheetState<T> extends State<_ModalSideSheet<T>> {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
         return '';
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
+      default:
         return localizations.dialogLabel;
     }
   }

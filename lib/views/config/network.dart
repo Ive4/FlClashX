@@ -489,17 +489,19 @@ class VpnSections extends ConsumerWidget {
         ),
         generateSection(
           title: 'VPN',
-          items: const [
-            VpnSystemProxyItem(),
-            BypassDomainItem(),
-            AllowBypassItem(),
-            Ipv6Item(),
-            DNSHijackingItem(),
+          items: [
+            if (!system.isOhos) ...const [
+              VpnSystemProxyItem(),
+              BypassDomainItem(),
+              AllowBypassItem(),
+            ],
+            const Ipv6Item(),
+            const DNSHijackingItem(),
           ],
           footer: [
-            if (authenticationEnable)
+            if (!system.isOhos && authenticationEnable)
               appLocalizations.authenticationSystemProxyDesc,
-            appLocalizations.bypassDomainDesc,
+            if (!system.isOhos) appLocalizations.bypassDomainDesc,
             appLocalizations.ipv6InboundDesc,
           ].join('\n'),
         ),
@@ -566,7 +568,7 @@ class NetworkListView extends StatelessWidget {
         bottom: 16 + context.bottomInset,
       ),
       children: [
-        if (system.isAndroid) const VpnSections(),
+        if (system.isAndroid || system.isOhos) const VpnSections(),
         if (system.isDesktop) const SystemProxySection(),
         const NetworkOptionsSection(),
         TunSection(

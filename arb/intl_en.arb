@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Gitee snippets",
+  "snippetConnect": "Connect with token",
+  "snippetToken": "Personal access token",
+  "snippetTokenHelp": "GitHub: gist permission. Gitee: gists and user_info permissions. Tokens stay in secure device storage; no OAuth app is required.",
+  "snippetSignedOut": "Connect to sync encrypted backups between devices",
+  "snippetUpload": "Upload encrypted backup",
+  "snippetDownload": "Decrypt and restore",
+  "snippetNewBackup": "Create a non-public snippet containing encrypted backup data.",
+  "snippetEncryptionHelp": "XZ compression and AES-256-GCM encryption happen before upload. Your password is never uploaded or stored. A forgotten password cannot be recovered.",
+  "snippetPasswordHelp": "Use a separate backup password and keep it in your password manager.",
+  "snippetLogout": "Remove this device’s token? Cloud backups are kept. Revoke the token on the service’s website if needed.",
+  "snippetNetworkError": "Cannot reach the snippet service. Check your network or proxy.",
+  "snippetPermissionError": "Access denied or rate limited. Check token permissions or retry later."
 }

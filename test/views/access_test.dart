@@ -46,11 +46,13 @@ class _TestSystemAction extends SystemAction {
   bool grantOnRequest = true;
   int requestCount = 0;
   int loadCount = 0;
+  bool failLoading = false;
   List<Package> grantedPackages = const [];
 
   @override
   Future<List<Package>> getPackages() async {
     loadCount++;
+    if (failLoading) throw StateError('Application query failed');
     if (installedAppsPermissionGranted && grantedPackages.isNotEmpty) {
       ref.read(packagesProvider.notifier).value = grantedPackages;
     }
@@ -104,7 +106,10 @@ void main() {
         .copyWith(accessControlProps: props);
   }
 
-  Future<void> pumpAccessView(WidgetTester tester) async {
+  Future<void> pumpAccessView(
+    WidgetTester tester, {
+    bool isOhos = false,
+  }) async {
     tester.view.physicalSize = const Size(1400, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -116,7 +121,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const TestApp(child: AccessView()),
+        child: TestApp(child: AccessView(isOhos: isOhos)),
       ),
     );
     await tester.pump();
@@ -128,6 +133,33 @@ void main() {
   }
 
   group('visible package list', () {
+    testWidgets(
+      'HarmonyOS offers process lookup for an undiscovered app list',
+      (tester) async {
+        container.read(packagesProvider.notifier).value = [];
+        await pumpAccessView(tester, isOhos: true);
+        expect(find.text('Find process'), findsOneWidget);
+        await tester.tap(find.text('Find process'));
+        await tester.pump();
+        expect(
+          container.read(patchClashConfigProvider).findProcessMode,
+          FindProcessMode.always,
+        );
+        expect(find.text('Find process'), findsNothing);
+        await teardownView(tester);
+      },
+    );
+
+    testWidgets('shows a query failure instead of an empty app list', (
+      tester,
+    ) async {
+      container.read(packagesProvider.notifier).value = [];
+      systemAction.failLoading = true;
+      await pumpAccessView(tester);
+      expect(find.textContaining('Application query failed'), findsOneWidget);
+      await teardownView(tester);
+    });
+
     testWidgets('hides system and offline apps by default', (tester) async {
       seedAccessControl(const AccessControlProps(enable: true));
 

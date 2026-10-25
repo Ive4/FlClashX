@@ -349,29 +349,22 @@ class MessageLookup extends MessageLookupByLibrary {
     "appendSystemDns": MessageLookupByLibrary.simpleMessage(
       "Ajouter le DNS du système",
     ),
+    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage(
+      "Clear application history? Proxy rules will be kept.",
+    ),
+    "applicationClearHistory": MessageLookupByLibrary.simpleMessage(
+      "Clear history",
+    ),
     "applicationCurrent": MessageLookupByLibrary.simpleMessage("Current apps"),
     "applicationHistory": MessageLookupByLibrary.simpleMessage("History"),
-    "applicationSearch": MessageLookupByLibrary.simpleMessage("Search name or path"),
-    "applicationLastSeen": MessageLookupByLibrary.simpleMessage("Last active"),
-    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("Clear history"),
-    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("Remove from history"),
-    "applicationReset": MessageLookupByLibrary.simpleMessage("Reset connections"),
-    "applicationResetHint": MessageLookupByLibrary.simpleMessage("Close this app’s current connections; new connections use the latest policy"),
-    "applicationResetDone": MessageLookupByLibrary.simpleMessage("Connections closed; waiting for the app to reconnect"),
-    "applicationResetFailed": MessageLookupByLibrary.simpleMessage("Some connections could not be closed. Please retry"),
-    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("No history yet. Identified app connections are recorded automatically"),
-    "applicationNoMatches": MessageLookupByLibrary.simpleMessage("No matching apps"),
-    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("Clear application history? Proxy rules will be kept."),
-    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building."),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("Automatic update installation currently supports Windows only."),
-    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("Update verification failed. Please download again."),
-    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("Download and install update"),
-    "updateVerifying": MessageLookupByLibrary.simpleMessage("Verifying installer…"),
-    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("You are up to date."),
-    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."),
-    "applicationProxy": MessageLookupByLibrary.simpleMessage(
-      "Applications",
+    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage(
+      "No history yet. Identified app connections are recorded automatically",
     ),
+    "applicationLastSeen": MessageLookupByLibrary.simpleMessage("Last active"),
+    "applicationNoMatches": MessageLookupByLibrary.simpleMessage(
+      "No matching apps",
+    ),
+    "applicationProxy": MessageLookupByLibrary.simpleMessage("Applications"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "La règle a été enregistrée, mais son application a échoué. Réappliquez le profil actuel.",
     ),
@@ -406,6 +399,24 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "applicationProxyScriptUnsupported": MessageLookupByLibrary.simpleMessage(
       "Les règles des applications sont modifiables dans les extensions standard et les profils personnalisés. Les extensions de script sont en lecture seule ici.",
+    ),
+    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage(
+      "Remove from history",
+    ),
+    "applicationReset": MessageLookupByLibrary.simpleMessage(
+      "Reset connections",
+    ),
+    "applicationResetDone": MessageLookupByLibrary.simpleMessage(
+      "Connections closed; waiting for the app to reconnect",
+    ),
+    "applicationResetFailed": MessageLookupByLibrary.simpleMessage(
+      "Some connections could not be closed. Please retry",
+    ),
+    "applicationResetHint": MessageLookupByLibrary.simpleMessage(
+      "Close this app’s current connections; new connections use the latest policy",
+    ),
+    "applicationSearch": MessageLookupByLibrary.simpleMessage(
+      "Search name or path",
     ),
     "applied": MessageLookupByLibrary.simpleMessage("Appliqué"),
     "applyNow": MessageLookupByLibrary.simpleMessage("Appliquer maintenant"),
@@ -1944,6 +1955,43 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "Le sniffer lit le domaine dans le trafic TLS, HTTP et QUIC afin que les règles puissent le reconnaître.",
     ),
+    "snippetConnect": MessageLookupByLibrary.simpleMessage(
+      "Connexion par jeton",
+    ),
+    "snippetDownload": MessageLookupByLibrary.simpleMessage(
+      "Déchiffrer et restaurer",
+    ),
+    "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
+      "Compression XZ et chiffrement AES-256-GCM avant l’envoi. Le mot de passe n’est ni envoyé ni conservé. Il ne peut pas être récupéré en cas d’oubli.",
+    ),
+    "snippetGitee": MessageLookupByLibrary.simpleMessage("Extraits Gitee"),
+    "snippetLogout": MessageLookupByLibrary.simpleMessage(
+      "Supprimer le jeton de cet appareil ? Les sauvegardes seront conservées. Révoquez le jeton sur le site du service si nécessaire.",
+    ),
+    "snippetNetworkError": MessageLookupByLibrary.simpleMessage(
+      "Connexion impossible. Vérifiez le réseau ou le proxy.",
+    ),
+    "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
+      "Un extrait non public contenant les données chiffrées sera créé.",
+    ),
+    "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "Utilisez un mot de passe distinct et conservez-le dans votre gestionnaire.",
+    ),
+    "snippetPermissionError": MessageLookupByLibrary.simpleMessage(
+      "Accès refusé ou limite atteinte. Vérifiez les droits du jeton ou réessayez plus tard.",
+    ),
+    "snippetSignedOut": MessageLookupByLibrary.simpleMessage(
+      "Connectez-vous pour synchroniser les sauvegardes chiffrées",
+    ),
+    "snippetToken": MessageLookupByLibrary.simpleMessage(
+      "Jeton d’accès personnel",
+    ),
+    "snippetTokenHelp": MessageLookupByLibrary.simpleMessage(
+      "GitHub : droit gist. Gitee : gists et user_info. Le jeton reste dans le stockage sécurisé de l’appareil ; aucune application OAuth requise.",
+    ),
+    "snippetUpload": MessageLookupByLibrary.simpleMessage(
+      "Envoyer la sauvegarde chiffrée",
+    ),
     "socksPort": MessageLookupByLibrary.simpleMessage("Port SOCKS"),
     "softStyle": MessageLookupByLibrary.simpleMessage("Doux"),
     "sort": MessageLookupByLibrary.simpleMessage("Trier"),
@@ -2073,6 +2121,27 @@ class MessageLookup extends MessageLookupByLibrary {
       "Désépingler la fenêtre",
     ),
     "update": MessageLookupByLibrary.simpleMessage("Mettre à jour"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage(
+      "You are up to date.",
+    ),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
+      "Download and install update",
+    ),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
+      "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+    ),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
+      "The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.",
+    ),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
+      "Update verification failed. Please download again.",
+    ),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage(
+      "Verifying installer…",
+    ),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
+      "Automatic update installation currently supports Windows only.",
+    ),
     "upload": MessageLookupByLibrary.simpleMessage("Envoi"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage(
       "Bande passante d’envoi",

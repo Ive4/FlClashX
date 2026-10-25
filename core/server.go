@@ -177,7 +177,11 @@ func StartServer(arg string) {
 }
 
 func serve(dialed ipcConn) {
-	defer releaseOnExit()
+	serveWithCleanup(dialed, releaseOnExit)
+}
+
+func serveWithCleanup(dialed ipcConn, cleanup func()) {
+	defer cleanup()
 	defer func() {
 		connMu.Lock()
 		c := conn

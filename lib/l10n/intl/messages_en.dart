@@ -329,26 +329,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "appendSystemDns": MessageLookupByLibrary.simpleMessage(
       "Append system DNS",
     ),
+    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage(
+      "Clear application history? Proxy rules will be kept.",
+    ),
+    "applicationClearHistory": MessageLookupByLibrary.simpleMessage(
+      "Clear history",
+    ),
     "applicationCurrent": MessageLookupByLibrary.simpleMessage("Current apps"),
     "applicationHistory": MessageLookupByLibrary.simpleMessage("History"),
-    "applicationSearch": MessageLookupByLibrary.simpleMessage("Search name or path"),
+    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage(
+      "No history yet. Identified app connections are recorded automatically",
+    ),
     "applicationLastSeen": MessageLookupByLibrary.simpleMessage("Last active"),
-    "applicationClearHistory": MessageLookupByLibrary.simpleMessage("Clear history"),
-    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage("Remove from history"),
-    "applicationReset": MessageLookupByLibrary.simpleMessage("Reset connections"),
-    "applicationResetHint": MessageLookupByLibrary.simpleMessage("Close this app’s current connections; new connections use the latest policy"),
-    "applicationResetDone": MessageLookupByLibrary.simpleMessage("Connections closed; waiting for the app to reconnect"),
-    "applicationResetFailed": MessageLookupByLibrary.simpleMessage("Some connections could not be closed. Please retry"),
-    "applicationHistoryEmpty": MessageLookupByLibrary.simpleMessage("No history yet. Identified app connections are recorded automatically"),
-    "applicationNoMatches": MessageLookupByLibrary.simpleMessage("No matching apps"),
-    "applicationClearConfirm": MessageLookupByLibrary.simpleMessage("Clear application history? Proxy rules will be kept."),
-    "updateSourceMissing": MessageLookupByLibrary.simpleMessage("The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building."),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage("Automatic update installation currently supports Windows only."),
-    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage("Update verification failed. Please download again."),
-    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("Download and install update"),
-    "updateVerifying": MessageLookupByLibrary.simpleMessage("Verifying installer…"),
-    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("You are up to date."),
-    "updateRestartNotice": MessageLookupByLibrary.simpleMessage("After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."),
+    "applicationNoMatches": MessageLookupByLibrary.simpleMessage(
+      "No matching apps",
+    ),
     "applicationProxy": MessageLookupByLibrary.simpleMessage("Apps"),
     "applicationProxyApplyFailed": MessageLookupByLibrary.simpleMessage(
       "The rule was saved, but could not be applied. Apply the current profile to retry.",
@@ -384,6 +379,24 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "applicationProxyScriptUnsupported": MessageLookupByLibrary.simpleMessage(
       "App rules can be adjusted in standard extensions and custom profiles. Script extensions are read-only here.",
+    ),
+    "applicationRemoveHistory": MessageLookupByLibrary.simpleMessage(
+      "Remove from history",
+    ),
+    "applicationReset": MessageLookupByLibrary.simpleMessage(
+      "Reset connections",
+    ),
+    "applicationResetDone": MessageLookupByLibrary.simpleMessage(
+      "Connections closed; waiting for the app to reconnect",
+    ),
+    "applicationResetFailed": MessageLookupByLibrary.simpleMessage(
+      "Some connections could not be closed. Please retry",
+    ),
+    "applicationResetHint": MessageLookupByLibrary.simpleMessage(
+      "Close this app’s current connections; new connections use the latest policy",
+    ),
+    "applicationSearch": MessageLookupByLibrary.simpleMessage(
+      "Search name or path",
     ),
     "applied": MessageLookupByLibrary.simpleMessage("Applied"),
     "applyNow": MessageLookupByLibrary.simpleMessage("Apply now"),
@@ -1802,6 +1815,43 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "The sniffer reads the domain from TLS, HTTP and QUIC traffic so rules can match it.",
     ),
+    "snippetConnect": MessageLookupByLibrary.simpleMessage(
+      "Connect with token",
+    ),
+    "snippetDownload": MessageLookupByLibrary.simpleMessage(
+      "Decrypt and restore",
+    ),
+    "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
+      "XZ compression and AES-256-GCM encryption happen before upload. Your password is never uploaded or stored. A forgotten password cannot be recovered.",
+    ),
+    "snippetGitee": MessageLookupByLibrary.simpleMessage("Gitee snippets"),
+    "snippetLogout": MessageLookupByLibrary.simpleMessage(
+      "Remove this device’s token? Cloud backups are kept. Revoke the token on the service’s website if needed.",
+    ),
+    "snippetNetworkError": MessageLookupByLibrary.simpleMessage(
+      "Cannot reach the snippet service. Check your network or proxy.",
+    ),
+    "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
+      "Create a non-public snippet containing encrypted backup data.",
+    ),
+    "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "Use a separate backup password and keep it in your password manager.",
+    ),
+    "snippetPermissionError": MessageLookupByLibrary.simpleMessage(
+      "Access denied or rate limited. Check token permissions or retry later.",
+    ),
+    "snippetSignedOut": MessageLookupByLibrary.simpleMessage(
+      "Connect to sync encrypted backups between devices",
+    ),
+    "snippetToken": MessageLookupByLibrary.simpleMessage(
+      "Personal access token",
+    ),
+    "snippetTokenHelp": MessageLookupByLibrary.simpleMessage(
+      "GitHub: gist permission. Gitee: gists and user_info permissions. Tokens stay in secure device storage; no OAuth app is required.",
+    ),
+    "snippetUpload": MessageLookupByLibrary.simpleMessage(
+      "Upload encrypted backup",
+    ),
     "socksPort": MessageLookupByLibrary.simpleMessage("SOCKS port"),
     "softStyle": MessageLookupByLibrary.simpleMessage("Soft"),
     "sort": MessageLookupByLibrary.simpleMessage("Sort"),
@@ -1921,6 +1971,27 @@ class MessageLookup extends MessageLookupByLibrary {
     "unnamed": MessageLookupByLibrary.simpleMessage("Unnamed"),
     "unpinWindow": MessageLookupByLibrary.simpleMessage("Unpin window"),
     "update": MessageLookupByLibrary.simpleMessage("Update"),
+    "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage(
+      "You are up to date.",
+    ),
+    "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
+      "Download and install update",
+    ),
+    "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
+      "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+    ),
+    "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
+      "The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.",
+    ),
+    "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
+      "Update verification failed. Please download again.",
+    ),
+    "updateVerifying": MessageLookupByLibrary.simpleMessage(
+      "Verifying installer…",
+    ),
+    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
+      "Automatic update installation currently supports Windows only.",
+    ),
     "upload": MessageLookupByLibrary.simpleMessage("Upload"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage("Upload bandwidth"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),

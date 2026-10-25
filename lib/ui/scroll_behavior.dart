@@ -6,12 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 bool isTouchPlatform(TargetPlatform platform) => switch (platform) {
-  TargetPlatform.android ||
-  TargetPlatform.iOS ||
-  TargetPlatform.fuchsia => true,
   TargetPlatform.linux ||
   TargetPlatform.macOS ||
   TargetPlatform.windows => false,
+  _ => true,
 };
 
 class BaseScrollBehavior extends MaterialScrollBehavior {

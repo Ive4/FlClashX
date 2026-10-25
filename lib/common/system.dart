@@ -37,6 +37,8 @@ class System {
 
   bool get isAndroid => Platform.isAndroid;
 
+  bool get isOhos => Platform.operatingSystem == 'ohos';
+
   bool get isLinux => Platform.isLinux;
 
   bool get isTV => _isTV;
@@ -56,6 +58,7 @@ class System {
       'macos' => (deviceInfo as MacOsDeviceInfo).majorVersion,
       'android' => (deviceInfo as AndroidDeviceInfo).version.sdkInt,
       'windows' => (deviceInfo as WindowsDeviceInfo).majorVersion,
+      'ohos' => deviceInfo.data['sdkInt'] as int,
       String() => 0,
     };
   }

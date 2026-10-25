@@ -997,5 +997,18 @@
   "updateDownloadInstall": "Download and install update",
   "updateVerifying": "Verifying installer…",
   "updateAlreadyCurrent": "You are up to date.",
-  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission."
+  "updateRestartNotice": "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
+  "snippetGitee": "Фрагменты Gitee",
+  "snippetConnect": "Подключить по токену",
+  "snippetToken": "Личный токен доступа",
+  "snippetTokenHelp": "GitHub: право gist. Gitee: gists и user_info. Токен хранится в защищённом хранилище устройства; OAuth-приложение не нужно.",
+  "snippetSignedOut": "Подключитесь для синхронизации зашифрованных копий",
+  "snippetUpload": "Загрузить зашифрованную копию",
+  "snippetDownload": "Расшифровать и восстановить",
+  "snippetNewBackup": "Будет создан непубличный фрагмент с зашифрованными данными.",
+  "snippetEncryptionHelp": "Перед отправкой используются XZ и AES-256-GCM. Пароль не отправляется и не сохраняется. Забытый пароль восстановить нельзя.",
+  "snippetPasswordHelp": "Используйте отдельный пароль и сохраните его в менеджере паролей.",
+  "snippetLogout": "Удалить токен с устройства? Облачные копии сохранятся. При необходимости отзовите токен на сайте сервиса.",
+  "snippetNetworkError": "Не удалось подключиться. Проверьте сеть или прокси.",
+  "snippetPermissionError": "Доступ запрещён или превышен лимит. Проверьте права токена или повторите позже."
 }
