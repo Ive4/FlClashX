@@ -259,8 +259,8 @@ void main() {
       await buildClient().upload(archive.path);
 
       expect(server.requests.map((item) => item.method), ['MKCOL', 'PUT']);
-      expect(server.requests.last.path, '/$appName/backup.zip');
-      expect(server.files['/$appName/backup.zip'], archive.readAsBytesSync());
+      expect(server.requests.last.path, '/FlClashX/backup.zip');
+      expect(server.files['/FlClashX/backup.zip'], archive.readAsBytesSync());
     });
 
     test('a base path prefixes every request', () async {
@@ -280,13 +280,107 @@ void main() {
 
     test('download writes the remote archive to the given path', () async {
       final payload = List<int>.generate(64, (index) => index);
-      server.files['/$appName/backup.zip'] = payload;
+      server.files['/FlClashX/backup.zip'] = payload;
       final target = join(root.path, 'download.zip');
 
       await buildClient().download(target);
 
       expect(File(target).readAsBytesSync(), payload);
     });
+
+    test(
+      'download falls back to the FlClash directory when the default backup is missing',
+      () async {
+        const payload = [4, 5, 6];
+        server.files['/FlClash/backup.zip'] = payload;
+        final target = join(root.path, 'legacy-download.zip');
+
+        await buildClient().download(target);
+
+        expect(server.requests.map((request) => request.path), [
+          '/FlClashX/backup.zip',
+          '/FlClash/backup.zip',
+        ]);
+        expect(File(target).readAsBytesSync(), payload);
+      },
+    );
+
+    test(
+      'download prefers FlClashX when both directories contain a backup',
+      () async {
+        server.files['/FlClashX/backup.zip'] = [1, 2, 3];
+        server.files['/FlClash/backup.zip'] = [4, 5, 6];
+        final target = join(root.path, 'preferred-download.zip');
+
+        await buildClient().download(target);
+
+        expect(server.requests.single.path, '/FlClashX/backup.zip');
+        expect(File(target).readAsBytesSync(), [1, 2, 3]);
+      },
+    );
+
+    test(
+      'directory fallback keeps the configured base path and file name',
+      () async {
+        server.files['/remote.php/dav/FlClash/backup.zip'] = [7, 8, 9];
+        final target = join(root.path, 'base-path-download.zip');
+
+        await buildClient(path: '/remote.php/dav').download(target);
+
+        expect(server.requests.map((request) => request.path), [
+          '/remote.php/dav/FlClashX/backup.zip',
+          '/remote.php/dav/FlClash/backup.zip',
+        ]);
+        expect(File(target).readAsBytesSync(), [7, 8, 9]);
+      },
+    );
+
+    for (final status in [
+      HttpStatus.unauthorized,
+      HttpStatus.forbidden,
+      HttpStatus.internalServerError,
+    ]) {
+      test('download does not fall back after HTTP $status', () async {
+        server.responses.add((
+          method: 'GET',
+          status: status,
+          headers: const {},
+        ));
+        final target = File(join(root.path, 'failed-download.zip'));
+        target.writeAsBytesSync([42]);
+
+        await expectLater(
+          buildClient().download(target.path),
+          throwsA(
+            isA<DAVException>().having(
+              (error) => error.statusCode,
+              'status',
+              status,
+            ),
+          ),
+        );
+
+        expect(server.requests.single.path, '/FlClashX/backup.zip');
+        expect(target.readAsBytesSync(), [42]);
+      });
+    }
+
+    test(
+      'upload uses FlClashX and keeps an existing FlClash backup intact',
+      () async {
+        server.files['/FlClash/backup.zip'] = [4, 5, 6];
+        final archive = writeArchive([1, 2, 3]);
+
+        await buildClient().upload(archive.path);
+
+        expect(server.files['/FlClashX/backup.zip'], [1, 2, 3]);
+        expect(server.files['/FlClash/backup.zip'], [4, 5, 6]);
+        expect(server.requests.map((request) => request.path), [
+          '/FlClashX/',
+          '/FlClashX/backup.zip',
+        ]);
+      },
+    );
 
     test('download reports the status the server sent', () async {
       await expectLater(

@@ -18,7 +18,7 @@ class GitHubSyncStrings {
 
   String get title =>
       service == SnippetService.github ? 'GitHub Gist' : _l.snippetGitee;
-  String get signIn => _l.snippetConnect;
+  String get signIn => _l.snippetBrowserSignIn;
   String get signOut => _text('退出登录', 'Sign out');
   String get signedOut => _l.snippetSignedOut;
   String get upload => _l.snippetUpload;
@@ -78,6 +78,7 @@ class GitHubSyncStrings {
         'Wrong password or damaged backup. Nothing was restored.',
       ),
       GitHubSyncFailure.network => _l.snippetNetworkError,
+      GitHubSyncFailure.browser => _l.snippetBrowserError,
       GitHubSyncFailure.unauthorized => _text(
         '登录已失效，请退出后重新登录。',
         'Session expired. Sign out and sign in again.',
@@ -87,14 +88,8 @@ class GitHubSyncStrings {
         '验证码已过期，请重新登录。',
         'The code expired. Sign in again.',
       ),
-      GitHubSyncFailure.denied => _text(
-        '你已取消 GitHub 授权。',
-        'GitHub authorization was declined.',
-      ),
-      GitHubSyncFailure.clientId => _text(
-        '请检查 Client ID，并在 OAuth App 中启用 Device Flow。',
-        'Check the Client ID and enable Device Flow in your OAuth App.',
-      ),
+      GitHubSyncFailure.denied => _l.snippetAuthorizationDenied,
+      GitHubSyncFailure.clientId => _l.snippetOAuthUnavailable,
       GitHubSyncFailure.invalidBackup => _text(
         '云端备份无效或校验失败，未恢复任何数据。',
         'Invalid cloud backup or checksum mismatch. Nothing was restored.',

@@ -9,6 +9,7 @@ import 'package:dio/io.dart';
 import 'package:fl_clash/core/backup_codec.dart';
 
 const githubOAuthClientId = String.fromEnvironment('FLCLASHX_GITHUB_CLIENT_ID');
+const giteeOAuthUrl = String.fromEnvironment('FLCLASHX_GITEE_OAUTH_URL');
 const githubBackupFile = 'flclashx-backup.json';
 const githubBackupDescription = 'FlClashX configuration backup';
 const githubBackupMaxBytes = 5 * 1024 * 1024;
@@ -24,6 +25,7 @@ enum SnippetService {
 
 enum GitHubSyncFailure {
   network,
+  browser,
   unauthorized,
   forbidden,
   expired,
@@ -50,21 +52,29 @@ class GitHubSession {
     required this.token,
     required this.login,
     required this.userId,
+    this.refreshToken,
+    this.expiresAt,
   });
   final String token;
   final String login;
   final int userId;
+  final String? refreshToken;
+  final DateTime? expiresAt;
 
   Map<String, dynamic> toJson() => {
     'token': token,
     'login': login,
     'userId': userId,
+    if (refreshToken != null) 'refreshToken': refreshToken,
+    if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),
   };
 
   factory GitHubSession.fromJson(Map<String, dynamic> json) => GitHubSession(
     token: json['token'] as String,
     login: json['login'] as String,
     userId: json['userId'] as int,
+    refreshToken: json['refreshToken'] as String?,
+    expiresAt: DateTime.tryParse(json['expiresAt'] as String? ?? ''),
   );
 }
 
@@ -138,9 +148,11 @@ class GitHubSyncClient {
   GitHubSyncClient({
     Dio? dio,
     Future<void> Function(Duration)? delay,
+    this.githubClientId = githubOAuthClientId,
+    this.giteeAuthorizationUrl = giteeOAuthUrl,
     this.service = SnippetService.github,
   }) : _dio = dio ?? _createDio(),
-       _delay = delay ?? Future<void>.delayed;
+       _delay = delay;
 
   static Dio _createDio() {
     final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 20)));
@@ -154,10 +166,44 @@ class GitHubSyncClient {
   }
 
   final SnippetService service;
+  final String githubClientId;
+  final String giteeAuthorizationUrl;
   final Dio _dio;
-  final Future<void> Function(Duration) _delay;
+  final Future<void> Function(Duration)? _delay;
 
   void close() => _dio.close(force: true);
+
+  Uri? get _giteeAuthorizationBase {
+    final uri = Uri.tryParse(giteeAuthorizationUrl);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      return null;
+    }
+    return uri.replace(path: uri.path.replaceFirst(RegExp(r'/+$'), ''));
+  }
+
+  bool get browserAuthorizationAvailable => switch (service) {
+    SnippetService.github => githubClientId.trim().isNotEmpty,
+    SnippetService.gitee => _giteeAuthorizationBase != null,
+  };
+
+  Future<void> _wait(Duration duration, CancelToken cancel) async {
+    if (cancel.isCancelled) throw cancel.cancelError!;
+    final completer = Completer<void>();
+    final timer = _delay == null ? Timer(duration, completer.complete) : null;
+    try {
+      await Future.any([
+        _delay?.call(duration) ?? completer.future,
+        cancel.whenCancel.then<void>((error) => throw error),
+      ]);
+    } finally {
+      timer?.cancel();
+    }
+  }
 
   Future<dynamic> _request(
     String url, {
@@ -244,28 +290,85 @@ class GitHubSyncClient {
     );
   }
 
+  Future<GitHubSession> refreshSession(GitHubSession session) async {
+    final expires = session.expiresAt;
+    if (expires == null ||
+        expires.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
+      return session;
+    }
+    final refresh = session.refreshToken;
+    final base = _giteeAuthorizationBase;
+    if (service != SnippetService.gitee || refresh == null || base == null) {
+      throw const GitHubSyncException(GitHubSyncFailure.unauthorized);
+    }
+    final result =
+        await _request(
+              '$base/refresh',
+              method: 'POST',
+              data: {'refresh_token': refresh},
+            )
+            as Map<String, dynamic>;
+    final token = result['access_token'];
+    if (token is! String || token.isEmpty) {
+      throw const GitHubSyncException(GitHubSyncFailure.unauthorized);
+    }
+    return GitHubSession(
+      token: token,
+      login: session.login,
+      userId: session.userId,
+      refreshToken: result['refresh_token'] as String? ?? refresh,
+      expiresAt: _expiresAt(result),
+    );
+  }
+
+  DateTime? _expiresAt(Map<String, dynamic> response) {
+    final seconds = response['expires_in'];
+    return seconds is int && seconds > 0
+        ? DateTime.now().add(Duration(seconds: seconds))
+        : null;
+  }
+
   Future<GitHubSession> authorize(
     String clientId, {
     required CancelToken cancel,
     required Future<void> Function(GitHubDeviceCode) onCode,
   }) async {
+    final giteeBase = _giteeAuthorizationBase;
+    if ((service == SnippetService.github && clientId.trim().isEmpty) ||
+        (service == SnippetService.gitee && giteeBase == null)) {
+      throw const GitHubSyncException(GitHubSyncFailure.clientId);
+    }
     final response =
         await _request(
-              'https://github.com/login/device/code',
+              service == SnippetService.github
+                  ? 'https://github.com/login/device/code'
+                  : '$giteeBase/device/code',
               method: 'POST',
-              data: {'client_id': clientId, 'scope': 'gist'},
+              data: service == SnippetService.github
+                  ? {'client_id': clientId, 'scope': 'gist'}
+                  : <String, dynamic>{},
               cancel: cancel,
             )
             as Map<String, dynamic>;
     if (response['error'] != null) {
       throw const GitHubSyncException(GitHubSyncFailure.clientId);
     }
-    final uri = Uri.parse(response['verification_uri'] as String);
-    if (uri.scheme != 'https' ||
-        uri.host != 'github.com' ||
-        uri.path != '/login/device' ||
-        uri.userInfo.isNotEmpty ||
-        uri.port != 443) {
+    final uri = Uri.tryParse(response['verification_uri'] as String? ?? '');
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      throw const GitHubSyncException(GitHubSyncFailure.network);
+    }
+    final validUri = service == SnippetService.github
+        ? uri.scheme == 'https' &&
+              uri.host == 'github.com' &&
+              uri.path == '/login/device' &&
+              uri.port == 443 &&
+              uri.userInfo.isEmpty &&
+              !uri.hasFragment
+        : uri.origin == giteeBase!.origin &&
+              uri.path == '${giteeBase.path}/authorize' &&
+              uri.userInfo.isEmpty &&
+              !uri.hasFragment;
+    if (!validUri) {
       throw const GitHubSyncException(GitHubSyncFailure.network);
     }
     final deadline = DateTime.now().add(
@@ -273,21 +376,20 @@ class GitHubSyncClient {
     );
     var interval = (response['interval'] as int?) ?? 5;
     if (interval < 1) interval = 1;
-    await onCode(GitHubDeviceCode(response['user_code'] as String, uri));
+    await onCode(GitHubDeviceCode(response['user_code'] as String? ?? '', uri));
     while (DateTime.now().isBefore(deadline)) {
-      await Future.any([
-        _delay(Duration(seconds: interval)),
-        cancel.whenCancel.then<void>((error) => throw error),
-      ]);
+      await _wait(Duration(seconds: interval), cancel);
       if (cancel.isCancelled) throw cancel.cancelError!;
       if (!DateTime.now().isBefore(deadline)) break;
       final result =
           await _request(
-                'https://github.com/login/oauth/access_token',
+                service == SnippetService.github
+                    ? 'https://github.com/login/oauth/access_token'
+                    : '$giteeBase/token',
                 method: 'POST',
                 cancel: cancel,
                 data: {
-                  'client_id': clientId,
+                  if (service == SnippetService.github) 'client_id': clientId,
                   'device_code': response['device_code'],
                   'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
                 },
@@ -303,6 +405,8 @@ class GitHubSyncClient {
           throw const GitHubSyncException(GitHubSyncFailure.denied);
         case 'expired_token':
           throw const GitHubSyncException(GitHubSyncFailure.expired);
+        case 'exchange_failed':
+          throw const GitHubSyncException(GitHubSyncFailure.network);
         case null:
           break;
         default:
@@ -310,12 +414,17 @@ class GitHubSyncClient {
       }
       final scopes = (result['scope'] as String? ?? '').split(RegExp(r'[, ]+'));
       final token = result['access_token'];
-      if (token is! String || token.isEmpty || !scopes.contains('gist')) {
+      final requiredScopes = service == SnippetService.github
+          ? ['gist']
+          : ['gists', 'user_info'];
+      if (token is! String ||
+          token.isEmpty ||
+          !requiredScopes.every(scopes.contains)) {
         throw const GitHubSyncException(GitHubSyncFailure.forbidden);
       }
       final user =
           await _request(
-                'https://api.github.com/user',
+                '${service.apiBase}/user',
                 token: token,
                 cancel: cancel,
               )
@@ -325,6 +434,8 @@ class GitHubSyncClient {
         token: token,
         login: user['login'] as String,
         userId: user['id'] as int,
+        refreshToken: result['refresh_token'] as String?,
+        expiresAt: _expiresAt(result),
       );
     }
     throw const GitHubSyncException(GitHubSyncFailure.expired);

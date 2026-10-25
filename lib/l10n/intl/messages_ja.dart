@@ -1569,7 +1569,20 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "スニッファーは TLS・HTTP・QUIC の通信からドメインを読み取り、ルールで照合できるようにします。",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "認証が拒否されました。",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "ブラウザーを開けませんでした。再試行するかトークンで接続してください。",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "ブラウザーで認証を完了してください。この画面は自動的に更新されます。",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage("ブラウザーでログイン"),
     "snippetConnect": MessageLookupByLibrary.simpleMessage("トークンで接続"),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "確認コードをコピーしました。GitHub に貼り付けて認証してください。",
+    ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage("復号して復元"),
     "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
       "送信前に XZ 圧縮と AES-256-GCM 暗号化を行います。パスワードは送信も保存もされず、忘れると復元できません。",
@@ -1584,6 +1597,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "暗号化データを含む非公開スニペットを作成します。",
     ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "このビルドではブラウザー認証が有効ではありません。トークンで接続できます。",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage("ブラウザーを開く"),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "専用のパスワードを設定し、パスワード管理アプリで保管してください。",
     ),
@@ -1744,7 +1761,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "VPN は VpnService でシステムの全トラフィックを自動的にルーティングします。",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "アカウントのパスワードではなく、サービスで発行した WebDAV アプリパスワードを使用してください。",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage("WebDAV設定"),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("Nutstore"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud（欧州）"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "pCloud のデータ保存地域を選び、アカウントのメールアドレスとパスワードを入力してください。二要素認証が有効な場合は確認メールで接続を承認してください。",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage("pCloud（米国）"),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "サービスの既定アドレスを入力しました。必要に応じてフォルダーのパスを追加できます。",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("サービス"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "Yandex 360 プランと WebDAV アプリパスワードが必要です。",
+    ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage("ホワイトリストモード"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("システムに書き込む"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(

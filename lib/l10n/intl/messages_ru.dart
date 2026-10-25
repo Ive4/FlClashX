@@ -1897,8 +1897,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "Сниффер определяет домен по трафику TLS, HTTP и QUIC, чтобы правила могли его сопоставить.",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "В авторизации отказано.",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "Не удалось открыть браузер. Повторите попытку или используйте токен.",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "Завершите авторизацию в браузере. Это окно обновится автоматически.",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage(
+      "Войти через браузер",
+    ),
     "snippetConnect": MessageLookupByLibrary.simpleMessage(
       "Подключить по токену",
+    ),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "Код подтверждения скопирован. Вставьте его на GitHub для авторизации.",
     ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage(
       "Расшифровать и восстановить",
@@ -1915,6 +1930,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "Будет создан непубличный фрагмент с зашифрованными данными.",
+    ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "В этой сборке авторизация через браузер не включена. Используйте токен.",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage(
+      "Открыть браузер",
     ),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "Используйте отдельный пароль и сохраните его в менеджере паролей.",
@@ -2110,8 +2131,24 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "VPN автоматически направляет весь системный трафик через VpnService.",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "Используйте пароль приложения WebDAV, созданный в сервисе, вместо пароля аккаунта.",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage(
       "Настройка WebDAV",
+    ),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("Nutstore"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud (ЕС)"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "Выберите регион хранения данных pCloud. Введите почту и пароль аккаунта; при двухфакторной аутентификации подтвердите подключение по электронной почте.",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage("pCloud (США)"),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "Адрес сервиса заполнен автоматически. При необходимости добавьте путь к папке.",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("Сервис"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "Требуется тариф Яндекс 360 и пароль приложения WebDAV.",
     ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage(
       "Режим белого списка",

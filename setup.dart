@@ -127,9 +127,13 @@ List<String> createFlutterBuildArgs({
 Map<String, String> createBuildEnvironment(String env) {
   return {
     'APP_ENV': env,
-    if (Platform.environment['FLCLASHX_GITHUB_CLIENT_ID'] case final String clientId)
+    if (Platform.environment['FLCLASHX_GITHUB_CLIENT_ID']
+        case final String clientId)
       'FLCLASHX_GITHUB_CLIENT_ID': clientId,
-    if (Platform.environment['FLCLASHX_UPDATE_REPOSITORY'] case final String repository)
+    if (Platform.environment['FLCLASHX_GITEE_OAUTH_URL'] case final String url)
+      'FLCLASHX_GITEE_OAUTH_URL': url,
+    if (Platform.environment['FLCLASHX_UPDATE_REPOSITORY']
+        case final String repository)
       'FLCLASHX_UPDATE_REPOSITORY': repository,
   };
 }

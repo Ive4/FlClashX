@@ -1956,8 +1956,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "El sniffer lee el dominio del tráfico TLS, HTTP y QUIC para que las reglas puedan aplicarse.",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "Se rechazó la autorización.",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "No se pudo abrir el navegador. Reintenta o usa un token.",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "Completa la autorización en el navegador. Esta ventana se actualizará automáticamente.",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage(
+      "Iniciar sesión en el navegador",
+    ),
     "snippetConnect": MessageLookupByLibrary.simpleMessage(
       "Conectar con token",
+    ),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "El código de verificación se ha copiado. Pégalo en GitHub para autorizar.",
     ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage(
       "Descifrar y restaurar",
@@ -1974,6 +1989,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "Se creará un fragmento no público con los datos cifrados.",
+    ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "Esta versión no tiene activada la autorización por navegador. Puedes usar un token.",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage(
+      "Abrir navegador",
     ),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "Usa una contraseña exclusiva y guárdala en tu gestor de contraseñas.",
@@ -2167,8 +2188,24 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "La VPN enruta automáticamente todo el tráfico del sistema a través de VpnService.",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "Usa una contraseña de aplicación WebDAV generada por el proveedor, en lugar de la contraseña de tu cuenta.",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage(
       "Configuración de WebDAV",
+    ),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("Nutstore"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud (UE)"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "Elige la región donde pCloud almacena tus datos. Usa el correo y la contraseña de tu cuenta; confirma la conexión por correo si tienes activada la autenticación de dos factores.",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage("pCloud (EE. UU.)"),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "Se ha rellenado la dirección predeterminada del proveedor. Puedes añadir una ruta de carpeta.",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("Proveedor"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "Requiere un plan Yandex 360 y una contraseña de aplicación WebDAV.",
     ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage("Modo lista blanca"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage(

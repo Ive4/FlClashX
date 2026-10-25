@@ -33,8 +33,7 @@ class DAVClient {
     }
   }
 
-  // Keep existing backups accessible when the display name changes.
-  String get root => '/FlClash';
+  String get root => '/FlClashX';
 
   String get backupFile => '$root/$fileName';
 
@@ -44,7 +43,13 @@ class DAVClient {
   }
 
   Future<void> download(String localPath) async {
-    final bytes = await _transport.get(backupFile);
+    late final List<int> bytes;
+    try {
+      bytes = await _transport.get(backupFile);
+    } on DAVException catch (error) {
+      if (error.statusCode != io.HttpStatus.notFound) rethrow;
+      bytes = await _transport.get('/FlClash/$fileName');
+    }
     await io.File(localPath).safeWriteAsBytes(bytes);
   }
 }

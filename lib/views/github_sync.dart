@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/common/github_sync.dart';
 import 'package:fl_clash/enum/enum.dart';
@@ -9,6 +10,7 @@ import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/github_sync_strings.dart';
 import 'package:fl_clash/widgets/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,9 +22,11 @@ class GitHubSyncSection extends StatefulWidget {
     required this.onRestore,
     this.service = SnippetService.github,
     this.client,
+    this.launchBrowser,
   });
   final SnippetService service;
   final GitHubSyncClient? client;
+  final Future<bool> Function(Uri)? launchBrowser;
   final Future<void> Function(BackupDelivery, BackupFetch?) onBackup;
   final Future<void> Function(BackupFetch, RestoreStrategy) onRestore;
 
@@ -90,9 +94,20 @@ class _GitHubSyncSectionState extends State<GitHubSyncSection> {
   }
 
   Future<void> _refresh() async {
-    final session = _session;
-    if (session == null) return;
+    final current = _session;
+    if (current == null) return;
+    final session = await _client.refreshSession(current);
+    if (!mounted) return;
+    if (!identical(session, current)) {
+      await _storage.write(
+        key: _sessionKey,
+        value: jsonEncode(session.toJson()),
+      );
+      if (!mounted) return;
+      _session = session;
+    }
     final backups = await _client.list(session);
+    if (!mounted) return;
     final previous = _selected?.id;
     _backups = backups;
     _selected =
@@ -101,15 +116,39 @@ class _GitHubSyncSectionState extends State<GitHubSyncSection> {
   }
 
   Future<void> _signIn() async {
+    final result = await dialogs.showCommonDialog<Object>(
+      context: context,
+      child: _SnippetAuthorizationDialog(
+        client: _client,
+        launchBrowser: widget.launchBrowser,
+      ),
+    );
+    if (!mounted) return;
+    if (result == _SnippetSignInAction.token) {
+      await _signInWithToken();
+    } else if (result is GitHubSession) {
+      await _run(() => _saveSession(result));
+    }
+  }
+
+  Future<void> _signInWithToken() async {
     final token = await dialogs.showCommonDialog<String>(
       context: context,
       child: _SnippetTokenDialog(service: widget.service),
     );
     if (token == null || !mounted) return;
-    final session = await _client.signInWithToken(token);
+    await _run(() async {
+      final session = await _client.signInWithToken(token);
+      if (!mounted) return;
+      await _saveSession(session);
+    });
+  }
+
+  Future<void> _saveSession(GitHubSession session) async {
     final backups = await _client.list(session);
     if (!mounted) return;
     await _storage.write(key: _sessionKey, value: jsonEncode(session.toJson()));
+    if (!mounted) return;
     _session = session;
     _backups = backups;
     _selected = backups.firstOrNull;
@@ -306,8 +345,9 @@ class _GitHubSyncSectionState extends State<GitHubSyncSection> {
                 ? const CommonCircleLoading(size: 20)
                 : TonalButton(
                     label: _session == null ? strings.signIn : strings.signOut,
-                    onPressed: () =>
-                        _run(_session == null ? _signIn : _signOut),
+                    onPressed: _session == null
+                        ? _signIn
+                        : () => _run(_signOut),
                   ),
           ),
           if (_error != null)
@@ -328,6 +368,138 @@ class _GitHubSyncSectionState extends State<GitHubSyncSection> {
                 onTap: () => _run(_download),
               ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+enum _SnippetSignInAction { token }
+
+class _SnippetAuthorizationDialog extends StatefulWidget {
+  const _SnippetAuthorizationDialog({required this.client, this.launchBrowser});
+  final GitHubSyncClient client;
+  final Future<bool> Function(Uri)? launchBrowser;
+
+  @override
+  State<_SnippetAuthorizationDialog> createState() =>
+      _SnippetAuthorizationDialogState();
+}
+
+class _SnippetAuthorizationDialogState
+    extends State<_SnippetAuthorizationDialog> {
+  CancelToken? _cancel;
+  GitHubDeviceCode? _code;
+  String? _error;
+  bool _working = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.client.browserAuthorizationAvailable) {
+        unawaited(_authorize());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _cancel?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _openBrowser(Uri uri) async {
+    final opened =
+        await (widget.launchBrowser?.call(uri) ??
+            launchUrl(uri, mode: LaunchMode.externalApplication));
+    if (!opened) {
+      throw const GitHubSyncException(GitHubSyncFailure.browser);
+    }
+  }
+
+  Future<void> _authorize() async {
+    if (_working) return;
+    final cancel = CancelToken();
+    _cancel = cancel;
+    setState(() {
+      _working = true;
+      _error = null;
+      _code = null;
+    });
+    final strings = GitHubSyncStrings(context, widget.client.service);
+    try {
+      final session = await widget.client.authorize(
+        widget.client.githubClientId,
+        cancel: cancel,
+        onCode: (code) async {
+          if (!mounted || cancel.isCancelled) return;
+          setState(() => _code = code);
+          if (code.userCode.isNotEmpty) {
+            await Clipboard.setData(ClipboardData(text: code.userCode));
+          }
+          if (!mounted || cancel.isCancelled) return;
+          await _openBrowser(code.verificationUri);
+        },
+      );
+      if (mounted && !cancel.isCancelled) Navigator.of(context).pop(session);
+    } catch (error) {
+      if (mounted && !cancel.isCancelled) {
+        setState(() => _error = strings.error(error));
+      }
+    } finally {
+      cancel.cancel();
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = GitHubSyncStrings(context, widget.client.service);
+    final l = context.appLocalizations;
+    final available = widget.client.browserAuthorizationAvailable;
+    final code = _code;
+    return CommonDialog(
+      title: strings.signIn,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.cancel),
+        ),
+        if (available && !_working)
+          TextButton(onPressed: _authorize, child: Text(l.retry)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(available ? l.snippetBrowserHelp : l.snippetOAuthUnavailable),
+          if (code != null && code.userCode.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SelectableText(code.userCode),
+            Text(l.snippetDeviceCodeHelp),
+          ],
+          if (_working) ...[
+            const SizedBox(height: 16),
+            const CommonCircleLoading(size: 20),
+          ],
+          if (_error != null)
+            Text(_error!, style: TextStyle(color: context.colorScheme.error)),
+          if (code != null && _working)
+            TextButton(
+              onPressed: () async {
+                try {
+                  await _openBrowser(code.verificationUri);
+                } catch (_) {
+                  if (mounted) setState(() => _error = l.snippetBrowserError);
+                }
+              },
+              child: Text(l.snippetOpenBrowser),
+            ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_SnippetSignInAction.token),
+            child: Text(l.snippetConnect),
+          ),
         ],
       ),
     );
@@ -362,7 +534,7 @@ class _SnippetTokenDialogState extends State<_SnippetTokenDialog> {
     }
 
     return CommonDialog(
-      title: strings.signIn,
+      title: context.appLocalizations.snippetConnect,
       hasFields: true,
       actions: [
         TextButton(

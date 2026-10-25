@@ -1955,8 +1955,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "Le sniffer lit le domaine dans le trafic TLS, HTTP et QUIC afin que les règles puissent le reconnaître.",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "L’autorisation a été refusée.",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "Impossible d’ouvrir le navigateur. Réessayez ou utilisez un jeton.",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "Terminez l’autorisation dans votre navigateur. Cette fenêtre sera actualisée automatiquement.",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage(
+      "Se connecter via le navigateur",
+    ),
     "snippetConnect": MessageLookupByLibrary.simpleMessage(
       "Connexion par jeton",
+    ),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "Le code de vérification a été copié. Collez-le dans GitHub pour autoriser l’accès.",
     ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage(
       "Déchiffrer et restaurer",
@@ -1973,6 +1988,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "Un extrait non public contenant les données chiffrées sera créé.",
+    ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "L’autorisation par navigateur n’est pas activée dans cette version. Vous pouvez utiliser un jeton.",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage(
+      "Ouvrir le navigateur",
     ),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "Utilisez un mot de passe distinct et conservez-le dans votre gestionnaire.",
@@ -2166,8 +2187,26 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "Le VPN fait passer automatiquement tout le trafic du système par VpnService.",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "Utilisez un mot de passe d’application WebDAV créé auprès du fournisseur, plutôt que le mot de passe du compte.",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage(
       "Configuration WebDAV",
+    ),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("Nutstore"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud (UE)"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "Choisissez la région de stockage de votre compte pCloud. Utilisez l’adresse e-mail et le mot de passe du compte ; confirmez la connexion par e-mail si l’authentification à deux facteurs est activée.",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage(
+      "pCloud (États-Unis)",
+    ),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "L’adresse par défaut du fournisseur est renseignée. Vous pouvez y ajouter un chemin de dossier.",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("Fournisseur"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "Nécessite un forfait Yandex 360 et un mot de passe d’application WebDAV.",
     ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage("Mode liste blanche"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage(

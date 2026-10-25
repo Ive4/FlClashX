@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:fl_clash/common/github_sync.dart';
 import 'package:fl_clash/views/github_sync.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -15,6 +17,7 @@ import 'package:fl_clash/views/backup_and_restore.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 
 import '../helpers/glyph_finders.dart';
 import '../helpers/test_app.dart';
@@ -82,12 +85,24 @@ void main() {
 
   group('snippet sync', () {
     setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+    setUp(() {
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (_) async => null,
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+    });
 
     Future<void> pumpSync(
       WidgetTester tester,
       SnippetService service,
-      _SnippetClient client,
-    ) async {
+      _SnippetClient client, {
+      Future<bool> Function(Uri)? launchBrowser,
+    }) async {
       tester.view.physicalSize = const Size(1200, 1400);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -102,6 +117,7 @@ void main() {
                   GitHubSyncSection(
                     service: service,
                     client: client,
+                    launchBrowser: launchBrowser ?? (_) async => true,
                     onBackup: (_, _) async {},
                     onRestore: (_, _) async {},
                   ),
@@ -112,6 +128,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+    }
+
+    Future<void> openTokenDialog(WidgetTester tester) async {
+      await tester.tap(find.text('Sign in with browser'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('has not enabled browser'), findsOneWidget);
+      await tester.tap(find.text('Connect with token'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
     }
 
     for (final service in SnippetService.values) {
@@ -128,9 +153,7 @@ void main() {
             ),
             findsWidgets,
           );
-          await tester.tap(find.text('Connect with token'));
-          await tester.pump();
-          await tester.pump(const Duration(seconds: 1));
+          await openTokenDialog(tester);
           await tester.enterText(find.byType(TextFormField), 'personal-token');
           await tester.tap(find.text('Confirm'));
           await tester.pumpAndSettle();
@@ -155,23 +178,132 @@ void main() {
       (tester) async {
         final client = _SnippetClient(SnippetService.gitee)..fail = true;
         await pumpSync(tester, SnippetService.gitee, client);
-        await tester.tap(find.text('Connect with token'));
-        await tester.pump();
-        await tester.pump(const Duration(seconds: 1));
+        await openTokenDialog(tester);
         await tester.enterText(find.byType(TextFormField), 'bad-token');
         await tester.tap(find.text('Confirm'));
         await tester.pumpAndSettle();
-        expect(find.text('Connect with token'), findsOneWidget);
+        expect(find.text('Sign in with browser'), findsOneWidget);
         expect(find.textContaining('Session expired'), findsOneWidget);
         expect(await const FlutterSecureStorage().readAll(), isEmpty);
         client.fail = false;
-        await tester.tap(find.text('Connect with token'));
-        await tester.pump();
-        await tester.pump(const Duration(seconds: 1));
+        await openTokenDialog(tester);
         expect(find.byType(TextFormField), findsOneWidget);
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
         expect(find.byType(TextFormField), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    for (final service in SnippetService.values) {
+      testWidgets(
+        '${service.name} browser authorization persists its session',
+        (tester) async {
+          final opened = <Uri>[];
+          final client = _SnippetClient(service, browser: true);
+          await pumpSync(
+            tester,
+            service,
+            client,
+            launchBrowser: (uri) async {
+              opened.add(uri);
+              return true;
+            },
+          );
+          await tester.tap(find.text('Sign in with browser'));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(
+            opened.single.host,
+            service == SnippetService.github
+                ? 'github.com'
+                : 'oauth.example.com',
+          );
+          expect(
+            find.text('ABCD-1234'),
+            service == SnippetService.github ? findsOneWidget : findsNothing,
+          );
+          client.authorization.complete(
+            const GitHubSession(
+              token: 'oauth-token',
+              login: 'browser-user',
+              userId: 7,
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('browser-user'), findsOneWidget);
+          final stored = await const FlutterSecureStorage().readAll();
+          expect(stored.keys, ['flclashx.${service.name}.session.v1']);
+          expect(
+            (jsonDecode(stored.values.single) as Map)['token'],
+            'oauth-token',
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets(
+      'browser denial allows retry, then cancel stops authorization',
+      (tester) async {
+        final client = _SnippetClient(SnippetService.github, browser: true);
+        await pumpSync(tester, SnippetService.github, client);
+        await tester.tap(find.text('Sign in with browser'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        client.authorization.completeError(
+          const GitHubSyncException(GitHubSyncFailure.denied),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Authorization was declined.'), findsOneWidget);
+        client.authorization = Completer<GitHubSession>();
+        await tester.tap(find.text('Retry'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(client.authorizationCancel!.isCancelled, true);
+        expect(await const FlutterSecureStorage().readAll(), isEmpty);
+        expect(find.text('Sign in with browser'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('browser launch failure offers token fallback', (tester) async {
+      final client = _SnippetClient(SnippetService.github, browser: true);
+      await pumpSync(
+        tester,
+        SnippetService.github,
+        client,
+        launchBrowser: (_) async => false,
+      );
+      await tester.tap(find.text('Sign in with browser'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Could not open the browser'), findsOneWidget);
+      await tester.tap(find.text('Connect with token'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextFormField), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(await const FlutterSecureStorage().readAll(), isEmpty);
+    });
+
+    testWidgets(
+      'disposing browser authorization cancels without saving a late result',
+      (tester) async {
+        final client = _SnippetClient(SnippetService.gitee, browser: true);
+        await pumpSync(tester, SnippetService.gitee, client);
+        await tester.tap(find.text('Sign in with browser'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpWidget(const SizedBox());
+        client.authorization.complete(
+          const GitHubSession(token: 'late-token', login: 'late', userId: 7),
+        );
+        await tester.pumpAndSettle();
+        expect(client.authorizationCancel!.isCancelled, true);
+        expect(client.closed, true);
+        expect(await const FlutterSecureStorage().readAll(), isEmpty);
         expect(tester.takeException(), isNull);
       },
     );
@@ -235,8 +367,123 @@ void main() {
   });
 
   group('WebDAVForm', () {
+    Future<void> chooseProvider(WidgetTester tester, String provider) async {
+      await tester.tap(find.widgetWithText(FormRow, 'Service provider'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(provider).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('provider choices end with Custom', (tester) async {
+      await pumpForm(tester, const WebDAVForm());
+      expect(
+        tester.widget<TextFormField>(field('Address')).controller!.text,
+        'https://dav.jianguoyun.com/dav/',
+      );
+      await tester.tap(find.widgetWithText(FormRow, 'Service provider'));
+      await tester.pumpAndSettle();
+      const labels = [
+        'Nutstore',
+        'Koofr',
+        'Yandex Disk',
+        'pCloud (US)',
+        'pCloud (EU)',
+        'Custom',
+      ];
+      final positions = labels
+          .map((label) => tester.getTopLeft(find.text(label).last).dy)
+          .toList();
+      expect(positions, orderedEquals([...positions]..sort()));
+      await tester.tap(find.text('Custom'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(field('Address')).controller!.text,
+        isEmpty,
+      );
+      expect(find.text('WebDAV server address'), findsOneWidget);
+    });
+
+    for (final entry in {
+      'Nutstore': 'https://dav.jianguoyun.com/dav/',
+      'Koofr': 'https://app.koofr.net/dav/Koofr/',
+      'Yandex Disk': 'https://webdav.yandex.ru/',
+      'pCloud (US)': 'https://webdav.pcloud.com/',
+      'pCloud (EU)': 'https://ewebdav.pcloud.com/',
+    }.entries) {
+      testWidgets('${entry.key} saves without entering an address', (
+        tester,
+      ) async {
+        await pumpForm(tester, const WebDAVForm());
+        await chooseProvider(tester, entry.key);
+        await tester.enterText(field('Account'), 'alice');
+        await tester.enterText(field('Password'), 'app-password');
+        await save(tester);
+        final dav = container.read(davSettingProvider)!;
+        expect(dav.uri, entry.value);
+        expect(dav.user, 'alice');
+        expect(dav.password, 'app-password');
+        expect(dav.fileName, defaultDavFileName);
+      });
+    }
+
+    testWidgets('changing providers preserves custom drafts and credentials', (
+      tester,
+    ) async {
+      await pumpForm(tester, const WebDAVForm(dav: _existing));
+      await chooseProvider(tester, 'Nutstore');
+      await tester.enterText(
+        field('Address'),
+        'https://dav.jianguoyun.com/dav/backups/',
+      );
+      await chooseProvider(tester, 'Custom');
+      expect(
+        tester.widget<TextFormField>(field('Address')).controller!.text,
+        _existing.uri,
+      );
+      await chooseProvider(tester, 'Koofr');
+      await chooseProvider(tester, 'Nutstore');
+      expect(
+        tester.widget<TextFormField>(field('Address')).controller!.text,
+        'https://dav.jianguoyun.com/dav/backups/',
+      );
+      await save(tester);
+      final dav = container.read(davSettingProvider)!;
+      expect(dav.user, _existing.user);
+      expect(dav.password, _existing.password);
+      expect(dav.fileName, _existing.fileName);
+    });
+
+    testWidgets(
+      'editing recognizes a preset subfolder without rewriting its address',
+      (tester) async {
+        const uri = 'https://app.koofr.net/dav/Koofr/My%20Backups';
+        await pumpForm(tester, WebDAVForm(dav: _existing.copyWith(uri: uri)));
+        expect(find.widgetWithText(FormRow, 'Koofr'), findsOneWidget);
+        await save(tester);
+        expect(container.read(davSettingProvider)!.uri, uri);
+        expect(
+          container.read(davSettingProvider)!.fileName,
+          _existing.fileName,
+        );
+      },
+    );
+
+    testWidgets(
+      'dismissing provider selection does not alter the existing binding',
+      (tester) async {
+        await pumpForm(tester, const WebDAVForm(dav: _existing));
+        await tester.tap(find.widgetWithText(FormRow, 'Service provider'));
+        await tester.pumpAndSettle();
+        Navigator.of(tester.element(find.text('Koofr'))).pop();
+        await tester.pumpAndSettle();
+        await save(tester);
+        expect(container.read(davSettingProvider), _existing);
+      },
+    );
+
     testWidgets('rejects an empty form and stores nothing', (tester) async {
       await pumpForm(tester, const WebDAVForm());
+      await tester.enterText(field('Address'), '');
 
       await save(tester);
 
@@ -349,9 +596,39 @@ void main() {
 }
 
 class _SnippetClient extends GitHubSyncClient {
-  _SnippetClient(SnippetService service) : super(service: service);
+  _SnippetClient(SnippetService service, {bool browser = false})
+    : super(
+        service: service,
+        githubClientId: browser ? 'client' : '',
+        giteeAuthorizationUrl: browser ? 'https://oauth.example.com' : '',
+      );
   bool fail = false;
   bool closed = false;
+  Completer<GitHubSession> authorization = Completer<GitHubSession>();
+  CancelToken? authorizationCancel;
+
+  @override
+  Future<GitHubSession> authorize(
+    String clientId, {
+    required CancelToken cancel,
+    required Future<void> Function(GitHubDeviceCode) onCode,
+  }) async {
+    authorizationCancel = cancel;
+    await onCode(
+      GitHubDeviceCode(
+        service == SnippetService.github ? 'ABCD-1234' : '',
+        Uri.parse(
+          service == SnippetService.github
+              ? 'https://github.com/login/device'
+              : 'https://oauth.example.com/authorize?state=test',
+        ),
+      ),
+    );
+    return Future.any([
+      authorization.future,
+      cancel.whenCancel.then<GitHubSession>((error) => throw error),
+    ]);
+  }
 
   @override
   Future<GitHubSession> signInWithToken(String token) async {

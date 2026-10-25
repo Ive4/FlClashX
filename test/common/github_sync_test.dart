@@ -265,6 +265,192 @@ void main() {
     expect(adapter.requests.length, 1);
   });
 
+  test(
+    'Gitee browser authorization exchanges through its broker and validates identity',
+    () async {
+      var polls = 0;
+      final adapter = _Adapter((request) {
+        if (request.uri.path == '/gitee/device/code') {
+          expect(request.uri.host, 'oauth.example.com');
+          expect(request.headers, isNot(contains('Authorization')));
+          return {
+            'device_code': 'secret-device',
+            'verification_uri':
+                'https://oauth.example.com/gitee/authorize?state=public-state',
+            'expires_in': 600,
+            'interval': 5,
+          };
+        }
+        if (request.uri.path == '/gitee/token') {
+          expect(request.data, {
+            'device_code': 'secret-device',
+            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+          });
+          return polls++ == 0
+              ? {'error': 'authorization_pending'}
+              : {
+                  'access_token': 'gitee-token',
+                  'scope': 'gists user_info',
+                  'refresh_token': 'refresh',
+                  'expires_in': 86400,
+                };
+        }
+        expect(request.uri.host, 'gitee.com');
+        expect(request.uri.path, '/api/v5/user');
+        expect(request.uri.queryParameters['access_token'], 'gitee-token');
+        return {'login': 'gitee-user', 'id': 10};
+      });
+      final client = GitHubSyncClient(
+        service: SnippetService.gitee,
+        giteeAuthorizationUrl: 'https://oauth.example.com/gitee/',
+        dio: Dio()..httpClientAdapter = adapter,
+        delay: (_) async {},
+      );
+      addTearDown(client.close);
+      expect(client.browserAuthorizationAvailable, true);
+      final session = await client.authorize(
+        '',
+        cancel: CancelToken(),
+        onCode: (code) async {
+          expect(code.userCode, isEmpty);
+          expect(
+            code.verificationUri.toString(),
+            isNot(contains('secret-device')),
+          );
+        },
+      );
+      expect(session.login, 'gitee-user');
+      expect(session.refreshToken, 'refresh');
+      expect(session.expiresAt!.isAfter(DateTime.now()), true);
+      expect(
+        GitHubSession.fromJson(
+          jsonDecode(jsonEncode(session.toJson())),
+        ).refreshToken,
+        'refresh',
+      );
+    },
+  );
+
+  for (final uri in [
+    'https://attacker.example/authorize',
+    'http://oauth.example.com/authorize',
+    'https://oauth.example.com/other',
+    'https://user@oauth.example.com/authorize',
+  ]) {
+    test(
+      'Gitee rejects an unexpected browser authorization URL: $uri',
+      () async {
+        final client = GitHubSyncClient(
+          service: SnippetService.gitee,
+          giteeAuthorizationUrl: 'https://oauth.example.com',
+          dio: Dio()
+            ..httpClientAdapter = _Adapter(
+              (_) => {
+                'verification_uri': uri,
+                'device_code': 'secret',
+                'expires_in': 600,
+              },
+            ),
+        );
+        addTearDown(client.close);
+        await expectLater(
+          client.authorize(
+            '',
+            cancel: CancelToken(),
+            onCode: (_) async {
+              fail('Unexpected URL must never reach the browser');
+            },
+          ),
+          throwsA(_failure(GitHubSyncFailure.network)),
+        );
+      },
+    );
+  }
+
+  test('Gitee token without required scopes is rejected', () async {
+    final adapter = _Adapter(
+      (request) => request.uri.path.endsWith('/device/code')
+          ? {
+              'verification_uri':
+                  'https://oauth.example.com/authorize?state=test',
+              'device_code': 'secret',
+              'expires_in': 600,
+            }
+          : {'access_token': 'token', 'scope': 'user_info'},
+    );
+    final client = GitHubSyncClient(
+      service: SnippetService.gitee,
+      giteeAuthorizationUrl: 'https://oauth.example.com',
+      dio: Dio()..httpClientAdapter = adapter,
+      delay: (_) async {},
+    );
+    addTearDown(client.close);
+    await expectLater(
+      client.authorize('', cancel: CancelToken(), onCode: (_) async {}),
+      throwsA(_failure(GitHubSyncFailure.forbidden)),
+    );
+    expect(adapter.requests, hasLength(2));
+  });
+
+  test(
+    'Gitee refreshes an expired session without sending its access token to the broker',
+    () async {
+      final adapter = _Adapter((request) {
+        expect(request.uri.toString(), 'https://oauth.example.com/refresh');
+        expect(request.data, {'refresh_token': 'old-refresh'});
+        expect(request.headers, isNot(contains('Authorization')));
+        return {
+          'access_token': 'new-token',
+          'refresh_token': 'new-refresh',
+          'expires_in': 3600,
+        };
+      });
+      final client = GitHubSyncClient(
+        service: SnippetService.gitee,
+        giteeAuthorizationUrl: 'https://oauth.example.com',
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+      addTearDown(client.close);
+      final session = await client.refreshSession(
+        GitHubSession(
+          token: 'old-token',
+          login: 'tester',
+          userId: 7,
+          refreshToken: 'old-refresh',
+          expiresAt: DateTime(2020),
+        ),
+      );
+      expect(session.token, 'new-token');
+      expect(session.refreshToken, 'new-refresh');
+      expect(session.userId, 7);
+      expect(identical(await client.refreshSession(session), session), true);
+      expect(adapter.requests, hasLength(1));
+    },
+  );
+
+  test(
+    'missing OAuth configuration never makes an authorization request',
+    () async {
+      for (final service in SnippetService.values) {
+        final adapter = _Adapter(
+          (_) => fail('No request without configuration'),
+        );
+        final client = GitHubSyncClient(
+          service: service,
+          githubClientId: '',
+          giteeAuthorizationUrl: '',
+          dio: Dio()..httpClientAdapter = adapter,
+        );
+        addTearDown(client.close);
+        expect(client.browserAuthorizationAvailable, false);
+        await expectLater(
+          client.authorize('', cancel: CancelToken(), onCode: (_) async {}),
+          throwsA(_failure(GitHubSyncFailure.clientId)),
+        );
+      }
+    },
+  );
+
   test('discovery filters public, unrelated and other-account Gists', () async {
     final adapter = _Adapter(
       (_) => [

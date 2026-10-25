@@ -360,6 +360,56 @@ class _RestoreOptionsDialogState extends State<RestoreOptionsDialog> {
 
 enum _DavField { uri, user, password }
 
+enum _DavProvider {
+  nutstore('https://dav.jianguoyun.com/dav/'),
+  koofr('https://app.koofr.net/dav/Koofr/'),
+  yandex('https://webdav.yandex.ru/'),
+  pcloudUS('https://webdav.pcloud.com/'),
+  pcloudEU('https://ewebdav.pcloud.com/'),
+  custom('');
+
+  const _DavProvider(this.address);
+  final String address;
+
+  String label(AppLocalizations l) => switch (this) {
+    nutstore => l.webDAVNutstore,
+    koofr => 'Koofr',
+    yandex => 'Yandex Disk',
+    pcloudUS => l.webDAVPCloudUS,
+    pcloudEU => l.webDAVPCloudEU,
+    custom => l.custom,
+  };
+
+  String help(AppLocalizations l) => switch (this) {
+    nutstore || koofr => l.webDAVAppPasswordHelp,
+    yandex => l.webDAVYandexHelp,
+    pcloudUS || pcloudEU => l.webDAVPCloudHelp,
+    custom => l.addressHelp,
+  };
+
+  static _DavProvider fromAddress(String address) {
+    final uri = Uri.tryParse(address);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      return custom;
+    }
+    for (final provider in values) {
+      if (provider == custom) continue;
+      final base = Uri.parse(provider.address);
+      final path = base.path.replaceFirst(RegExp(r'/+$'), '');
+      if (uri.origin == base.origin &&
+          (uri.path == path || uri.path.startsWith('$path/'))) {
+        return provider;
+      }
+    }
+    return custom;
+  }
+}
+
 class WebDAVForm extends ConsumerStatefulWidget {
   final DAVProps? dav;
 
@@ -373,12 +423,16 @@ class _WebDAVFormState extends ConsumerState<WebDAVForm> {
   late final TextEditingController _uriController;
   late final TextEditingController _userController;
   late final TextEditingController _passwordController;
+  late _DavProvider _provider;
+  final _addresses = <_DavProvider, String>{};
   bool _attempted = false;
 
   @override
   void initState() {
     super.initState();
-    _uriController = TextEditingController(text: widget.dav?.uri);
+    final address = widget.dav?.uri ?? _DavProvider.nutstore.address;
+    _provider = _DavProvider.fromAddress(address);
+    _uriController = TextEditingController(text: address);
     _userController = TextEditingController(text: widget.dav?.user);
     _passwordController = TextEditingController(text: widget.dav?.password);
   }
@@ -419,6 +473,34 @@ class _WebDAVFormState extends ConsumerState<WebDAVForm> {
     }
   }
 
+  void _handleUriChanged(String value) {
+    setState(() {
+      _provider = _DavProvider.fromAddress(value);
+      _addresses[_provider] = value;
+    });
+  }
+
+  Future<void> _chooseProvider() async {
+    final l = context.appLocalizations;
+    final selected = await Navigator.of(context).push<_DavProvider>(
+      PagedSheetRoute(
+        builder: (sheetContext) => SelectionSheet<_DavProvider>(
+          title: l.webDAVProvider,
+          sections: const [SelectionSection(items: _DavProvider.values)],
+          labelBuilder: (provider) => provider.label(l),
+          selectedOf: (_) => _provider,
+          onSelected: (provider) => Navigator.of(sheetContext).pop(provider),
+        ),
+      ),
+    );
+    if (selected == null || selected == _provider || !mounted) return;
+    setState(() {
+      _addresses[_provider] = _uriController.text;
+      _provider = selected;
+      _uriController.text = _addresses[selected] ?? selected.address;
+    });
+  }
+
   void _submit() {
     if (_issue(context.appLocalizations) != null) {
       setState(() {
@@ -454,8 +536,17 @@ class _WebDAVFormState extends ConsumerState<WebDAVForm> {
       error: issue?.message,
       children: [
         generateSection(
-          footer: appLocalizations.addressHelp,
+          footer: [
+            if (_provider != _DavProvider.custom)
+              appLocalizations.webDAVPresetHelp,
+            _provider.help(appLocalizations),
+          ].join('\n'),
           items: [
+            FormRow(
+              title: appLocalizations.webDAVProvider,
+              trailing: Text(_provider.label(appLocalizations)),
+              onPressed: _chooseProvider,
+            ),
             FormRow(
               title: appLocalizations.address,
               invalid: issue?.field == _DavField.uri,
@@ -466,7 +557,7 @@ class _WebDAVFormState extends ConsumerState<WebDAVForm> {
                 textInputAction: TextInputAction.next,
                 autocorrect: false,
                 inputFormatters: TextInputLimits.limit(TextInputLimits.uri),
-                onChanged: _handleChanged,
+                onChanged: _handleUriChanged,
               ),
             ),
             FormRow(

@@ -1540,7 +1540,20 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "스니퍼는 TLS, HTTP, QUIC 트래픽에서 도메인을 읽어 규칙이 일치할 수 있게 합니다.",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "인증이 거부되었습니다.",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "브라우저를 열 수 없습니다. 다시 시도하거나 토큰으로 연결하세요.",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "브라우저에서 인증을 완료하세요. 이 창은 자동으로 업데이트됩니다.",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage("브라우저로 로그인"),
     "snippetConnect": MessageLookupByLibrary.simpleMessage("토큰으로 연결"),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "인증 코드가 복사되었습니다. GitHub에 붙여넣어 인증하세요.",
+    ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage("복호화 및 복원"),
     "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
       "업로드 전에 XZ 압축 및 AES-256-GCM 암호화를 수행합니다. 비밀번호는 업로드하거나 저장하지 않으며 잊어버리면 복구할 수 없습니다.",
@@ -1555,6 +1568,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "암호화 데이터를 담은 비공개 코드 조각을 만듭니다.",
     ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "이 빌드에서는 브라우저 인증이 활성화되지 않았습니다. 토큰으로 연결할 수 있습니다.",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage("브라우저 열기"),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "별도의 백업 비밀번호를 설정하고 비밀번호 관리자에 보관하세요.",
     ),
@@ -1719,7 +1736,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "VPN은 VpnService를 통해 모든 시스템 트래픽을 자동으로 라우팅합니다.",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "계정 비밀번호 대신 서비스 제공자가 발급한 WebDAV 앱 비밀번호를 사용하세요.",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage("WebDAV 구성"),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("Nutstore"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud(유럽)"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "pCloud 계정의 데이터 저장 지역을 선택하세요. 계정 이메일과 비밀번호를 입력하고, 2단계 인증이 활성화된 경우 이메일에서 연결을 승인하세요.",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage("pCloud(미국)"),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "서비스의 기본 주소가 입력되었습니다. 필요하면 폴더 경로를 추가할 수 있습니다.",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("서비스 제공자"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "Yandex 360 요금제와 WebDAV 앱 비밀번호가 필요합니다.",
+    ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage("화이트리스트 모드"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("시스템에 기록"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(

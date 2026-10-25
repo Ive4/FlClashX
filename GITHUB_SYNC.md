@@ -1,6 +1,6 @@
-# GitHub 配置同步
+# GitHub / Gitee 配置同步
 
-入口：设置 → 备份与恢复 → GitHub 同步。
+入口：设置 → 备份与恢复 → GitHub Gist / Gitee 代码片段。
 
 ## 首次配置 OAuth App
 
@@ -11,7 +11,7 @@
 - Authorization callback URL：`https://github.com/Ive4/FlClashX`（设备授权流程不使用回调）
 - 勾选 **Enable Device Flow**。
 
-复制 **Client ID**，填入应用中的 `OAuth Client ID`。不需要创建或填写 Client Secret，也不要将 Client Secret 放进桌面程序。
+由项目维护者复制 **Client ID** 并配置到构建环境，不需要普通用户注册应用或填写 Client ID。不需要创建或填写 GitHub Client Secret，也不要将 Client Secret 放进客户端。
 
 发布版本可以预置这个公开的 Client ID，让用户直接登录：
 
@@ -26,9 +26,17 @@ dart setup.dart windows
 flutter build windows --release --dart-define=FLCLASHX_GITHUB_CLIENT_ID=你的ClientID
 ```
 
+GitHub Actions 发布构建读取同名仓库变量 `FLCLASHX_GITHUB_CLIENT_ID`。此设备授权接入使用默认的不过期令牌；若在 GitHub 应用设置中开启令牌过期，到期后需要重新授权。
+
+## Gitee 浏览器授权
+
+由项目维护者注册 Gitee OAuth 应用并部署授权服务，应用密钥仅保留在服务端。将服务的 HTTPS 地址配置到构建环境或 Actions 仓库变量 `FLCLASHX_GITEE_OAUTH_URL`，普通用户即可点击“浏览器授权登录”，在 Gitee 页面确认后自动连接。OAuth 令牌到期时使用安全存储中的刷新令牌续期。
+
+完整的服务启动、回调地址、HTTPS 代理和发布配置见 [Gitee 授权服务说明](services/gitee_oauth/README.md)。未配置 OAuth 的构建会显示提示，仍可使用手动 Token 连接。
+
 ## 登录与同步
 
-1. 点击“使用浏览器登录”，在默认浏览器中输入验证码并授权。只请求 `gist` 权限。
+1. 点击“浏览器授权登录”，在默认浏览器中确认授权。GitHub 需输入窗口显示并已复制的短验证码，只请求 `gist` 权限；Gitee 请求 `gists` 和 `user_info` 权限。授权成功后自动保存会话，支持取消、重试和手动 Token 备用入口。
 2. 上传前设置独立的备份密码并再次确认（至少 12 个字符）。不是 GitHub 登录密码。
 3. 首次上传创建非公开 Gist；再次上传可选择覆盖或合并。
 4. 其他设备登录同一 GitHub 账户后，可选择备份，选择覆盖或合并，再输入备份密码恢复。

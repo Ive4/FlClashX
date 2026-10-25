@@ -1416,7 +1416,20 @@ class MessageLookup extends MessageLookupByLibrary {
     "snifferStatusDesc": MessageLookupByLibrary.simpleMessage(
       "域名嗅探从 TLS、HTTP、QUIC 流量中识别域名，供规则匹配。",
     ),
+    "snippetAuthorizationDenied": MessageLookupByLibrary.simpleMessage(
+      "你已拒绝本次授权。",
+    ),
+    "snippetBrowserError": MessageLookupByLibrary.simpleMessage(
+      "无法打开浏览器，请重试或使用 Token 连接。",
+    ),
+    "snippetBrowserHelp": MessageLookupByLibrary.simpleMessage(
+      "请在浏览器中完成授权，此窗口会自动更新。",
+    ),
+    "snippetBrowserSignIn": MessageLookupByLibrary.simpleMessage("浏览器授权登录"),
     "snippetConnect": MessageLookupByLibrary.simpleMessage("使用令牌连接"),
+    "snippetDeviceCodeHelp": MessageLookupByLibrary.simpleMessage(
+      "验证码已复制，请粘贴到 GitHub 授权页面。",
+    ),
     "snippetDownload": MessageLookupByLibrary.simpleMessage("解密并恢复"),
     "snippetEncryptionHelp": MessageLookupByLibrary.simpleMessage(
       "上传前先压缩为 XZ，再使用 AES-256-GCM 加密。密码不会上传或保存，忘记密码将无法恢复。",
@@ -1431,6 +1444,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "snippetNewBackup": MessageLookupByLibrary.simpleMessage(
       "将创建非公开代码片段，保存加密后的备份数据。",
     ),
+    "snippetOAuthUnavailable": MessageLookupByLibrary.simpleMessage(
+      "当前版本尚未启用浏览器授权，你可以使用 Token 连接。",
+    ),
+    "snippetOpenBrowser": MessageLookupByLibrary.simpleMessage("打开浏览器"),
     "snippetPasswordHelp": MessageLookupByLibrary.simpleMessage(
       "请设置独立的备份密码，并使用密码管理器妥善保存。",
     ),
@@ -1577,7 +1594,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "vpnEnableDesc": MessageLookupByLibrary.simpleMessage(
       "VPN 通过 VpnService 自动路由系统所有流量。",
     ),
+    "webDAVAppPasswordHelp": MessageLookupByLibrary.simpleMessage(
+      "密码请使用服务商生成的 WebDAV 应用密码，而非网页登录密码。",
+    ),
     "webDAVConfiguration": MessageLookupByLibrary.simpleMessage("WebDAV配置"),
+    "webDAVNutstore": MessageLookupByLibrary.simpleMessage("坚果云"),
+    "webDAVPCloudEU": MessageLookupByLibrary.simpleMessage("pCloud（欧区）"),
+    "webDAVPCloudHelp": MessageLookupByLibrary.simpleMessage(
+      "请按 pCloud 账号的数据存储区域选择，填写账号邮箱和密码；启用双因素验证时需按邮件确认连接。",
+    ),
+    "webDAVPCloudUS": MessageLookupByLibrary.simpleMessage("pCloud（美区）"),
+    "webDAVPresetHelp": MessageLookupByLibrary.simpleMessage(
+      "已填入服务商默认地址，可按需追加文件夹路径。",
+    ),
+    "webDAVProvider": MessageLookupByLibrary.simpleMessage("服务商"),
+    "webDAVYandexHelp": MessageLookupByLibrary.simpleMessage(
+      "需开通 Yandex 360 套餐，并使用 WebDAV 应用密码。",
+    ),
     "whitelistMode": MessageLookupByLibrary.simpleMessage("白名单模式"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("写入系统"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(
