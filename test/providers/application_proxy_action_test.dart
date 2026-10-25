@@ -104,8 +104,8 @@ void main() {
     ), isTrue);
 
     final rules = await database.rulesDao.queryAddedRules(1).get();
-    expect(rules.first.ruleAction, RuleAction.PROCESS_PATH);
-    expect(rules.first.content, _application.content);
+    expect(rules.first.ruleAction, RuleAction.PROCESS_NAME);
+    expect(rules.first.content, 'browser.exe');
     expect(rules.first.ruleTarget, 'DIRECT');
     expect(rules.skip(1).map((rule) => rule.id), [10, 20]);
     expect(await database.rulesDao.queryProfileRules(2).get(), isEmpty);
@@ -116,43 +116,80 @@ void main() {
     expect(action.applyCalls, 1);
   });
 
-  test('updating replaces duplicates; following rules removes only that app', () async {
-    const rule = Rule(
-      id: 1,
-      ruleAction: RuleAction.PROCESS_PATH,
-      content: 'c:/apps/browser.exe',
-      ruleTarget: 'DIRECT',
-      order: 'a0',
-    );
-    await database.rulesDao.putRule(rule, profileId: 1);
-    await database.rulesDao.putRule(rule.copyWith(id: 2, order: 'a1'), profileId: 1);
-    await database.rulesDao.putRule(
-      rule.copyWith(id: 3, content: r'C:\Other\browser.exe'),
-      profileId: 1,
-    );
-    await database.rulesDao.putRule(rule.copyWith(id: 4));
+  test(
+    'upgrading merges old paths and names only in the selected profile',
+    () async {
+      const rule = Rule(
+        id: 1,
+        ruleAction: RuleAction.PROCESS_PATH,
+        content: 'c:/apps/browser.exe',
+        ruleTarget: 'DIRECT',
+        order: 'a0',
+      );
+      await database.rulesDao.putRule(rule, profileId: 1);
+      await database.rulesDao.putRule(
+        rule.copyWith(id: 2, order: 'a1'),
+        profileId: 1,
+      );
+      await database.rulesDao.putRule(
+        rule.copyWith(id: 3, content: r'C:\Other\browser.exe'),
+        profileId: 1,
+      );
+      await database.rulesDao.putRule(rule.copyWith(id: 4));
+      await database.rulesDao.putRule(
+        rule.copyWith(
+          id: 5,
+          ruleAction: RuleAction.PROCESS_NAME,
+          content: 'BROWSER.EXE',
+          order: 'a2',
+        ),
+        profileId: 1,
+      );
+      await database.rulesDao.putRule(
+        rule.copyWith(id: 6, content: r'C:\Apps\other.exe'),
+        profileId: 1,
+      );
+      await database.rulesDao.putRule(rule.copyWith(id: 7), profileId: 2);
+      await database.rulesDao.putRule(
+        rule.copyWith(id: 8, src: true),
+        profileId: 1,
+      );
 
-    await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: 'Proxy',
-    );
-    final updated = await database.rulesDao.queryApplicationRules(1).get();
-    expect(updated, hasLength(2));
-    expect(updated.first.id, 1);
-    expect(updated.first.ruleTarget, 'Proxy');
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: const ApplicationIdentity(
+          action: RuleAction.PROCESS_PATH,
+          content: r'C:\Apps\app-2.0\browser.exe',
+          windows: true,
+        ),
+        target: 'Proxy',
+      );
+      final updated = await database.rulesDao.queryApplicationRules(1).get();
+      expect(updated, hasLength(2));
+      expect(updated.first.id, 1);
+      expect(updated.first.ruleAction, RuleAction.PROCESS_NAME);
+      expect(updated.first.content, 'browser.exe');
+      expect(updated.first.ruleTarget, 'Proxy');
 
-    await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: null,
-    );
-    expect(
-      (await database.rulesDao.queryApplicationRules(1).get()).single.id,
-      3,
-    );
-    expect((await database.rulesDao.queryGlobalRules().get()).single.id, 4);
-  });
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: null,
+      );
+      expect(
+        (await database.rulesDao.queryApplicationRules(1).get()).single.id,
+        6,
+      );
+      expect((await database.rulesDao.queryGlobalRules().get()).single.id, 4);
+      expect((await database.rulesDao.queryProfileRules(2).get()).single.id, 7);
+      expect(
+        (await database.rulesDao.queryProfileRules(1).get()).map(
+          (rule) => rule.id,
+        ),
+        contains(8),
+      );
+    },
+  );
 
   test('custom profiles accept application rules without a standard extension', () async {
     container.read(profilesProvider.notifier).updateProfile(

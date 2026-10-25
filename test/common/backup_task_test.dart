@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:drift/native.dart';
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/backup_xz.dart';
 import 'package:fl_clash/common/migration.dart';
 import 'package:fl_clash/database/database.dart' as db;
 import 'package:fl_clash/enum/enum.dart';
@@ -13,11 +14,14 @@ import 'package:path/path.dart';
 
 import '../helpers/app_paths.dart';
 
+import '../helpers/backup_codec.dart';
+
 /// The public entry points hand their work to a background isolate, which
 /// cannot reach the mocked platform channels, so the tests drive the worker
 /// functions the isolate calls. Those take every path as an argument, so each
 /// test runs against its own temporary tree.
 void main() {
+  useGoBackupCodec();
   late Directory root;
 
   setUpAll(() async {
@@ -511,7 +515,7 @@ void main() {
         scriptIds: const [2],
         providers: const [localProvider],
       );
-      final archivePath = join(root.path, 'archive', '$uniqueId.zip');
+      final archivePath = join(root.path, 'archive', '$uniqueId.tar.xz');
       await writeBackupArchive(
         archivePath: archivePath,
         configMap: configMap,
@@ -522,13 +526,13 @@ void main() {
       return archivePath;
     }
 
-    Future<String> zipOf(Map<String, List<int>> files) async {
-      final archivePath = join(root.path, 'archive', '$uniqueId.zip');
-      final encoder = ZipFileEncoder()..create(archivePath);
+    Future<String> xzOf(Map<String, List<int>> files) async {
+      final archivePath = join(root.path, 'archive', '$uniqueId.tar.xz');
+      final archive = Archive();
       for (final MapEntry(:key, :value) in files.entries) {
-        encoder.addArchiveFile(ArchiveFile.bytes(key, value));
+        archive.addFile(ArchiveFile.bytes(key, value));
       }
-      await encoder.close();
+      await File(archivePath).writeAsBytes(await encodeBackupXz(TarEncoder().encodeBytes(archive)));
       return archivePath;
     }
 
@@ -556,8 +560,8 @@ void main() {
 
       final archivePath = await backup();
 
-      final names = ZipDecoder()
-          .decodeStream(InputFileStream(archivePath))
+      final names = TarDecoder()
+          .decodeBytes(await decodeBackupXz(await File(archivePath).readAsBytes()))
           .files
           .map((file) => file.name)
           .toSet();
@@ -633,7 +637,7 @@ void main() {
     test(
       'an entry that climbs out of the staging directory is dropped',
       () async {
-        final archivePath = await zipOf({
+        final archivePath = await xzOf({
           configJsonName: utf8.encode(json.encode({'version': 1})),
           '../escaped.txt': utf8.encode('outside'),
         });
@@ -648,22 +652,22 @@ void main() {
     );
 
     test('an archive without a config document is rejected', () async {
-      final archivePath = await zipOf({'unrelated.txt': utf8.encode('x')});
+      final archivePath = await xzOf({'unrelated.txt': utf8.encode('x')});
 
       await expectLater(restore(archivePath), failsWith(BackupFailure.invalid));
     });
 
-    test('a file that is not a zip archive is rejected', () async {
+    test('a file that is not an XZ archive is rejected', () async {
       final archivePath = writeFile(
-        join(root.path, 'archive', '$uniqueId.zip'),
-        'not a zip',
+        join(root.path, 'archive', '$uniqueId.tar.xz'),
+        'not an XZ',
       ).path;
 
       await expectLater(restore(archivePath), failsWith(BackupFailure.invalid));
     });
 
     test('a config from a newer data version is rejected', () async {
-      final archivePath = await zipOf({
+      final archivePath = await xzOf({
         configJsonName: utf8.encode(
           json.encode({'version': Migration.currentVersion + 1}),
         ),
@@ -691,7 +695,7 @@ void main() {
     });
 
     test('an archive without a database yields just the config', () async {
-      final archivePath = await zipOf({
+      final archivePath = await xzOf({
         configJsonName: utf8.encode(json.encode({'version': 1})),
       });
 

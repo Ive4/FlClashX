@@ -11,7 +11,8 @@ import 'package:fl_clash/ui/metrics.dart';
 import 'package:fl_clash/ui/navigator.dart';
 import 'package:fl_clash/ui/typography.dart';
 import 'package:material_new_shapes/material_new_shapes.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart'
+    hide MaterialShapes, RoundedPolygon;
 
 enum NullStatusIllustration {
   data,

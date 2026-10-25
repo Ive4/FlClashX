@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/backup_xz.dart';
 import 'package:fl_clash/common/migration.dart';
 import 'package:fl_clash/database/database.dart';
 import 'package:fl_clash/models/models.dart';
-import 'package:flutter/foundation.dart';
+import 'package:fl_clash/core/backup_codec.dart' show runBackupWorker;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart';
 
 enum BackupFailure { invalid, newerVersion }
@@ -69,7 +73,7 @@ typedef BackupArchiveRequest = ({
 typedef RestoreArchiveRequest = ({String archivePath, String stagingDirPath});
 
 Future<void> backupTask(BackupArchiveRequest request) {
-  return compute(_backupTask, request);
+  return runBackupWorker(_backupTask, request);
 }
 
 Future<void> _backupTask(BackupArchiveRequest request) {
@@ -82,8 +86,100 @@ Future<void> _backupTask(BackupArchiveRequest request) {
   );
 }
 
+Future<void> writeCompressedBackupArchive(BackupArchiveRequest request) async {
+  final archive = Archive();
+  var size = 0;
+  void add(String name, List<int> bytes) {
+    size += bytes.length + 1024;
+    if (size > backupMaxExpandedBytes - 2048) {
+      throw const BackupException(BackupFailure.invalid);
+    }
+    archive.addFile(ArchiveFile(name, bytes.length, bytes));
+  }
+  Future<void> addFile(String name, String path) async {
+    final file = File(path);
+    if (await file.length() + size > backupMaxExpandedBytes - 4096) {
+      throw const BackupException(BackupFailure.invalid);
+    }
+    add(name, await file.readAsBytes());
+  }
+  add(configJsonName, utf8.encode(jsonEncode(request.configMap)));
+  await addFile(backupDatabaseName, request.databaseSnapshotPath);
+  for (final entry in request.entries) {
+    final path = BackupEntries.resolve(request.homeDirPath, entry);
+    if (await File(path).exists()) await addFile(entry, path);
+  }
+  final tar = TarEncoder().encodeBytes(archive);
+  if (tar.length > backupMaxExpandedBytes) {
+    throw const BackupException(BackupFailure.invalid);
+  }
+  final compressed = await encodeBackupXz(tar);
+  await File(request.archivePath).writeAsBytes(compressed, flush: true);
+}
+
+typedef MergeBackupRequest = ({
+  String localPath,
+  String remotePath,
+  String outputPath,
+  String workDir,
+});
+
+Future<void> mergeBackupTask(MergeBackupRequest request) {
+  return runBackupWorker(mergeBackupArchives, request);
+}
+
+Future<void> mergeBackupArchives(MergeBackupRequest request) async {
+  final localDir = join(request.workDir, 'merge-local');
+  final remoteDir = join(request.workDir, 'merge-remote');
+  final local = await readBackupArchive(
+    archivePath: request.localPath, stagingDirPath: localDir,
+  );
+  final remote = await readBackupArchive(
+    archivePath: request.remotePath, stagingDirPath: remoteDir,
+  );
+  final mergedDir = join(request.workDir, 'merge-result');
+  await Directory(mergedDir).create(recursive: true);
+  final snapshot = join(mergedDir, backupDatabaseName);
+  final merged = Database(NativeDatabase.memory());
+  late List<String> entries;
+  try {
+    for (final data in [remote, local]) {
+      await merged.restore(
+        data.profiles, data.scripts, data.rules, data.disabledRules,
+        data.proxyGroups, clashProviders: data.clashProviders,
+        customProxies: data.customProxies, proxyDialers: data.proxyDialers,
+      );
+    }
+    entries = BackupEntries.of(
+      profileIds: await merged.profilesDao.ids().get(),
+      scriptIds: (await merged.scriptsDao.query().get()).map((item) => item.id),
+      providers: await merged.clashProvidersDao.query().get(),
+    );
+    await merged.customStatement('VACUUM INTO ?', [snapshot]);
+  } finally {
+    await merged.close();
+  }
+  final localEntries = BackupEntries.ofData(local).toSet();
+  for (final entry in entries) {
+    final source = File(BackupEntries.resolve(
+      localEntries.contains(entry) ? localDir : remoteDir, entry,
+    ));
+    if (!await source.exists()) continue;
+    final target = File(BackupEntries.resolve(mergedDir, entry));
+    await target.parent.create(recursive: true);
+    await source.copy(target.path);
+  }
+  await writeCompressedBackupArchive((
+    archivePath: request.outputPath,
+    configMap: {...?local.configMap, 'version': Migration.currentVersion},
+    databaseSnapshotPath: snapshot,
+    homeDirPath: mergedDir,
+    entries: entries,
+  ));
+}
+
 Future<MigrationData> restoreTask(RestoreArchiveRequest request) {
-  return compute(_restoreTask, request);
+  return runBackupWorker(_restoreTask, request);
 }
 
 Future<MigrationData> _restoreTask(RestoreArchiveRequest request) {
@@ -101,21 +197,13 @@ Future<void> writeBackupArchive({
   required String homeDirPath,
   required Iterable<String> entries,
 }) async {
-  final encoder = ZipFileEncoder()..create(archivePath);
-  try {
-    encoder.addArchiveFile(
-      ArchiveFile.string(configJsonName, json.encode(configMap)),
-    );
-    await encoder.addFile(File(databaseSnapshotPath), backupDatabaseName);
-    for (final entry in entries) {
-      final file = File(BackupEntries.resolve(homeDirPath, entry));
-      if (await file.exists()) {
-        await encoder.addFile(file, entry);
-      }
-    }
-  } finally {
-    await encoder.close();
-  }
+  return writeCompressedBackupArchive((
+    archivePath: archivePath,
+    configMap: configMap,
+    databaseSnapshotPath: databaseSnapshotPath,
+    homeDirPath: homeDirPath,
+    entries: entries.toList(),
+  ));
 }
 
 /// Writes nothing outside [stagingDirPath]; the files the result names are left
@@ -204,11 +292,15 @@ Future<MigrationData> readBackupArchive({
 
 Future<void> _extract(String archivePath, String stagingDirPath) async {
   await Directory(stagingDirPath).create(recursive: true);
+  if (await File(archivePath).length() > backupMaxExpandedBytes + 1024 * 1024) {
+    throw const BackupException(BackupFailure.invalid);
+  }
   final input = InputFileStream(archivePath);
   try {
     final Archive archive;
     try {
-      archive = ZipDecoder().decodeStream(input);
+      final tar = await decodeBackupXz(input.toUint8List());
+      archive = TarDecoder().decodeBytes(tar);
     } on Exception {
       throw const BackupException(BackupFailure.invalid);
     }

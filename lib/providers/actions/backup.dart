@@ -11,15 +11,35 @@ class BackupAction extends _$BackupAction {
   @override
   void build() {}
 
-  Future<bool> backup(BackupDelivery deliver) {
+  Future<bool> backup(
+    BackupDelivery deliver, {
+    BackupFetch? mergeFrom,
+  }) {
     return _withWorkDir((workDir) async {
-      return deliver(await _createArchive(workDir));
+      var archivePath = await _createArchive(workDir);
+      if (mergeFrom != null) {
+        final remotePath = await mergeFrom(join(workDir, 'remote.backup'));
+        if (remotePath == null) return false;
+        final mergedPath = join(workDir, 'merged.tar.xz');
+        await mergeBackupTask((
+          localPath: archivePath,
+          remotePath: remotePath,
+          outputPath: mergedPath,
+          workDir: workDir,
+        ));
+        archivePath = mergedPath;
+      }
+      return deliver(archivePath);
     });
   }
 
-  Future<bool> restore(RestoreOption option, BackupFetch fetch) {
+  Future<bool> restore(
+    RestoreOption option,
+    BackupFetch fetch, {
+    RestoreStrategy? strategy,
+  }) {
     return _withWorkDir((workDir) async {
-      final archivePath = await fetch(join(workDir, 'download.zip'));
+      final archivePath = await fetch(join(workDir, 'download.tar.xz'));
       if (archivePath == null) {
         return false;
       }
@@ -37,7 +57,9 @@ class BackupAction extends _$BackupAction {
             currentAppLocalizations.backupFromNewerVersion,
         });
       }
-      await applyRestore(data, option, stagingDirPath: stagingDirPath);
+      await applyRestore(
+        data, option, stagingDirPath: stagingDirPath, strategy: strategy,
+      );
       return true;
     });
   }
@@ -71,7 +93,7 @@ class BackupAction extends _$BackupAction {
     ).wait;
     final configMap = ref.read(configProvider).toJson();
     configMap['version'] = await preferences.getVersion();
-    final archivePath = join(workDir, 'backup.zip');
+    final archivePath = join(workDir, 'backup.tar.xz');
     await backupTask((
       archivePath: archivePath,
       configMap: configMap,
@@ -91,13 +113,14 @@ class BackupAction extends _$BackupAction {
     MigrationData data,
     RestoreOption option, {
     String? stagingDirPath,
+    RestoreStrategy? strategy,
   }) async {
     final configMap = data.configMap;
     final config = option == RestoreOption.onlyProfiles || configMap == null
         ? null
         : Config.fromJson(configMap);
     final isOverride =
-        ref.read(appSettingProvider).restoreStrategy ==
+        (strategy ?? ref.read(appSettingProvider).restoreStrategy) ==
         RestoreStrategy.override;
     final previousProviders = await database.clashProvidersDao.query().get();
     final putBack = stagingDirPath == null

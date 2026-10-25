@@ -8,6 +8,8 @@ import java.net.InetSocketAddress
 import java.net.URI
 
 object Core {
+    fun backupCodec(request: ByteArray): ByteArray = Mobile.backupCodec(request)
+
     fun forceGC() = Mobile.forceGC()
 
     fun updateDNS(

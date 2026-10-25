@@ -17,6 +17,8 @@ import 'package:riverpod/riverpod.dart';
 import '../helpers/app_paths.dart';
 import '../helpers/preferences.dart';
 
+import '../helpers/backup_codec.dart';
+
 Profile _profile(int id, String label) => Profile(
   id: id,
   label: label,
@@ -25,6 +27,7 @@ Profile _profile(int id, String label) => Profile(
 );
 
 void main() {
+  useGoBackupCodec();
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Database testDatabase;
@@ -63,6 +66,31 @@ void main() {
       jsonDecode(jsonEncode(container.read(configProvider).toJson()))
           as Map<String, Object?>;
 
+  test('explicit restore mode overrides the saved preference without changing it', () async {
+    final container = buildContainer();
+    container.read(appSettingProvider.notifier).update(
+      (state) => state.copyWith(restoreStrategy: RestoreStrategy.override),
+    );
+    await testDatabase.profilesDao.putAll([
+      _profile(1, 'Local conflict').toCompanion(),
+      _profile(2, 'Local only').toCompanion(),
+    ]);
+    await actionOf(container).applyRestore(
+      MigrationData(profiles: [_profile(1, 'Remote conflict'), _profile(3, 'Remote only')]),
+      RestoreOption.onlyProfiles,
+      strategy: RestoreStrategy.compatible,
+    );
+    expect({for (final p in await testDatabase.profilesDao.query().get()) p.id: p.label}, {
+      1: 'Remote conflict', 2: 'Local only', 3: 'Remote only',
+    });
+    expect(container.read(appSettingProvider).restoreStrategy, RestoreStrategy.override);
+    await actionOf(container).applyRestore(
+      const MigrationData(), RestoreOption.onlyProfiles,
+      strategy: RestoreStrategy.override,
+    );
+    expect(await testDatabase.profilesDao.query().get(), isEmpty);
+  });
+
   group('backup and restore round trip', () {
     late Directory kept;
 
@@ -78,7 +106,7 @@ void main() {
         .toSet();
 
     Future<String> backupToKept(BackupAction action) async {
-      final keptPath = join(kept.path, 'kept.zip');
+      final keptPath = join(kept.path, 'kept.tar.xz');
       final delivered = await action.backup((archivePath) async {
         File(archivePath).copySync(keptPath);
         return true;
@@ -140,8 +168,8 @@ void main() {
       await testDatabase.profilesDao.putAll([
         _profile(9, 'Pre-existing').toCompanion(0),
       ]);
-      final bogus = File(join(kept.path, 'bogus.zip'))
-        ..writeAsStringSync('not a zip');
+      final bogus = File(join(kept.path, 'bogus.tar.xz'))
+        ..writeAsStringSync('not an XZ');
       final container = buildContainer();
 
       await expectLater(

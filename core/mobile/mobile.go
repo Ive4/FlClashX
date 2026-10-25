@@ -5,7 +5,14 @@
 // pending, and the next JNI call on that thread aborts the process.
 package mobile
 
-import "core"
+import (
+	"core"
+	"core/backupcodec"
+)
+
+func BackupCodec(request []byte) []byte {
+	return backupcodec.Handle(request)
+}
 
 type ResultHandler interface {
 	OnResult(data []byte) error

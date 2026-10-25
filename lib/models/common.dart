@@ -338,7 +338,7 @@ extension DnsQueriesStateExt on DnsQueriesState {
   }
 }
 
-const defaultDavFileName = 'backup.zip';
+const defaultDavFileName = 'backup.tar.xz';
 const _davPasswordFormatVersion = 'v1';
 const _davPasswordNonceLength = 16;
 const _davPasswordObfuscationMask = <int>[

@@ -415,7 +415,8 @@ class Database extends _$Database {
     List<ProxyDialer> proxyDialers = const [],
     bool isOverride = false,
   }) async {
-    if (profiles.isEmpty &&
+    if (!isOverride &&
+        profiles.isEmpty &&
         scripts.isEmpty &&
         rules.isEmpty &&
         disabledRules.isEmpty &&

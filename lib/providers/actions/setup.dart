@@ -363,7 +363,8 @@ class SetupAction extends _$SetupAction {
         currentAppLocalizations.applicationProxyScriptUnsupported,
       );
     }
-    if (!application.canRoute) {
+    final routingIdentity = application.byName;
+    if (!routingIdentity.canRoute) {
       throw MessageException(
         currentAppLocalizations.applicationProxyInvalidProcess,
       );
@@ -372,22 +373,35 @@ class SetupAction extends _$SetupAction {
         (target.trim().isEmpty ||
             RegExp(r'[,\r\n]').hasMatch(target) ||
             (target != RuleTarget.DIRECT.value &&
-                !ref.read(groupsProvider).any((group) => group.name == target)))) {
+                !ref
+                    .read(groupsProvider)
+                    .any((group) => group.name == target)))) {
       throw MessageException(currentAppLocalizations.invalidPolicy(target));
     }
     await database.transaction(() async {
-      final rules = await database.rulesDao.queryApplicationRules(profileId).get();
-      final matches = rules.where(application.matchesRule).toList();
+      final rules = await database.rulesDao
+          .queryApplicationRules(profileId)
+          .get();
+      final matches = rules.where((rule) {
+        final identity = ApplicationIdentity(
+          action: rule.ruleAction,
+          content: rule.content ?? '',
+          windows: application.windows,
+        ).byName;
+        return !rule.src && identity.key == routingIdentity.key;
+      }).toList();
       if (target == null) {
         await database.rulesDao.delRules(matches.map((rule) => rule.id));
         return;
       }
-      final firstOrder = await database.rulesDao.firstProfileRuleOrder(profileId);
+      final firstOrder = await database.rulesDao.firstProfileRuleOrder(
+        profileId,
+      );
       await database.rulesDao.putRule(
         Rule(
           id: matches.firstOrNull?.id ?? snowflake.id,
-          ruleAction: application.action,
-          content: application.content,
+          ruleAction: routingIdentity.action,
+          content: routingIdentity.content,
           ruleTarget: target,
           order: indexing.generateKeyBetween(null, firstOrder),
         ),
@@ -398,15 +412,19 @@ class SetupAction extends _$SetupAction {
     ref.invalidate(setupStateProvider(profileId));
     if (ref.read(currentProfileIdProvider) != profileId) return true;
     if (target != null) {
-      ref.read(patchClashConfigProvider.notifier).update(
-        (state) => state.copyWith(findProcessMode: FindProcessMode.always),
-      );
+      ref
+          .read(patchClashConfigProvider.notifier)
+          .update(
+            (state) => state.copyWith(findProcessMode: FindProcessMode.always),
+          );
     }
     if (ref.read(coreStatusProvider) != CoreStatus.connected) return true;
     try {
       return await applyProfile(silence: true);
     } catch (_) {
-      throw MessageException(currentAppLocalizations.applicationProxyApplyFailed);
+      throw MessageException(
+        currentAppLocalizations.applicationProxyApplyFailed,
+      );
     }
   }
 

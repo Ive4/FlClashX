@@ -168,7 +168,7 @@ class AppPath {
 final appPath = AppPath();
 
 String getBackupFileName() {
-  return '${appName}_backup_${DateTime.now().show}.zip';
+  return '${appName}_backup_${DateTime.now().show}.tar.xz';
 }
 
 String get logFileName {

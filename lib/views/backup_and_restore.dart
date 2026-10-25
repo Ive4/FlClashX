@@ -12,6 +12,7 @@ import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/ui/ui.dart';
+import 'package:fl_clash/views/github_sync.dart';
 import 'package:fl_clash/widgets/config_item.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,22 +72,28 @@ class _BackupAndRestoreState extends ConsumerState<BackupAndRestore>
     );
   }
 
-  Future<void> _backup(BackupDelivery deliver) {
+  Future<void> _backup(BackupDelivery deliver, {BackupFetch? mergeFrom}) {
     final appLocalizations = context.appLocalizations;
     return _run(
       title: appLocalizations.backup,
       successMessage: appLocalizations.backupSuccess,
-      task: () => ref.read(backupActionProvider.notifier).backup(deliver),
+      task: () => ref.read(backupActionProvider.notifier).backup(
+        deliver, mergeFrom: mergeFrom,
+      ),
     );
   }
 
-  Future<void> _restore(RestoreOption option, BackupFetch fetch) {
+  Future<void> _restore(
+    RestoreOption option,
+    BackupFetch fetch, {
+    RestoreStrategy? strategy,
+  }) {
     final appLocalizations = context.appLocalizations;
     return _run(
       title: appLocalizations.restore,
       successMessage: appLocalizations.restoreSuccess,
       task: () =>
-          ref.read(backupActionProvider.notifier).restore(option, fetch),
+          ref.read(backupActionProvider.notifier).restore(option, fetch, strategy: strategy),
     );
   }
 
@@ -158,6 +165,15 @@ class _BackupAndRestoreState extends ConsumerState<BackupAndRestore>
           bottom: 16 + context.bottomInset,
         ),
         children: [
+          GitHubSyncSection(
+            onBackup: (deliver, mergeFrom) => _backup(deliver, mergeFrom: mergeFrom),
+            onRestore: (fetch, strategy) => _restore(
+              strategy == RestoreStrategy.compatible
+                  ? RestoreOption.onlyProfiles : RestoreOption.all,
+              fetch,
+              strategy: strategy,
+            ),
+          ),
           generateSection(
             title: appLocalizations.remote,
             items: [

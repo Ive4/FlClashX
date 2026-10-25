@@ -23,6 +23,14 @@ class ApplicationIdentity {
       ? (windows ? p.windows : p.posix).basename(content)
       : content;
 
+  ApplicationIdentity get byName => action == RuleAction.PROCESS_PATH
+      ? ApplicationIdentity(
+          action: RuleAction.PROCESS_NAME,
+          content: content.trim().isEmpty ? '' : name,
+          windows: windows,
+        )
+      : this;
+
   bool get canRoute =>
       (action == RuleAction.PROCESS_PATH || action == RuleAction.PROCESS_NAME) &&
       content.trim().isNotEmpty &&
@@ -163,7 +171,9 @@ ApplicationProxySnapshot aggregateApplicationProxies(
     );
     final name = ApplicationIdentity(
       action: RuleAction.PROCESS_NAME,
-      content: connection.process,
+      content: connection.process.trim().isNotEmpty
+          ? connection.process
+          : path.byName.content,
       windows: input.windows,
     );
     final pathRule = configured[path.key];

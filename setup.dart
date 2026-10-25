@@ -127,6 +127,8 @@ List<String> createFlutterBuildArgs({
 Map<String, String> createBuildEnvironment(String env) {
   return {
     'APP_ENV': env,
+    if (Platform.environment['FLCLASHX_GITHUB_CLIENT_ID'] case final String clientId)
+      'FLCLASHX_GITHUB_CLIENT_ID': clientId,
     if (Platform.environment['FLCLASHX_UPDATE_REPOSITORY'] case final String repository)
       'FLCLASHX_UPDATE_REPOSITORY': repository,
   };

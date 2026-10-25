@@ -39,6 +39,47 @@ ApplicationProxySnapshot _snapshot(
 ));
 
 void main() {
+  test('name policies survive versioned install paths and Windows casing', () {
+    const identity = ApplicationIdentity(
+      action: RuleAction.PROCESS_PATH,
+      content: r'C:\Users\L\AppData\Local\App\app-1.0\App.exe',
+      windows: true,
+    );
+    final policy = Rule(
+      ruleAction: identity.byName.action,
+      content: identity.byName.content,
+      ruleTarget: 'DIRECT',
+    );
+    expect(policy.ruleAction, RuleAction.PROCESS_NAME);
+    expect(policy.content, 'App.exe');
+    final snapshot = _snapshot(
+      [
+        _connection('1', path: r'C:\Apps\app-2.0\APP.exe', process: 'APP.exe'),
+        _connection('2', path: r'C:\Apps\app-3.0\App.exe', process: ''),
+        _connection('3', path: r'C:\Apps\Other.exe', process: 'Other.exe'),
+      ],
+      windows: true,
+      rules: [policy],
+    );
+    final active = snapshot.applications
+        .where((row) => row.connections > 0)
+        .toList();
+    expect(active.where((row) => row.target == 'DIRECT'), hasLength(2));
+    expect(
+      active.singleWhere((row) => row.identity!.name == 'Other.exe').target,
+      isNull,
+    );
+    expect(identity.byName.matchesRule(policy), isTrue);
+    expect(
+      const ApplicationIdentity(
+        action: RuleAction.PROCESS_PATH,
+        content: '',
+        windows: true,
+      ).byName.canRoute,
+      isFalse,
+    );
+  });
+
   test('Windows paths ignore casing and separators, but keep installs apart', () {
     final snapshot = _snapshot([
       _connection('1', path: r'C:\Apps\Browser.exe'),

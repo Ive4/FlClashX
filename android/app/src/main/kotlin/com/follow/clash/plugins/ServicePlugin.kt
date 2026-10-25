@@ -3,6 +3,7 @@ package com.follow.clash.plugins
 import com.follow.clash.ServiceController
 import com.follow.clash.ServiceState
 import com.follow.clash.common.Components
+import com.follow.clash.core.Core
 import com.follow.clash.models.SharedState
 import com.follow.clash.service.NetworkObserver
 import com.google.gson.Gson
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 class ServicePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var messenger: BinaryMessenger
     private lateinit var channel: MethodChannel
+    private lateinit var backupChannel: MethodChannel
     private lateinit var coreChannel: MethodChannel
     private lateinit var scope: CoroutineScope
     private val gson = Gson()
@@ -38,11 +40,32 @@ class ServicePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             messenger.makeBackgroundTaskQueue(),
         )
         coreChannel.setMethodCallHandler(::onCoreMethodCall)
+        backupChannel = MethodChannel(
+            messenger,
+            "${Components.PACKAGE_NAME}/backup",
+            StandardMethodCodec.INSTANCE,
+            messenger.makeBackgroundTaskQueue(),
+        )
+        backupChannel.setMethodCallHandler { call, result ->
+            if (call.method != "codec") {
+                result.notImplemented()
+            } else {
+                val request = call.arguments as? ByteArray
+                if (request == null || request.size > 180 * 1024 * 1024) {
+                    result.error("INVALID_ARGUMENT", "Invalid backup request", null)
+                } else {
+                    runCatching { Core.backupCodec(request) }
+                        .onSuccess { result.success(it) }
+                        .onFailure { result.error("BACKUP_ERROR", "Backup codec failed", null) }
+                }
+            }
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         coreChannel.setMethodCallHandler(null)
+        backupChannel.setMethodCallHandler(null)
         scope.cancel()
         ServiceController.setEventListener(null)
     }

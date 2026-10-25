@@ -31,6 +31,8 @@
 
     <application
         android:name=".FlClashApplication"
+        android:fullBackupContent="@xml/secure_storage_backup_rules"
+        android:dataExtractionRules="@xml/secure_storage_extraction_rules"
         android:banner="@mipmap/ic_banner"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
