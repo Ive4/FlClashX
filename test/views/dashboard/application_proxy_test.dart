@@ -186,6 +186,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('search stays in a popup and can be cleared after dismissal', (tester) async {
+    await pumpPanel(tester, width: 390);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'missing');
+    await tester.pumpAndSettle();
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('No matching apps'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('browser'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('history keeps an offline app searchable and editable', (tester) async {
     await applicationHistory.record(applicationConnectionsOf([_connection('1')]), false, _time);
     await pumpPanel(tester, connections: []);
@@ -194,11 +212,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('browser'), findsOneWidget);
     expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'missing');
     await tester.pumpAndSettle();
     expect(find.text('No matching apps'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'browser');
     await tester.pumpAndSettle();
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
     await tester.tap(find.byTooltip('Remove from history'));
     await tester.pumpAndSettle();
     expect(applicationHistory.entries, isEmpty);
@@ -314,29 +338,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the summary app shortcut opens its sheet', (tester) async {
+  testWidgets('dashboard feeds exclude apps in table and summary layouts', (tester) async {
     container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    await pumpPanel(tester, child: const ConnectionStatsCard());
-
-    expect(find.text('Apps'), findsOneWidget);
-    await tester.tap(find.text('Apps'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ApplicationProxyPanel), findsOneWidget);
-    expect(find.text('No active connections'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the app tab follows DNS and opens the application panel', (tester) async {
-    container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    await pumpPanel(tester, child: const ConnectionsTableCard());
-    final dns = find.text('DNS queries');
-    final apps = find.text('Apps');
-    expect(tester.getCenter(apps).dx, greaterThan(tester.getCenter(dns).dx));
-
-    await tester.tap(apps);
-    await tester.pumpAndSettle();
-    expect(find.byType(ApplicationProxyPanel), findsOneWidget);
-    expect(find.text('No active connections'), findsOneWidget);
+    for (final child in [const ConnectionStatsCard(), const ConnectionsTableCard()]) {
+      await pumpPanel(tester, child: child);
+      expect(find.text('Apps'), findsNothing);
+      expect(find.text('DNS queries'), findsOneWidget);
+      expect(find.byType(ApplicationProxyPanel), findsNothing);
+      expect(tester.takeException(), isNull);
+    }
   });
 }

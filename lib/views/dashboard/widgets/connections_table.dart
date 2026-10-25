@@ -59,14 +59,12 @@ double connectionsTableMinHeight(DashboardDensity density, double scale) =>
 enum DashboardFeed {
   connections,
   requests,
-  dns,
-  applications;
+  dns;
 
   String get label => switch (this) {
     connections => PageLabel.connections.label,
     requests => PageLabel.requests.label,
     dns => PageLabel.dns.label,
-    applications => currentAppLocalizations.applicationProxy,
   };
 }
 
@@ -74,7 +72,7 @@ void openDashboardFeed(BuildContext context, DashboardFeed feed) {
   showSnapSheet(
     context,
     initialScrollOffset: switch (feed) {
-      DashboardFeed.connections || DashboardFeed.applications => 0,
+      DashboardFeed.connections => 0,
       DashboardFeed.requests || DashboardFeed.dns => double.maxFinite,
     },
     builder: (_, controller) => NestedPagedSheet(
@@ -84,9 +82,6 @@ void openDashboardFeed(BuildContext context, DashboardFeed feed) {
         ),
         DashboardFeed.requests => RequestsView(scrollController: controller),
         DashboardFeed.dns => DnsQueriesView(scrollController: controller),
-        DashboardFeed.applications => ApplicationProxyView(
-          scrollController: controller,
-        ),
       },
     ),
   );
@@ -264,15 +259,11 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
   var _feed = DashboardFeed.connections;
   List<TrackerInfo> _requests = const [];
   List<DnsQuery> _queries = const [];
-  var _applicationCount = 0;
   Timer? _snapshot;
 
   @override
   bool get pollsConnections =>
-      _feed == DashboardFeed.connections || _feed == DashboardFeed.applications;
-
-  @override
-  bool get sortsConnections => _feed != DashboardFeed.applications;
+      _feed == DashboardFeed.connections;
 
   @override
   void initState() {
@@ -309,7 +300,6 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
       case DashboardFeed.dns:
         _queries = ref.read(dnsQueriesProvider).list.reversed.toList();
       case DashboardFeed.connections:
-      case DashboardFeed.applications:
         break;
     }
   }
@@ -392,12 +382,6 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
                           builder: (_, count) => _TabCount(count),
                         ),
                       ),
-                      segment(
-                        DashboardFeed.applications,
-                        _feed == DashboardFeed.applications
-                            ? _TabCount(_applicationCount)
-                            : null,
-                      ),
                     ],
                   ),
                 ),
@@ -445,20 +429,6 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
                 items: _queries,
                 rowHeight: rowHeight,
                 columnsOf: (_) => _dnsColumns(context),
-              ),
-              DashboardFeed.applications => ApplicationProxyPanel(
-                connections: connections,
-                sampledAt: connectionsSampledAt,
-                stale: connectionsStale,
-                rowHeight: rowHeight,
-                onCountChanged: (count) {
-                  if (!mounted ||
-                      _feed != DashboardFeed.applications ||
-                      _applicationCount == count) {
-                    return;
-                  }
-                  setState(() => _applicationCount = count);
-                },
               ),
             },
           ),
@@ -537,6 +507,7 @@ class _Table<T> extends ConsumerStatefulWidget {
     required this.columnsOf,
     this.scrollController,
     this.maxRows = _maxFeedRows,
+    this.subtleRows = false,
   });
 
   final String tableId;
@@ -545,6 +516,7 @@ class _Table<T> extends ConsumerStatefulWidget {
   final List<RecordColumn<T>> Function(double width) columnsOf;
   final ScrollController? scrollController;
   final int? maxRows;
+  final bool subtleRows;
 
   @override
   ConsumerState<_Table<T>> createState() => _TableState<T>();
@@ -583,9 +555,12 @@ class _TableState<T> extends ConsumerState<_Table<T>>
             _headerHeight * DashboardDensityScope.scaleOf(context);
         final overflows =
             items.length * rowHeight + 2 > constraints.maxHeight - headerHeight;
-        final shape = AppShape.all(DashboardCorner.tableHeader);
+        final shape = widget.subtleRows
+            ? AppShape.sm : AppShape.all(DashboardCorner.tableHeader);
         final fill = ShapeDecoration(
-          color: DashboardColors.of(context).tone,
+          color: widget.subtleRows
+              ? colorScheme.onSurface.withValues(alpha: 0.04)
+              : DashboardColors.of(context).tone,
           shape: shape,
         );
         final body = ListView.builder(
@@ -609,6 +584,7 @@ class _TableState<T> extends ConsumerState<_Table<T>>
                 ],
               ),
             );
+            if (widget.subtleRows) return _QuietTableRow(child: cells);
             return index.isOdd
                 ? DecoratedBox(decoration: fill, child: cells)
                 : cells;
@@ -984,6 +960,35 @@ class _DnsResult extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _QuietTableRow extends StatefulWidget {
+  const _QuietTableRow({required this.child});
+  final Widget child;
+
+  @override
+  State<_QuietTableRow> createState() => _QuietTableRowState();
+}
+
+class _QuietTableRowState extends State<_QuietTableRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.colorScheme.onSurface;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: _hovered ? 0.04 : 0),
+          border: Border(bottom: BorderSide(color: color.withValues(alpha: 0.06))),
+        ),
+        child: widget.child,
+      ),
     );
   }
 }

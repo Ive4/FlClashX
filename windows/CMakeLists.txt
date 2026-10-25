@@ -6,6 +6,14 @@ project(FlClash LANGUAGES CXX)
 # the on-disk name of your application.
 set(BINARY_NAME "FlClashX")
 
+# Existing build directories retain the install prefix from before the rename.
+# Migrate it before plugin subdirectories inherit the cached value, while
+# preserving any explicitly configured installation directory.
+if(CMAKE_INSTALL_PREFIX STREQUAL "$<TARGET_FILE_DIR:FlClash>")
+  set(CMAKE_INSTALL_PREFIX "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+    CACHE PATH "Application bundle directory" FORCE)
+endif()
+
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)

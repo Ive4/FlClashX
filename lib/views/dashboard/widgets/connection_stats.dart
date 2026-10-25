@@ -1,6 +1,5 @@
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/providers/app.dart';
-import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/dashboard/layout.dart';
 import 'package:fl_clash/views/dashboard/style.dart';
 import 'package:fl_clash/widgets/widgets.dart';
@@ -62,11 +61,6 @@ class _ConnectionStatsCardState extends ConsumerState<ConnectionStatsCard>
               provider: dnsQueryCountProvider,
               builder: (_, count) => _Count(count),
             ),
-          ),
-          _Stat(
-            feed: DashboardFeed.applications,
-            shape: shape,
-            count: const GlyphIcon(AppGlyphs.appsList, size: 26),
           ),
         ],
       ),

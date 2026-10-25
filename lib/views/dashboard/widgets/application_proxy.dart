@@ -29,7 +29,7 @@ class _ApplicationProxyViewState extends ConsumerState<ApplicationProxyView>
       body: Builder(
         builder: (context) => AppBarClearance(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, context.bottomInset + 16),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, context.bottomInset + 16),
             child: ApplicationProxyPanel(
               connections: connections,
               sampledAt: connectionsSampledAt,
@@ -150,7 +150,9 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
         onPressed: enabled ? open : null,
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          minimumSize: Size.zero,
+          minimumSize: const Size(0, 32),
+          foregroundColor: context.colorScheme.onSurface,
+          textStyle: AppTextStyle.footnote.of(context),
         ),
         child: _saving != null && _saving == identity?.key
             ? const SizedBox.square(
@@ -209,7 +211,7 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
         .toList();
     String? action;
     VoidCallback? onAction;
-    String notice;
+    String? notice;
     if (widget.stale) {
       notice = l.applicationProxyRefreshFailed;
     } else if (profile == null) {
@@ -227,45 +229,42 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
       onAction = () => ref.read(patchClashConfigProvider.notifier).update(
         (state) => state.copyWith(findProcessMode: FindProcessMode.always),
       );
-    } else {
-      notice = l.applicationProxyScope;
     }
+    final message = _error ?? notice;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _cellInset),
-          child: Row(
-            spacing: 8,
-            children: [
-              Expanded(
-                child: Tooltip(
-                  message: _error ?? notice,
-                  child: Text(
-                    _error ?? notice,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyle.caption1.of(context).copyWith(
-                      color: _error == null
-                          ? context.colorScheme.onSurfaceVariant
-                          : context.colorScheme.error,
+        if (message != null) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _cellInset),
+            child: Row(
+              spacing: 8,
+              children: [
+                Expanded(
+                  child: Tooltip(
+                    message: message,
+                    child: Text(
+                      message,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyle.caption1.of(context).copyWith(
+                        color: _error == null
+                            ? context.colorScheme.onSurfaceVariant
+                            : context.colorScheme.error,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (action != null)
-                TextButton(
-                  onPressed: _saving == null ? onAction : null,
-                  child: Text(action),
-                ),
-              Tooltip(
-                message: l.applicationProxyCoverage,
-                child: const GlyphIcon(AppGlyphs.info, size: 16),
-              ),
-            ],
+                if (action != null)
+                  TextButton(
+                    onPressed: _saving == null ? onAction : null,
+                    child: Text(action),
+                  ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
+          const SizedBox(height: 6),
+        ],
         Expanded(
           child: rulesState.hasError
               ? Center(child: Text(l.error))
@@ -329,6 +328,61 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     with RouteMotionHoldMixin<_ApplicationRows> {
   final _search = TextEditingController();
   final _resetting = <String>{};
+
+  void _clearSearch() {
+    _search.clear();
+    setState(() {});
+  }
+
+  Widget _searchButton(BuildContext context) {
+    final l = context.appLocalizations;
+    final active = _search.text.trim().isNotEmpty;
+    return CommonPopupBox(
+      targetBuilder: (open) => IconButton(
+        tooltip: l.search,
+        onPressed: open,
+        color: active ? context.colorScheme.primary : null,
+        icon: Badge(
+          isLabelVisible: active,
+          child: const GlyphIcon(AppGlyphs.search, size: 20),
+        ),
+      ),
+      popupBuilder: (popupContext) => Material(
+        color: SurfaceLevel.floatingOf(context.colorScheme).colorOf(context.colorScheme),
+        shape: AppShape.md,
+        child: SizedBox(
+          width: (MediaQuery.sizeOf(popupContext).width - 32)
+              .clamp(0.0, 360.0).toDouble(),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _search,
+              builder: (_, value, _) => TextField(
+                controller: _search,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => Navigator.of(popupContext).pop(),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: l.applicationSearch,
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: GlyphIcon(AppGlyphs.search, size: 18),
+                  ),
+                  suffixIcon: value.text.isEmpty ? null : IconButton(
+                    tooltip: l.clearSearch,
+                    onPressed: _clearSearch,
+                    icon: const GlyphIcon(AppGlyphs.close, size: 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   void _historyChanged() {
     if (mounted) setState(() {});
@@ -471,47 +525,79 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
           .compareTo(history.entries[a.identity?.key]?.lastSeen ?? epoch);
       });
     }
-    return Column(children: [
-      Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        ChoiceChip(label: Text('${l.applicationCurrent} (${live.length})'),
-          selected: !history.showHistory,
-          onSelected: (_) => _historyAction(() => history.select(false))),
-        ChoiceChip(label: Text('${l.applicationHistory} (${all.length})'),
-          selected: history.showHistory,
-          onSelected: (_) => _historyAction(() => history.select(true))),
-        SizedBox(width: 220, child: TextField(controller: _search,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(isDense: true, hintText: l.applicationSearch))),
-        if (history.showHistory)
-          TextButton(onPressed: history.entries.isEmpty ? null : _clearHistory,
-            child: Text(l.applicationClearHistory)),
-      ]),
-      const SizedBox(height: 8),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(spacing: 6, children: [
+                ChoiceChip(
+                  label: Text('${l.applicationCurrent} (${live.length})'),
+                  showCheckmark: false,
+                  side: BorderSide.none,
+                  shape: AppShape.sm,
+                  labelStyle: AppTextStyle.footnote.of(context),
+                  selected: !history.showHistory,
+                  onSelected: (_) => _historyAction(() => history.select(false)),
+                ),
+                ChoiceChip(
+                  label: Text('${l.applicationHistory} (${all.length})'),
+                  showCheckmark: false,
+                  side: BorderSide.none,
+                  shape: AppShape.sm,
+                  labelStyle: AppTextStyle.footnote.of(context),
+                  selected: history.showHistory,
+                  onSelected: (_) => _historyAction(() => history.select(true)),
+                ),
+              ]),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _searchButton(context),
+          if (query.isNotEmpty)
+            IconButton(
+              tooltip: l.clearSearch,
+              onPressed: _clearSearch,
+              icon: const GlyphIcon(AppGlyphs.close, size: 18),
+            ),
+          if (history.showHistory)
+            IconButton(
+              tooltip: l.applicationClearHistory,
+              onPressed: history.entries.isEmpty ? null : _clearHistory,
+              icon: const GlyphIcon(AppGlyphs.delete, size: 18),
+            ),
+        ]),
+      ),
       Expanded(child: applications.isEmpty
         ? Center(child: Text(query.isNotEmpty ? l.applicationNoMatches
             : history.showHistory ? l.applicationHistoryEmpty : l.applicationProxyNoConnections))
         : _Table<ApplicationProxyInfo>(
       tableId: history.showHistory ? 'applications.history' : 'applications.current',
       items: applications,
+      subtleRows: true,
       rowHeight: widget.rowHeight,
       maxRows: null,
       scrollController: widget.scrollController,
       columnsOf: (width) => [
         RecordColumn(
-          TableColumn('application', l.app, flex: 1),
+          TableColumn('application', l.app, flex: 2),
           cell: (_, item) => Tooltip(
             message: item.identity?.content ?? l.unknown,
             child: _Source(item.identity?.name ?? l.unknown),
           ),
           sortKey: (item) => item.identity?.name.toLowerCase() ?? '',
         ),
-        RecordColumn(
+        if (width >= 620) RecordColumn(
           TableColumn('status', l.status, width: 76),
           cell: (_, item) => _ApplicationRouteText(item),
           sortKey: (item) => item.route.index,
         ),
         RecordColumn(
-          TableColumn('policy', l.strategy, width: width < _midTableWidth ? 112 : 144),
+          width < 700
+              ? TableColumn('policy', l.strategy, width: 112)
+              : TableColumn('policy', l.strategy, flex: 1),
           cell: (_, item) => widget.policyBuilder(item),
           sortKey: (item) => item.target ?? '',
         ),
@@ -542,7 +628,7 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
               sortKey: (item) => download ? item.downloadSpeed : item.uploadSpeed,
               descendingFirst: true,
             ),
-        ] else
+        ] else if (width >= 460)
           RecordColumn(
             TableColumn('speed', l.networkSpeed, width: 88, end: true),
             cell: (_, item) => Tooltip(
