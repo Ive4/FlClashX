@@ -11,18 +11,23 @@ FlClashX 基于 https://github.com/chen08209/FlClash 持续增加功能和优化
 
 ## 同步流程
 
-当前 `origin` 指向官方仓库。先提交本地增强，再拉取和合并选定的上游版本；不要用 reset 覆盖增强代码。
+本仓库的 `origin` 指向 `https://github.com/Ive4/FlClashX.git`，`upstream` 指向原仓库
+`https://github.com/chen08209/FlClash.git`。新克隆的仓库需要先添加 `upstream` 远程。
+先提交本地增强，再拉取和合并选定的上游版本；不要用 reset 覆盖增强代码。
 
 ```powershell
 git status
-git fetch origin
+git remote add upstream https://github.com/chen08209/FlClash.git # 已配置时跳过此行
+git fetch upstream
 # 将下方标签替换为本次实际要合入的上游版本。
 git merge v0.9.2
 ```
 
 发生冲突时保留 FlClashX 的品牌与增强功能，并结合上游改动解决；不要整文件选择 ours/theirs。完成后检查版本、本地化、测试和各平台打包。
 
-增强版发布仓库为 https://github.com/Ive4/FlClashX 。建议将官方远程命名为 `upstream`，此仓库命名为 `origin`；配置远程后改用 `git fetch upstream`。不要把增强提交推送到官方仓库。
+增强版发布仓库为 https://github.com/Ive4/FlClashX 。完成检查后推送到 `origin`，不要把增强提交推送到上游仓库。
+内核子模块使用 https://github.com/Ive4/Clash.Meta 的 `FlClash` 分支，原内核仓库地址及同步步骤见
+[鸿蒙构建说明](ohos/README.md#core-fork-and-upstream-updates)。
 
 ## 合并检查
 
