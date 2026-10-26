@@ -5,6 +5,8 @@ import { deviceInfo } from '@kit.BasicServicesKit';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 import InstalledApps from '../plugins/InstalledApps';
 import VpnPlugin from '../plugins/VpnPlugin';
+import SecureStoragePlugin from '../plugins/SecureStoragePlugin';
+import FilePickerPlugin from '../plugins/FilePickerPlugin';
 
 export default class EntryAbility extends FlutterAbility implements MethodCallHandler {
   configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -13,6 +15,8 @@ export default class EntryAbility extends FlutterAbility implements MethodCallHa
     const messenger = flutterEngine.getDartExecutor().getBinaryMessenger();
     new MethodChannel(messenger, 'com.follow.clash/vpn').setMethodCallHandler(new VpnPlugin());
     new MethodChannel(messenger, 'com.follow.clash/app').setMethodCallHandler(new InstalledApps(this.context));
+    new MethodChannel(messenger, 'plugins.it_nomads.com/flutter_secure_storage').setMethodCallHandler(new SecureStoragePlugin());
+    new MethodChannel(messenger, 'com.follow.clash/file_picker').setMethodCallHandler(new FilePickerPlugin(this.context));
     for (const name of ['plugins.flutter.io/path_provider', 'dev.fluttercommunity.plus/package_info',
       'dev.fluttercommunity.plus/device_info']) {
       new MethodChannel(messenger, name).setMethodCallHandler(this);

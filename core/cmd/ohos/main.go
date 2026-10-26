@@ -9,6 +9,7 @@ import "C"
 
 import (
 	"core"
+	"core/backupcodec"
 	"fmt"
 	"unsafe"
 )
@@ -29,6 +30,14 @@ func FlClashRun(path *C.char) (result *C.char) {
 //export FlClashFree
 func FlClashFree(value *C.char) {
 	C.free(unsafe.Pointer(value))
+}
+
+//export FlClashBackupCodec
+func FlClashBackupCodec(input *C.char, length C.int) *C.char {
+	if input == nil || length <= 0 || int64(length) > backupcodec.MaxWireBytes {
+		return C.CString(`{"error":"tooLarge"}`)
+	}
+	return C.CString(string(backupcodec.Handle(C.GoBytes(unsafe.Pointer(input), length))))
 }
 
 func main() {}

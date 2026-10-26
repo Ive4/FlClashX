@@ -54,7 +54,11 @@ Current boundaries:
   connection tuples through NetworkKit, with at most 64 pending lookups and a
   500 ms timeout; unknown owners remain unknown. Real-device owner resolution
   and per-app routing still require validation.
-- Secure storage, connectivity, app links and remaining native plugins still
+- Backup compression and encryption use the existing Go codec through its C ABI
+  from a Dart worker isolate. Snippet sessions use Asset Store Kit, and local
+  backup import/export uses the system document picker. These paths have been
+  checked on the API 26 device, including WebDAV backup and restore.
+- Connectivity, app links and remaining native plugins still
   require adaptation. UI-process termination currently closes the control channel
   and stops the VPN; reconnecting a new UI to a surviving Core is not implemented.
 - The separate Go Core probe is not the application Core integration.

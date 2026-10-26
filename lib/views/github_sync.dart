@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/common/github_sync.dart';
+import 'package:fl_clash/common/secure_storage.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/github_sync_strings.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -36,11 +35,7 @@ class GitHubSyncSection extends StatefulWidget {
 
 class _GitHubSyncSectionState extends State<GitHubSyncSection> {
   String get _sessionKey => 'flclashx.${widget.service.name}.session.v1';
-  final _storage = Platform.isMacOS
-      ? const FlutterSecureStorage(
-          mOptions: MacOsOptions(usesDataProtectionKeychain: false),
-        )
-      : const FlutterSecureStorage();
+  final _storage = SessionStorage();
   late final _client =
       widget.client ?? GitHubSyncClient(service: widget.service);
   GitHubSession? _session;

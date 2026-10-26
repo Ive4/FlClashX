@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' show RootIsolateToken;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'desktop/backup_worker.dart';
+import 'ohos/backup_worker.dart';
 
 const backupMaxExpandedBytes = 128 * 1024 * 1024;
 const backupMaxWireBytes = 180 * 1024 * 1024;
@@ -29,7 +28,10 @@ typedef _BackupWork<Q, R> = ({
   String? executable,
 });
 
-Future<R> runBackupWorker<Q, R>(ComputeCallback<Q, R> callback, Q message) async {
+Future<R> runBackupWorker<Q, R>(
+  ComputeCallback<Q, R> callback,
+  Q message,
+) async {
   final token = RootIsolateToken.instance;
   if (token == null) return callback(message);
   return compute(_runBackupWork<Q, R>, (
@@ -80,6 +82,8 @@ Future<Uint8List> _invokeBackupCodec(_CodecRequest request) async {
       throw const BackupCodecException('internal');
     }
     output = result;
+  } else if (Platform.operatingSystem == 'ohos') {
+    output = runOhosBackupWorker(input);
   } else {
     output = await runDesktopBackupWorker(
       input,
