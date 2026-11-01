@@ -152,6 +152,40 @@ void main() {
       );
     });
 
+    test(
+      'forwards explicit native environment configuration from the hook input',
+      () {
+        final request = const CoreBuilder().requestFor(
+          buildInput(
+            os: OS.windows,
+            architecture: Architecture.x64,
+            userDefines: {
+              'environment': {
+                'FLCLASH_RUST_TOOLCHAIN': '1.99.1-msvc',
+                'LIBCLANG_PATH': 'C:/LLVM/bin',
+              },
+            },
+          ),
+        )!;
+        expect(request.environment, {
+          'FLCLASH_RUST_TOOLCHAIN': '1.99.1-msvc',
+          'LIBCLANG_PATH': 'C:/LLVM/bin',
+        });
+        expect(
+          () => const CoreBuilder().requestFor(
+            buildInput(
+              os: OS.windows,
+              architecture: Architecture.x64,
+              userDefines: {
+                'environment': {'CARGO_BUILD_JOBS': 2},
+              },
+            ),
+          ),
+          throwsA(isA<BuildException>()),
+        );
+      },
+    );
+
     test('rejects an architecture without a Core', () {
       expect(
         () => const CoreBuilder().requestFor(

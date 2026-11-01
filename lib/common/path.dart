@@ -41,7 +41,16 @@ class AppPath {
   }
 
   void _bind() {
-    _dataDir = ResolveOnce(supportDirectory);
+    _dataDir = ResolveOnce(() async {
+      const safeDirectory = String.fromEnvironment('SAFE_MODE_DATA_DIR');
+      if (safeModeBuild && safeDirectory.isNotEmpty) {
+        if (!isAbsolute(safeDirectory)) {
+          throw const FormatException('SAFE_MODE_DATA_DIR must be absolute');
+        }
+        return Directory(safeDirectory).create(recursive: true);
+      }
+      return supportDirectory();
+    });
     _downloadDir = ResolveOnce(downloadDirectory);
     _tempDir = ResolveOnce(temporaryDirectory);
     cacheDirectory().then(cacheDir.complete);

@@ -1,13 +1,17 @@
+import 'dart:io';
+
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import 'build_cache.dart';
 import 'fingerprint.dart';
-import 'go_builder.dart';
+import 'desktop_builder.dart';
 import 'options.dart';
 import 'rust_builder.dart';
+import 'rust_core_builder.dart';
 import 'target.dart';
 import 'util.dart';
+import 'windows_toolchain.dart';
 
 final _log = Logger('setup_hooks');
 
@@ -16,12 +20,14 @@ class BuildRequest {
     required this.rootDir,
     required this.target,
     this.harnessDir,
+    this.environment = const {},
   });
 
   final String rootDir;
   final Target target;
 
   final String? harnessDir;
+  final Map<String, String> environment;
 }
 
 class BuildReport {
@@ -53,8 +59,25 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
     null => const <String>[],
     final dir => collectPackageInputs(dir),
   };
+  final environment = {
+    ...Platform.environment,
+    ...request.environment,
+    ...windowsRustEnvironment(
+      rootDir,
+      target,
+      environment: request.environment,
+    ),
+  };
 
-  final core = await GoBuilder(
+  final core = await RustCoreBuilder(
+    rootDir: rootDir,
+    config: config,
+    cache: cache,
+    notice: notice,
+    harnessInputs: harnessInputs,
+    environment: environment,
+  ).build(target);
+  final desktop = await DesktopBuilder(
     rootDir: rootDir,
     config: config,
     cache: cache,
@@ -63,7 +86,7 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
   ).build(target);
   if (!target.hasHelper) {
     _log.info('Done in ${stopwatch.elapsed}: ${core.primaryOutput}');
-    return _report([core]);
+    return _report([core, desktop]);
   }
 
   final coreSha256 = await calcSha256(core.primaryOutput);
@@ -73,6 +96,7 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
     cache: cache,
     notice: notice,
     harnessInputs: harnessInputs,
+    environment: environment,
   ).build(target, coreSha256);
   final manifestPath = p.join(
     rootDir,
@@ -86,7 +110,7 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
     'Done in ${stopwatch.elapsed}: ${core.primaryOutput}, '
     '${helper.primaryOutput}',
   );
-  return _report([core, helper], extraOutputs: [manifestPath]);
+  return _report([core, helper, desktop], extraOutputs: [manifestPath]);
 }
 
 BuildReport _report(

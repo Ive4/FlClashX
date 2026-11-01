@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/core.dart';
+import 'package:fl_clash/core/ohos/diagnostics.dart';
+import 'package:fl_clash/core/ohos/background_transfer.dart';
+import 'package:fl_clash/core/ohos/recovery.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/action.dart';
@@ -16,16 +19,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CoreManager extends ConsumerStatefulWidget {
   final Widget child;
+  final bool? isOhos;
 
-  const CoreManager({super.key, required this.child});
+  const CoreManager({super.key, this.isOhos, required this.child});
 
   @override
   ConsumerState<CoreManager> createState() => _CoreContainerState();
 }
 
 class _CoreContainerState extends ConsumerState<CoreManager>
-    with CoreEventListener {
+    with CoreEventListener, WidgetsBindingObserver {
   CoreController get _core => ref.read(coreHandlerProvider);
+  OhosCoreRecovery? _recovery;
+  DateTime? _lastMemoryTrim;
+  Timer? _transferTimer;
+  bool _updatingTransfer = false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +43,26 @@ class _CoreContainerState extends ConsumerState<CoreManager>
   @override
   void initState() {
     super.initState();
+    if (widget.isOhos ?? system.isOhos) {
+      _recovery = OhosCoreRecovery(
+        recover: () => ref.read(coreActionProvider.notifier).restartCore(),
+        canRecover: OhosDiagnostics.canRecover,
+        shouldRecover: () =>
+            mounted &&
+            !ref.read(safeModeProvider) &&
+            ref.read(isStartProvider) &&
+            ref.read(coreStatusProvider) == CoreStatus.disconnected,
+        record: (event) => unawaited(OhosDiagnostics.record(event)),
+      );
+      _transferTimer = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) => unawaited(_updateBackgroundTransfer()),
+      );
+      WidgetsBinding.instance.addObserver(this);
+      didChangeAppLifecycleState(
+        WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed,
+      );
+    }
     coreEventManager.addListener(this);
     ref.read(updatingActionProvider.notifier);
     // A rejected profile stays selected on purpose: silently reverting to
@@ -98,8 +126,60 @@ class _CoreContainerState extends ConsumerState<CoreManager>
 
   @override
   void dispose() {
+    _transferTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _recovery?.dispose();
     coreEventManager.removeListener(this);
     super.dispose();
+  }
+
+  Future<void> _updateBackgroundTransfer() async {
+    if (_updatingTransfer ||
+        !mounted ||
+        ref.read(safeModeProvider) ||
+        !ref.read(isStartProvider) ||
+        ref.read(coreStatusProvider) != CoreStatus.connected) {
+      return;
+    }
+    _updatingTransfer = true;
+    try {
+      final traffic = await _core.getTotalTraffic(false);
+      if (mounted && ref.read(isStartProvider)) {
+        await OhosBackgroundTransfer.update(traffic);
+      }
+    } catch (_) {
+      await OhosDiagnostics.record('background_transfer_poll_failed');
+    } finally {
+      _updatingTransfer = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _recovery?.setForeground(state == AppLifecycleState.resumed);
+    if (_recovery != null &&
+        (state == AppLifecycleState.hidden ||
+            state == AppLifecycleState.paused)) {
+      unawaited(_trimCoreMemory());
+    }
+  }
+
+  Future<void> _trimCoreMemory() async {
+    final now = DateTime.now();
+    if (!mounted ||
+        ref.read(safeModeProvider) ||
+        ref.read(coreStatusProvider) != CoreStatus.connected ||
+        (_lastMemoryTrim != null &&
+            now.difference(_lastMemoryTrim!) < const Duration(minutes: 1))) {
+      return;
+    }
+    _lastMemoryTrim = now;
+    try {
+      await _core.requestGc();
+      await OhosDiagnostics.record('background_memory_trim');
+    } catch (_) {
+      await OhosDiagnostics.record('background_memory_trim_failed');
+    }
   }
 
   @override
@@ -182,6 +262,7 @@ class _CoreContainerState extends ConsumerState<CoreManager>
       return;
     }
     ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+    _recovery?.request();
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
       context.showNotifier(message, level: MessageLevel.error);
     }

@@ -47,6 +47,8 @@ class SetupAction extends _$SetupAction {
 
   bool get _isRunning => _startTime != null && _startTime!.isBeforeNow;
 
+  DateTime? get runningSince => _startTime;
+
   @override
   void build() {
     ref.onDispose(_stopRuntimeTicker);
@@ -152,11 +154,54 @@ class SetupAction extends _$SetupAction {
     if (!globalState.needInitStatus) {
       return;
     }
+    final desktopResume =
+        desktopBackground.resumeState ?? OhosCoreTransport.resumeState;
+    if (desktopResume != null) {
+      desktopBackground.resumeState = null;
+      OhosCoreTransport.resumeState = null;
+      final mode = switch (desktopResume.mode) {
+        'rule' => Mode.rule,
+        'global' => Mode.global,
+        'direct' => Mode.direct,
+        _ => null,
+      };
+      if (mode != null) {
+        ref
+            .read(patchClashConfigProvider.notifier)
+            .update((state) => state.copyWith(mode: mode));
+      }
+      _startTime = desktopResume.runningSince;
+      if (desktopResume.coreReused) {
+        globalState.lastConfigMd5 = await preferences.getAppliedConfigMd5();
+        _setLocalRunning(_isRunning);
+        if (_isRunning) {
+          ref.read(runningVpnOptionsProvider.notifier).value = await ref.read(
+            vpnOptionsProvider.future,
+          );
+        }
+        globalState.needInitStatus = false;
+        return;
+      }
+      if (_isRunning) {
+        globalState.lastConfigMd5 = desktopResume.coreReused
+            ? await preferences.getAppliedConfigMd5()
+            : null;
+        await _run(true, initialize: true, resume: desktopResume.coreReused);
+      } else {
+        _setLocalRunning(false);
+        await globalState.safeRun(() => applyProfile(force: true));
+      }
+      return;
+    }
     final resumeAfterUpdate = await preferences.takeUpdateResume();
+    final lightweightResume =
+        system.isAndroid && await preferences.takeLightweightResume();
     _startTime = await serviceStartTime();
     if (_isRunning) {
       globalState.lastConfigMd5 = await preferences.getAppliedConfigMd5();
       await _run(true, initialize: true, resume: true);
+    } else if (lightweightResume) {
+      _setLocalRunning(false);
     } else if (resumeAfterUpdate ?? ref.read(appSettingProvider).autoRun) {
       await setRunning(true, initialize: true);
     } else {
@@ -352,6 +397,7 @@ class SetupAction extends _$SetupAction {
     required int profileId,
     required ApplicationIdentity application,
     required String? target,
+    ApplicationProxyMode mode = ApplicationProxyMode.follow,
   }) async {
     final profile = ref.read(profileProvider(profileId));
     if (ref.read(currentProfileIdProvider) != profileId || profile == null) {
@@ -364,45 +410,64 @@ class SetupAction extends _$SetupAction {
       );
     }
     final routingIdentity = application.byName;
-    if (!routingIdentity.canRoute) {
+    final policyTarget = mode == ApplicationProxyMode.httpSocks ? null : target;
+    final keepFollowOverride =
+        mode == ApplicationProxyMode.follow &&
+        policyTarget == null &&
+        ref.read(networkSettingProvider).applicationProxyMode ==
+            ApplicationProxyMode.httpSocks;
+    if (!routingIdentity.canRoute ||
+        ((mode == ApplicationProxyMode.httpSocks || keepFollowOverride) &&
+            RegExp(r'[()]').hasMatch(routingIdentity.content))) {
       throw MessageException(
         currentAppLocalizations.applicationProxyInvalidProcess,
       );
     }
-    if (target != null &&
-        (target.trim().isEmpty ||
-            RegExp(r'[,\r\n]').hasMatch(target) ||
-            (target != RuleTarget.DIRECT.value &&
+    if (policyTarget != null &&
+        (policyTarget.trim().isEmpty ||
+            RegExp(r'[,\r\n]').hasMatch(policyTarget) ||
+            (policyTarget != RuleTarget.DIRECT.value &&
                 !ref
                     .read(groupsProvider)
-                    .any((group) => group.name == target)))) {
-      throw MessageException(currentAppLocalizations.invalidPolicy(target));
+                    .any((group) => group.name == policyTarget)))) {
+      throw MessageException(
+        currentAppLocalizations.invalidPolicy(policyTarget),
+      );
     }
     await database.transaction(() async {
       final rules = await database.rulesDao
           .queryApplicationRules(profileId)
           .get();
       final matches = rules.where((rule) {
-        final identity = ApplicationIdentity(
-          action: rule.ruleAction,
-          content: rule.content ?? '',
+        final identity = applicationRuleIdentity(
+          rule,
           windows: application.windows,
-        ).byName;
-        return !rule.src && identity.key == routingIdentity.key;
+        );
+        return identity?.byName.key == routingIdentity.key;
       }).toList();
-      if (target == null) {
+      if (policyTarget == null &&
+          mode == ApplicationProxyMode.follow &&
+          !keepFollowOverride) {
         await database.rulesDao.delRules(matches.map((rule) => rule.id));
         return;
       }
       final firstOrder = await database.rulesDao.firstProfileRuleOrder(
         profileId,
       );
+      final process =
+          '(${routingIdentity.action.value},${routingIdentity.content})';
+      final scoped =
+          mode == ApplicationProxyMode.httpSocks || keepFollowOverride;
       await database.rulesDao.putRule(
         Rule(
           id: matches.firstOrNull?.id ?? snowflake.id,
-          ruleAction: routingIdentity.action,
-          content: routingIdentity.content,
-          ruleTarget: target,
+          ruleAction: scoped ? RuleAction.AND : routingIdentity.action,
+          content: scoped
+              ? '($process,(IN-TYPE,TUN))'
+              : routingIdentity.content,
+          ruleTarget: keepFollowOverride
+              ? 'PASS-RULE'
+              : policyTarget ?? 'DIRECT',
           order: indexing.generateKeyBetween(null, firstOrder),
         ),
         profileId: profileId,
@@ -411,7 +476,9 @@ class SetupAction extends _$SetupAction {
     });
     ref.invalidate(setupStateProvider(profileId));
     if (ref.read(currentProfileIdProvider) != profileId) return true;
-    if (target != null) {
+    if (policyTarget != null ||
+        mode == ApplicationProxyMode.httpSocks ||
+        keepFollowOverride) {
       ref
           .read(patchClashConfigProvider.notifier)
           .update(
@@ -565,6 +632,7 @@ class SetupAction extends _$SetupAction {
       networkSettingProvider.select(
         (state) => (
           appendSystemDns: state.appendSystemDns,
+          applicationProxyMode: state.applicationProxyMode,
           bypassPrivateRoute: state.bypassPrivateRoute,
           authentication: state.authentication,
         ),
@@ -614,6 +682,10 @@ class SetupAction extends _$SetupAction {
         bypassPrivateRoute: networkSetting.bypassPrivateRoute,
         keepEmptyDnsOverrides: setupState.profileType != ProfileType.custom,
         appendSystemDns: appendSystemDns,
+        applicationProxyMode:
+            isCustom || setupState.extendType == ExtendType.standard
+            ? networkSetting.applicationProxyMode
+            : ApplicationProxyMode.follow,
         addedRules: setupState.addedRules,
         defaultUA: defaultUA,
         authentication: networkSetting.authentication.credentials,

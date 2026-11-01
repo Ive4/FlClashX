@@ -4,6 +4,7 @@ import bridge from 'libflclash_vpn.so';
 import { fileIo } from '@kit.CoreFileKit';
 import { CoreRequest, VpnCommand, VpnRequest, writeVpnState } from './VpnState';
 import ConnectionOwners from './ConnectionOwners';
+import DiagnosticLog from './DiagnosticLog';
 
 export default class FlClashVpnAbility extends VpnExtensionAbility {
   private connection?: vpnExtension.VpnConnection;
@@ -16,13 +17,29 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
   private lastCommand: string = '';
   private hasInterface: boolean = false;
   private owners?: ConnectionOwners;
+  private diagnostics?: DiagnosticLog;
+  private environment: number = -1;
 
   onCreate(want: Want): void {
     const request = JSON.parse(want.parameters?.core as string) as CoreRequest;
     this.control = request.control;
+    this.diagnostics = new DiagnosticLog(this.context.filesDir, 'vpn');
+    this.diagnostics.beginSession(this.control);
+    this.diagnostics.watchSystemEvents();
+    this.diagnostics.startSampling();
+    this.environment = this.context.getApplicationContext().on('environment', {
+      onConfigurationUpdated: (): void => {},
+      onMemoryLevel: (level: number): void => {
+        this.diagnostics?.record('vpn_memory_pressure', `level=${level}`);
+        this.diagnostics?.sample('memory_pressure');
+        bridge.trimMemory();
+      }
+    });
     this.owners = new ConnectionOwners(`${this.context.filesDir}/vpn-applications.json`);
     this.run(request).catch((error: Error) => {
       console.error(`FlClash Core: ${error.message}`);
+      this.diagnostics?.record('core_failed', error.message);
+      this.diagnostics?.state('core_failed', false);
       writeVpnState(`${this.control}.core`, `error:${error.message}`);
       this.stopExtension();
     });
@@ -33,11 +50,13 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     await this.connection.protectProcessNet();
     const operation = bridge.runCore(request.endpoint);
     writeVpnState(`${this.control}.core`, 'ready');
+    this.diagnostics?.state('core_ready', true);
     this.timer = setInterval(() => {
       this.consume().catch((error: Error) => console.error(error.message));
       this.owners?.poll().catch((error: Error) => console.error(error.message));
     }, 100);
     await operation;
+    this.diagnostics?.state('core_returned', false);
     writeVpnState(`${this.control}.core`, 'stopped');
     await this.stopExtension();
   }
@@ -54,7 +73,21 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     this.lastCommand = text;
     this.processing = true;
     const command = JSON.parse(text) as VpnCommand;
+    if (command.action === 'lightweight') {
+      try {
+        await bridge.enterLightweight(JSON.stringify({
+          runningSince: command.runningSince, tunnelStatus: command.tunnelStatus
+        }));
+        writeVpnState(command.status, 'ready');
+      } catch (error) {
+        writeVpnState(command.status, `error:${(error as Error).message}`);
+      } finally {
+        this.processing = false;
+      }
+      return;
+    }
     this.status = command.status;
+    this.diagnostics?.record(`command_${command.action}`);
     try {
       await this.stopTunnel();
       if (command.action === 'start' && command.request) await this.start(command.request);
@@ -62,6 +95,7 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     } catch (error) {
       await this.stopTunnel();
       const message = (error as Error).message;
+      this.diagnostics?.record('tunnel_failed', `stage=${this.stage} ${message}`);
       console.error(`FlClash VPN ${this.stage}: ${message}`);
       writeVpnState(this.status, `error:${this.stage}: ${message}`);
     } finally {
@@ -109,6 +143,8 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     }));
     if (this.destroyed) { await bridge.stopTun(); return; }
     writeVpnState(this.status, 'ready');
+    this.diagnostics?.state('tunnel_ready', true);
+    this.diagnostics?.sample('tunnel_ready');
   }
 
   private async stopTunnel(): Promise<void> {
@@ -116,11 +152,19 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     if (this.connection && this.hasInterface) {
       await this.connection.destroy();
       this.hasInterface = false;
+      this.diagnostics?.record('tunnel_stopped');
     }
   }
 
   onDestroy(): void {
     this.destroyed = true;
+    this.diagnostics?.state('extension_destroyed', false);
+    this.diagnostics?.close();
+    if (this.environment !== -1) {
+      this.context.getApplicationContext().off('environment', this.environment)
+        .catch(() => console.warn('FlClash memory observer cleanup failed'));
+      this.environment = -1;
+    }
     if (this.timer !== -1) { clearInterval(this.timer); this.timer = -1; }
     bridge.stopCore();
     writeVpnState(`${this.control}.core`, 'stopped');

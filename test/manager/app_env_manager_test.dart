@@ -8,7 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() {
+  setUp(() {
+    globalState.appEnv = 'stable';
+  });
+
+  tearDown(() {
     globalState.appEnv = 'stable';
   });
 
@@ -36,6 +40,22 @@ void main() {
 
     final banner = tester.widget<Banner>(find.byType(Banner));
     expect(banner.message, 'SAFE MODE');
+    expect(find.byKey(const Key('child')), findsOneWidget);
+  });
+
+  testWidgets('a pre build carries no banner on any platform', (tester) async {
+    globalState.appEnv = 'pre';
+    await pump(tester, safeMode: false);
+
+    expect(find.byKey(const Key('child')), findsOneWidget);
+    expect(find.byType(Banner), findsNothing);
+  });
+
+  testWidgets('a pre build keeps its safe mode banner', (tester) async {
+    globalState.appEnv = 'pre';
+    await pump(tester, safeMode: true);
+
+    expect(tester.widget<Banner>(find.byType(Banner)).message, 'SAFE MODE');
     expect(find.byKey(const Key('child')), findsOneWidget);
   });
 }

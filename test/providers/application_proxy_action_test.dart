@@ -191,6 +191,63 @@ void main() {
     },
   );
 
+  test('switching modes removes the old policy and keeps other rules intact', () async {
+    final unrelated = Rule.parse(
+      'AND,((PROCESS-NAME,browser.exe),(DOMAIN,manual.test)),DIRECT', id: 90,
+    );
+    await database.rulesDao.putRule(unrelated, profileId: 1);
+    await action.setApplicationProxy(
+      profileId: 1, application: _application, target: 'DIRECT',
+    );
+    await action.setApplicationProxy(
+      profileId: 1, application: _application, target: 'DIRECT',
+      mode: ApplicationProxyMode.httpSocks,
+    );
+    final rules = await database.rulesDao.queryProfileRules(1).get();
+    expect(rules, hasLength(2));
+    expect(rules.first.rawValue,
+      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT');
+    expect(rules.last.id, unrelated.id);
+    final policy = applicationProxyPoliciesOf(rules, windows: true).values.single;
+    expect(policy.mode, ApplicationProxyMode.httpSocks);
+    expect(policy.target, isNull);
+    await action.setApplicationProxy(
+      profileId: 1, application: _application, target: 'Proxy',
+    );
+    expect((await database.rulesDao.queryProfileRules(1).get()).first.rawValue,
+      'PROCESS-NAME,browser.exe,Proxy');
+  });
+
+  test('HTTP and SOCKS mode persists with no policy and enables process detection', () async {
+    await action.setApplicationProxy(
+      profileId: 1, application: _application, target: null,
+      mode: ApplicationProxyMode.httpSocks,
+    );
+    expect((await database.rulesDao.queryApplicationRules(1).get()).single.rawValue,
+      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT');
+    expect(container.read(patchClashConfigProvider).findProcessMode,
+      FindProcessMode.always);
+    expect(action.applyCalls, 1);
+  });
+
+  test('an individual follow mode overrides the HTTP and SOCKS default', () async {
+    container.listen(networkSettingProvider, (_, _) {});
+    container.read(networkSettingProvider.notifier).update(
+      (state) => state.copyWith(applicationProxyMode: ApplicationProxyMode.httpSocks),
+    );
+    await action.setApplicationProxy(
+      profileId: 1, application: _application, target: null,
+    );
+    final rules = await database.rulesDao.queryApplicationRules(1).get();
+    expect(rules.single.rawValue,
+      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE');
+    final policy = applicationProxyPoliciesOf(rules, windows: true).values.single;
+    expect(policy.mode, ApplicationProxyMode.follow);
+    expect(policy.target, isNull);
+    expect(applicationProxyDefaultRule(rules, windows: true),
+      'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser.exe)))),DIRECT');
+  });
+
   test('custom profiles accept application rules without a standard extension', () async {
     container.read(profilesProvider.notifier).updateProfile(
       1,

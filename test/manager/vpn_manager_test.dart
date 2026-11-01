@@ -13,6 +13,7 @@ import 'package:fl_clash/providers/state.dart';
 import 'package:fl_clash/state.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RestartRecordingSetupAction extends SetupAction {
@@ -48,9 +49,22 @@ void main() {
       ],
     );
     globalState.container = container;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.follow.clash/vpn'),
+          (call) async => call.method == 'canRecover' ? false : null,
+        );
   });
 
   tearDown(() => container.dispose());
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.follow.clash/vpn'),
+          null,
+        );
+  });
 
   Future<void> pumpVpnManager(
     WidgetTester tester, {
@@ -98,6 +112,7 @@ void main() {
   }
 
   void startService() {
+    container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
     container.read(runningVpnOptionsProvider.notifier).value = container
         .read(vpnOptionsProvider)
         .requireValue;
@@ -135,6 +150,65 @@ void main() {
     expect(setupAction.stops, 0);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets(
+    'a status result from before Core recovery cannot stop identical VPN options',
+    (tester) async {
+      final status = Completer<bool?>();
+      await pumpVpnManager(tester, vpnStatusReader: () => status.future);
+      startService();
+      await tester.pump(const Duration(seconds: 2));
+      final previous = container.read(runningVpnOptionsProvider)!;
+      container.read(coreStatusProvider.notifier).value =
+          CoreStatus.disconnected;
+      container.read(coreStatusProvider.notifier).value = CoreStatus.connecting;
+      container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+      container.read(runningVpnOptionsProvider.notifier).value = previous;
+      status.complete(false);
+      await tester.pump();
+      expect(setupAction.stops, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'a recoverable native session is not converted into a stop intent',
+    (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('com.follow.clash/vpn'),
+            (call) async => call.method == 'canRecover' ? true : null,
+          );
+      await pumpVpnManager(tester, vpnStatusReader: () async => false);
+      startService();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(setupAction.stops, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'a disconnected Core is not polled as an externally disabled VPN',
+    (tester) async {
+      var reads = 0;
+      await pumpVpnManager(
+        tester,
+        vpnStatusReader: () async {
+          reads++;
+          return false;
+        },
+      );
+      startService();
+      container.read(coreStatusProvider.notifier).value =
+          CoreStatus.disconnected;
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(reads, 0);
+      expect(setupAction.stops, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('a change the running service reads asks for a restart', (
     tester,

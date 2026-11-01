@@ -5,6 +5,16 @@ import 'package:material_ui/material_ui.dart';
 import 'app_localizations.dart';
 import 'application_proxy.dart';
 
+extension ApplicationProxyModeL10n on ApplicationProxyMode {
+  String get label {
+    final l = currentAppLocalizations;
+    return switch (this) {
+      ApplicationProxyMode.follow => l.applicationProxyModeFollow,
+      ApplicationProxyMode.httpSocks => l.applicationProxyModeHttpSocks,
+    };
+  }
+}
+
 extension ApplicationRouteL10n on ApplicationRoute {
   String get label {
     final l = currentAppLocalizations;

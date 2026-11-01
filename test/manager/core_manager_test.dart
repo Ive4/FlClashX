@@ -18,6 +18,7 @@ import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -27,6 +28,17 @@ import '../helpers/test_database_providers.dart';
 import '../helpers/test_profiles.dart';
 
 class _MockCoreHandlerInterface extends Mock implements CoreHandlerInterface {}
+
+class _RecordingRecoveryAction extends CoreAction {
+  int restarts = 0;
+
+  @override
+  Future<bool> restartCore() async {
+    restarts++;
+    ref.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+    return true;
+  }
+}
 
 const _nullProfileSetupState = SetupState(
   profileId: null,
@@ -90,6 +102,7 @@ Future<ProviderContainer> _pumpCoreManager(
   WidgetTester tester,
   CoreHandlerInterface coreInterface, {
   List<Override> overrides = const [],
+  bool isOhos = false,
 }) async {
   final container = ProviderContainer(
     overrides: [
@@ -111,7 +124,7 @@ Future<ProviderContainer> _pumpCoreManager(
           globalState.measure = Measure.of(context, 1);
           return StatusManager(child: child!);
         },
-        home: const CoreManager(child: SizedBox()),
+        home: CoreManager(isOhos: isOhos, child: const SizedBox()),
       ),
     ),
   );
@@ -199,6 +212,116 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
+
+  testWidgets('HarmonyOS restores a running VPN while the UI is backgrounded', (
+    tester,
+  ) async {
+    final coreInterface = _coreInterface();
+    const channel = MethodChannel('com.follow.clash/vpn');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      channel,
+      (call) async => call.method == 'canRecover' ? true : null,
+    );
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    when(() => coreInterface.forceGc()).thenAnswer((_) async => true);
+    late _RecordingRecoveryAction action;
+    final container = await _pumpCoreManager(
+      tester,
+      coreInterface,
+      isOhos: true,
+      overrides: [
+        isStartProvider.overrideWithValue(true),
+        coreActionProvider.overrideWith(
+          () => action = _RecordingRecoveryAction(),
+        ),
+      ],
+    );
+    container.read(coreActionProvider.notifier);
+    container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    final listener =
+        tester.state(find.byType(CoreManager)) as CoreEventListener;
+    listener.onCrash('boom');
+    await tester.pump();
+    expect(action.restarts, 1);
+    expect(container.read(coreStatusProvider), CoreStatus.connected);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(action.restarts, 1);
+    expect(container.read(coreStatusProvider), CoreStatus.connected);
+    verify(() => coreInterface.forceGc()).called(1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('HarmonyOS safe mode never automatically restores a VPN', (
+    tester,
+  ) async {
+    final coreInterface = _coreInterface();
+    late _RecordingRecoveryAction action;
+    final container = await _pumpCoreManager(
+      tester,
+      coreInterface,
+      isOhos: true,
+      overrides: [
+        isStartProvider.overrideWithValue(true),
+        safeModeProvider.overrideWithValue(true),
+        coreActionProvider.overrideWith(
+          () => action = _RecordingRecoveryAction(),
+        ),
+      ],
+    );
+    container.read(coreActionProvider.notifier);
+    container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    coreEventManager.sendEvent(_crash);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(action.restarts, 0);
+    expect(container.read(coreStatusProvider), CoreStatus.disconnected);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'HarmonyOS reports transfer totals in the background only while connected',
+    (tester) async {
+      final coreInterface = _coreInterface();
+      when(
+        () => coreInterface.getTotalTraffic(false),
+      ).thenAnswer((_) async => const Traffic(up: 4096, down: 8192));
+      const channel = MethodChannel('com.follow.clash/vpn');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final updates = <Object?>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'updateTransfer') updates.add(call.arguments);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final container = await _pumpCoreManager(
+        tester,
+        coreInterface,
+        isOhos: true,
+        overrides: [isStartProvider.overrideWithValue(true)],
+      );
+      container.read(coreStatusProvider.notifier).value =
+          CoreStatus.disconnected;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(seconds: 30));
+      verifyNever(() => coreInterface.getTotalTraffic(false));
+      container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+      await tester.pump(const Duration(seconds: 30));
+      expect(updates, [
+        {'up': 4096, 'down': 8192},
+      ]);
+      verify(() => coreInterface.getTotalTraffic(false)).called(1);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 30));
+      verifyNever(() => coreInterface.getTotalTraffic(false));
+    },
+  );
 
   testWidgets('a crash while the app is visible surfaces the message', (
     tester,

@@ -99,7 +99,7 @@ final class CoreBuilder implements Builder {
     if (code.cCompiler?.compiler.path.contains('openharmony') ?? false) {
       return null;
     }
-    // Android's Core is the gomobile AAR the :core Gradle module builds.
+    // Android's :core Gradle module builds the Rust JNI library per ABI.
     final platform = switch (code.targetOS) {
       OS.linux => 'linux',
       OS.macOS => 'macos',
@@ -126,7 +126,30 @@ final class CoreBuilder implements Builder {
       rootDir: rootDir,
       harnessDir: p.join(p.fromUri(input.packageRoot), 'setup_hooks'),
       target: target,
+      environment: _environment(input),
     );
+  }
+
+  Map<String, String> _environment(BuildInput input) {
+    final compiler = input.config.code.cCompiler?.compiler;
+    final native = <String, String>{
+      if (input.config.code.targetOS == OS.windows && compiler != null)
+        'FLCLASH_MSVC_COMPILER': p.fromUri(compiler),
+    };
+    final values = input.userDefines['environment'];
+    if (values == null) return native;
+    if (values is! Map ||
+        values.entries.any(
+          (entry) => entry.key is! String || entry.value is! String,
+        )) {
+      throw BuildException(
+        'setup user-define environment must map variable names to strings',
+      );
+    }
+    return {
+      ...native,
+      ...values.map((key, value) => MapEntry(key as String, value as String)),
+    };
   }
 
   String repositoryRoot(BuildInput input) {

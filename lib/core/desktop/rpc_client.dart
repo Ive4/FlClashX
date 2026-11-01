@@ -10,6 +10,7 @@ import 'package:fl_clash/enum/enum.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'transport.dart';
+import 'model.dart';
 
 /// How many timeout windows a request may be extended across while Core keeps
 /// answering other requests, before it fails regardless.
@@ -41,6 +42,7 @@ final class CoreRpcClient implements CoreRpcChannel {
   late final StreamSubscription<DesktopTransportEvent> _eventSubscription;
 
   int _methodCallId = 0;
+  final String _clientId = createCoreSessionId();
   Future<void>? _closeOperation;
 
   /// Time since Core last answered any request. A method timeout is a liveness
@@ -75,7 +77,7 @@ final class CoreRpcClient implements CoreRpcChannel {
         message: 'Core RPC client is closed',
       );
     }
-    final id = '${++_methodCallId}';
+    final id = '$_clientId-${++_methodCallId}';
     final completer = Completer<Object?>();
     _pending[id] = (completer: completer, method: method);
     final requestTimeout = timeout ?? const Duration(minutes: 3);

@@ -9,7 +9,9 @@ import 'package:fl_clash/common/launch.dart';
 import 'package:fl_clash/common/migration.dart';
 import 'package:fl_clash/common/tray.dart';
 import 'package:fl_clash/common/window.dart';
+import 'package:fl_clash/common/system_dns.dart';
 import 'package:fl_clash/database/database.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/models/models.dart';
@@ -169,7 +171,8 @@ class Bootstrap {
     unawaited(
       autoLaunch?.updateStatus(_container.read(appSettingProvider).autoLaunch),
     );
-    if (!_container.read(appSettingProvider).silentLaunch) {
+    if (!_container.read(appSettingProvider).silentLaunch ||
+        desktopBackground.showOnLaunch) {
       unawaited(window?.show());
     } else {
       unawaited(window?.hide());
@@ -182,6 +185,13 @@ class Bootstrap {
     await _container.read(coreActionProvider.notifier).startCore();
     if (!_bootDecision.isDegraded) {
       await _container.read(setupActionProvider.notifier).initStatus();
+    }
+    if (desktopBackground.restorePending) {
+      desktopBackground.restorePending = false;
+      await systemProxyQueue?.apply(_container.read(proxyStateProvider));
+      await systemDnsCoordinator?.sync(
+        _container.read(shouldPatchSystemDnsProvider),
+      );
     }
     _container.read(initProvider.notifier).value = true;
     unawaited(_container.read(resourcesActionProvider.notifier).autoUpdate());

@@ -7,6 +7,8 @@ static char* (*runCore)(const char*) = nullptr;
 static char* (*startTun)(int, const char*) = nullptr;
 static void (*stopTun)() = nullptr;
 static void (*stopCore)() = nullptr;
+static void (*trimMemory)() = nullptr;
+static char* (*enterLightweight)(const char*) = nullptr;
 static void (*freeError)(char*) = nullptr;
 static char* (*takeOwners)() = nullptr;
 static void (*resolveOwner)(unsigned int, int, const char*) = nullptr;
@@ -34,7 +36,8 @@ static void Execute(napi_env, void* data) {
     char* error = nullptr;
     if (work->operation == 0) error = runCore(work->argument.c_str());
     else if (work->operation == 1) error = startTun(work->fd, work->argument.c_str());
-    else stopTun();
+    else if (work->operation == 2) stopTun();
+    else error = enterLightweight(work->argument.c_str());
     if (error) { work->error = error; freeError(error); }
 }
 
@@ -62,11 +65,13 @@ static napi_value Queue(napi_env env, napi_callback_info info, int operation) {
         startTun = reinterpret_cast<char*(*)(int,const char*)>(dlsym(library, "FlClashStartTun"));
         stopTun = reinterpret_cast<void(*)()>(dlsym(library, "FlClashStopTun"));
         stopCore = reinterpret_cast<void(*)()>(dlsym(library, "FlClashStopCore"));
+        trimMemory = reinterpret_cast<void(*)()>(dlsym(library, "FlClashTrimMemory"));
+        enterLightweight = reinterpret_cast<char*(*)(const char*)>(dlsym(library, "FlClashEnterLightweight"));
         freeError = reinterpret_cast<void(*)(char*)>(dlsym(library, "FlClashFree"));
         takeOwners = reinterpret_cast<char*(*)()>(dlsym(library, "FlClashTakeOwners"));
         resolveOwner = reinterpret_cast<void(*)(unsigned int,int,const char*)>(dlsym(library, "FlClashResolveOwner"));
     }
-    if (!runCore || !startTun || !stopTun || !stopCore || !freeError) {
+    if (!runCore || !startTun || !stopTun || !stopCore || !freeError || !enterLightweight) {
         napi_throw_error(env, nullptr, "Missing HarmonyOS Core entrypoint");
         return nullptr;
     }
@@ -75,7 +80,7 @@ static napi_value Queue(napi_env env, napi_callback_info info, int operation) {
     napi_get_cb_info(env, info, &count, arguments, nullptr, nullptr);
     auto* work = new Work();
     work->operation = operation;
-    if (operation == 0) work->argument = Text(env, arguments[0]);
+    if (operation == 0 || operation == 3) work->argument = Text(env, arguments[0]);
     if (operation == 1) {
         napi_get_value_int32(env, arguments[0], &work->fd);
         work->argument = Text(env, arguments[1]);
@@ -91,8 +96,16 @@ static napi_value Queue(napi_env env, napi_callback_info info, int operation) {
 static napi_value Run(napi_env env, napi_callback_info info) { return Queue(env, info, 0); }
 static napi_value Start(napi_env env, napi_callback_info info) { return Queue(env, info, 1); }
 static napi_value Stop(napi_env env, napi_callback_info info) { return Queue(env, info, 2); }
+static napi_value Lightweight(napi_env env, napi_callback_info info) { return Queue(env, info, 3); }
 static napi_value Close(napi_env env, napi_callback_info) {
     if (stopCore) stopCore();
+    napi_value value;
+    napi_get_undefined(env, &value);
+    return value;
+}
+
+static napi_value TrimMemory(napi_env env, napi_callback_info) {
+    if (trimMemory) trimMemory();
     napi_value value;
     napi_get_undefined(env, &value);
     return value;
@@ -126,10 +139,12 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"startTun", nullptr, Start, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"stopTun", nullptr, Stop, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"stopCore", nullptr, Close, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"trimMemory", nullptr, TrimMemory, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"enterLightweight", nullptr, Lightweight, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"takeOwners", nullptr, TakeOwners, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resolveOwner", nullptr, ResolveOwner, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
-    napi_define_properties(env, exports, 6, properties);
+    napi_define_properties(env, exports, 8, properties);
     return exports;
 }
 

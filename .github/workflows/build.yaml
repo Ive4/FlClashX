@@ -18,6 +18,7 @@ env:
   BRANCH_CACHE: ${{ !startsWith(github.ref, 'refs/tags/') }}
   FLUTTER_VERSION: '3.47.6'
   GO_VERSION: '1.27.1'
+  RUST_VERSION: '1.99.1'
   NDK_VERSION: r28c
 
 jobs:
@@ -68,7 +69,7 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
-      - name: Skip the Go core build hook
+      - name: Skip the Core and desktop host build hook
         run: |
           yq -i '.hooks.user_defines.setup.build_assets = false' pubspec.yaml
 
@@ -132,14 +133,24 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: |
-            core/go.sum
-            plugins/setup/setup_hooks/lib/src/go_builder.dart
+            services/desktop/go.sum
+            plugins/setup/setup_hooks/lib/src/desktop_builder.dart
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Setup NASM
+        if: matrix.platform == 'windows'
+        uses: ilammy/setup-nasm@v1
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
           key: desktop-${{ matrix.platform }}
           workspaces: |
+            core/rust
             services/helper
             plugins/rust_api/rust
           cache-directories: .dart_tool/hooks_runner
@@ -155,7 +166,20 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libsecret-1-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libsecret-1-dev cmake clang libclang-dev nasm pkg-config
+
+      - name: Install macOS native Core dependencies
+        if: matrix.platform == 'macos'
+        run: |
+          brew install cmake llvm nasm
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> "$GITHUB_ENV"
+
+      - name: Install Windows LLVM
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:ProgramFiles/LLVM/bin/libclang.dll")) { choco install llvm -y --no-progress }
+          "LIBCLANG_PATH=$env:ProgramFiles/LLVM/bin" >> $env:GITHUB_ENV
 
       - name: Setup Xcode
         if: matrix.platform == 'macos'
@@ -176,7 +200,7 @@ jobs:
         run: flutter build ${{ matrix.platform }} --debug
 
   go:
-    name: Go core
+    name: Native desktop host
     if: *checks
     runs-on: ubuntu-latest
     steps:
@@ -190,33 +214,16 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: ${{ env.BRANCH_CACHE }}
-          cache-dependency-path: core/go.sum
+          cache-dependency-path: services/desktop/go.sum
 
-      - name: Validate Go core wrapper
-        working-directory: core
+      - name: Validate native desktop host
+        working-directory: services/desktop
         env:
           CGO_ENABLED: 0
         run: |
-          if ! compgen -G '*_test.go' > /dev/null; then
-            echo 'No Go tests found in core/; the test step would pass vacuously.' >&2
-            exit 1
-          fi
-          test -z "$(gofmt -l ./*.go ./cmd ./mobile ./platform ./tun)" || {
-            gofmt -l ./*.go ./cmd ./mobile ./platform ./tun >&2
-            exit 1
-          }
-          go test -count=1 .
-          go vet . ./cmd/...
-          GOOS=linux go vet ./platform
-
-      - name: Validate the Android core library
-        working-directory: core
-        env:
-          CGO_ENABLED: 0
-        run: |
-          tags="$(sed -n 's/^tags: *//p' ../build_config.yaml)"
-          test -n "$tags" || { echo 'Could not read tags from build_config.yaml' >&2; exit 1; }
-          GOOS=android GOARCH=arm64 go vet "-tags=$tags" . ./mobile ./tun ./platform
+          test -z "$(gofmt -l .)"
+          go test -count=1 ./...
+          go vet ./...
 
   android:
     name: Android unit tests
@@ -228,14 +235,21 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: ${{ env.BRANCH_CACHE }}
-          cache-dependency-path: |
-            core/go.sum
-            android/core/build.gradle.kts
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: armv7-linux-androideabi,aarch64-linux-android,x86_64-linux-android
+
+      - name: Install native Core build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang libclang-dev nasm pkg-config
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core/rust
+          cache-directories: build/core
+          save-if: ${{ env.BRANCH_CACHE }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -278,9 +292,8 @@ jobs:
           test -d "$wrapper" || flutter precache
           cp -R "$wrapper/." .
           chmod +x gradlew
-          # No JVM unit test loads the Core or the Flutter build, but `:core` compiles against
-          # the gomobile AAR, so one ABI of it is built.
-          ./gradlew :common:testDebugUnitTest :service:testDebugUnitTest :app:testDebugUnitTest \
+          # JVM tests do not load the Core; AGP still builds one Rust JNI ABI for the bundle.
+          ./gradlew :core:mergeDebugJniLibFolders :common:testDebugUnitTest :service:testDebugUnitTest :app:testDebugUnitTest \
             -Ptarget-platform=android-arm64 \
             -x :app:compileFlutterBuildDebug -x :app:copyFlutterAssetsDebug
 
@@ -292,21 +305,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install native Core build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang libclang-dev nasm pkg-config
+
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
+            core/rust
             services/helper
             plugins/rust_api/rust
           save-if: ${{ env.BRANCH_CACHE }}
 
       - name: Check format
         run: |
+          cargo fmt --manifest-path core/rust/Cargo.toml -- --check
           cargo fmt --manifest-path services/helper/Cargo.toml -- --check
           cargo fmt --manifest-path plugins/rust_api/rust/Cargo.toml -- --check
 
       - name: Run tests
         run: |
+          cargo test --locked --manifest-path core/rust/Cargo.toml
           cargo test --manifest-path services/helper/Cargo.toml
           cargo test --manifest-path plugins/rust_api/rust/Cargo.toml
 
@@ -386,11 +410,39 @@ jobs:
           } >> android/local.properties
 
       - name: Setup Go
+        if: matrix.platform != 'android'
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: ${{ env.BRANCH_CACHE }}
-          cache-dependency-path: core/go.sum
+          cache-dependency-path: services/desktop/go.sum
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.platform == 'android' && 'armv7-linux-androideabi,aarch64-linux-android,x86_64-linux-android' || '' }}
+
+      - name: Setup NASM
+        if: matrix.platform == 'windows'
+        uses: ilammy/setup-nasm@v1
+
+      - name: Install Linux native Core dependencies
+        if: matrix.platform == 'linux' || matrix.platform == 'android'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang libclang-dev nasm pkg-config
+
+      - name: Install macOS native Core dependencies
+        if: matrix.platform == 'macos'
+        run: |
+          brew install cmake llvm nasm
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> "$GITHUB_ENV"
+
+      - name: Install Windows LLVM
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:ProgramFiles/LLVM/bin/libclang.dll")) { choco install llvm -y --no-progress }
+          "LIBCLANG_PATH=$env:ProgramFiles/LLVM/bin" >> $env:GITHUB_ENV
 
       - name: Setup Gradle
         if: startsWith(matrix.platform,'android')
@@ -434,15 +486,13 @@ jobs:
         if: matrix.platform == 'macos' && matrix.arch == 'amd64'
         run: plutil -replace FLTEnableImpeller -bool NO macos/Runner/Info.plist
 
-      # The core embeds this bundle and FlClashHttpOverrides.trustCoreRoots loads it for Dart.
-      # Pinned by hash, so a new bundle from https://curl.se/docs/caextract.html is a reviewed bump.
-      - name: Fetch CA certificates
+      - name: Fetch Dart CA certificates
         shell: bash
         env:
           CA_BUNDLE: cacert-2026-09-25.pem
           CA_BUNDLE_SHA256: a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
         run: |
-          bundle=core/Clash.Meta/component/ca/ca-certificates.crt
+          bundle=assets/data/ca-certificates.crt
           curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
           echo "$CA_BUNDLE_SHA256  $bundle" | sha256sum -c -
 

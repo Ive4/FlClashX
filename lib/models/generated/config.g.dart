@@ -44,6 +44,8 @@ _AppSettingProps _$AppSettingPropsFromJson(
   acceptedDisclaimerVersion:
       (json['acceptedDisclaimerVersion'] as num?)?.toInt() ?? 0,
   minimizeOnExit: json['minimizeOnExit'] as bool? ?? true,
+  autoLightweightMinutes:
+      (json['autoLightweightMinutes'] as num?)?.toInt() ?? 5,
   hidden: json['hidden'] as bool? ?? false,
   developerMode: json['developerMode'] as bool? ?? false,
   restoreStrategy:
@@ -109,6 +111,7 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
       'sidebarExpanded': instance.sidebarExpanded,
       'acceptedDisclaimerVersion': instance.acceptedDisclaimerVersion,
       'minimizeOnExit': instance.minimizeOnExit,
+      'autoLightweightMinutes': instance.autoLightweightMinutes,
       'hidden': instance.hidden,
       'developerMode': instance.developerMode,
       'restoreStrategy': _$RestoreStrategyEnumMap[instance.restoreStrategy]!,
@@ -256,6 +259,12 @@ Map<String, dynamic> _$AuthenticationPropsToJson(
 
 _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
     _NetworkProps(
+      applicationProxyMode:
+          $enumDecodeNullable(
+            _$ApplicationProxyModeEnumMap,
+            json['applicationProxyMode'],
+          ) ??
+          ApplicationProxyMode.follow,
       systemProxy: json['systemProxy'] as bool? ?? true,
       bypassDomain:
           (json['bypassDomain'] as List<dynamic>?)
@@ -274,6 +283,8 @@ _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$NetworkPropsToJson(_NetworkProps instance) =>
     <String, dynamic>{
+      'applicationProxyMode':
+          _$ApplicationProxyModeEnumMap[instance.applicationProxyMode]!,
       'systemProxy': instance.systemProxy,
       'bypassDomain': instance.bypassDomain,
       'bypassPrivateRoute': instance.bypassPrivateRoute,
@@ -281,6 +292,11 @@ Map<String, dynamic> _$NetworkPropsToJson(_NetworkProps instance) =>
       'appendSystemDns': instance.appendSystemDns,
       'authentication': instance.authentication,
     };
+
+const _$ApplicationProxyModeEnumMap = {
+  ApplicationProxyMode.follow: 'follow',
+  ApplicationProxyMode.httpSocks: 'httpSocks',
+};
 
 _ProxiesStyleProps _$ProxiesStylePropsFromJson(Map<String, dynamic> json) =>
     _ProxiesStyleProps(

@@ -62,9 +62,17 @@ void main() {
       const Rule(id: 6, ruleAction: RuleAction.MATCH, ruleTarget: 'Proxy'),
       profileId: 1,
     );
+    await database.rulesDao.putRule(
+      Rule.parse('AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT', id: 7),
+      profileId: 1,
+    );
+    await database.rulesDao.putRule(
+      Rule.parse('AND,((PROCESS-NAME,browser),(DOMAIN,manual.test)),DIRECT', id: 8),
+      profileId: 1,
+    );
 
     final rules = await database.rulesDao.queryApplicationRules(1).get();
-    expect(rules.map((rule) => rule.id), [2, 1]);
+    expect(rules.map((rule) => rule.id), [2, 1, 7]);
     expect(await database.rulesDao.firstProfileRuleOrder(1), 'Zz');
     expect(await database.rulesDao.firstProfileRuleOrder(99), isNull);
   });

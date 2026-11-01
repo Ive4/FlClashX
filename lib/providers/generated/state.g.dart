@@ -58,16 +58,19 @@ final class SetupPatchProvider
         $FunctionalProvider<
           ({
             bool appendSystemDns,
+            ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
+            ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
+            ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           })
@@ -76,6 +79,7 @@ final class SetupPatchProvider
         $Provider<
           ({
             bool appendSystemDns,
+            ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           })
@@ -99,6 +103,7 @@ final class SetupPatchProvider
   $ProviderElement<
     ({
       bool appendSystemDns,
+      ApplicationProxyMode applicationProxyMode,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
     })
@@ -108,6 +113,7 @@ final class SetupPatchProvider
   @override
   ({
     bool appendSystemDns,
+    ApplicationProxyMode applicationProxyMode,
     bool bypassPrivateRoute,
     PatchClashConfig patchConfig,
   })
@@ -119,6 +125,7 @@ final class SetupPatchProvider
   Override overrideWithValue(
     ({
       bool appendSystemDns,
+      ApplicationProxyMode applicationProxyMode,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
     })
@@ -130,6 +137,7 @@ final class SetupPatchProvider
           $SyncValueProvider<
             ({
               bool appendSystemDns,
+              ApplicationProxyMode applicationProxyMode,
               bool bypassPrivateRoute,
               PatchClashConfig patchConfig,
             })
@@ -138,7 +146,7 @@ final class SetupPatchProvider
   }
 }
 
-String _$setupPatchHash() => r'd09fb41d40ced4cd47c9131fe55e983e35128724';
+String _$setupPatchHash() => r'2eadf3ea822cbcad424103369edeb662765e70b2';
 
 @ProviderFor(trayState)
 final trayStateProvider = TrayStateProvider._();

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
+import 'package:fl_clash/core/desktop/model.dart';
 import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/core/method.dart';
 import 'package:fl_clash/core/spill.dart';
@@ -170,6 +172,7 @@ void main() {
   });
 
   tearDown(() async {
+    desktopBackground.resumeState = null;
     action.blockCoreCalls = false;
     action.coreRunningError = null;
     action.unansweredCoreCalls.clear();
@@ -652,6 +655,47 @@ void main() {
   });
 
   group('initStatus', () {
+    test(
+      'a lightweight restore adopts the run without touching the Core',
+      () async {
+        await mockPreferences({});
+        final runningSince = DateTime.now().subtract(
+          const Duration(minutes: 2),
+        );
+        desktopBackground.resumeState = CoreResumeState(
+          coreReused: true,
+          mode: 'global',
+          runningSince: runningSince,
+        );
+        await container.read(setupActionProvider.notifier).initStatus();
+
+        expect(container.read(isStartProvider), isTrue);
+        expect(action.coreRunningCalls, isEmpty);
+        expect(action.applyProfileCalls, 0);
+        expect(container.read(runningVpnOptionsProvider), isNotNull);
+        expect(globalState.needInitStatus, isFalse);
+        expect(desktopBackground.resumeState, isNull);
+        expect(container.read(patchClashConfigProvider).mode, Mode.global);
+        container.read(runTimeProvider.notifier).value = 0;
+        expect(action.runningSince, runningSince);
+      },
+    );
+
+    test(
+      'restoring a stopped lightweight session does not auto-start it',
+      () async {
+        await mockPreferences({});
+        container.read(appSettingProvider.notifier).value =
+            const AppSettingProps(autoRun: true);
+        desktopBackground.resumeState = const CoreResumeState(coreReused: true);
+        await container.read(setupActionProvider.notifier).initStatus();
+
+        expect(container.read(isStartProvider), isFalse);
+        expect(action.coreRunningCalls, isEmpty);
+        expect(action.applyProfileCalls, 0);
+      },
+    );
+
     test('is a no-op once the status has already been initialized', () async {
       globalState.needInitStatus = false;
 

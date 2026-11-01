@@ -21,11 +21,14 @@ Future<void> buildOhos(BuildInput input, BuildOutputBuilder output) async {
     '--sysroot="${native.path}/sysroot" %*\r\n',
   );
   final crate = Directory.fromUri(input.packageRoot.resolve('rust/'));
+  final toolchain =
+      input.userDefines['ohos_toolchain'] as String? ??
+      (Platform.isWindows ? '1.99.0-msvc' : '1.99.0');
   final result = await Process.run(
     'rustup',
     [
       'run',
-      '1.99.0',
+      toolchain,
       'cargo',
       'build',
       '--locked',

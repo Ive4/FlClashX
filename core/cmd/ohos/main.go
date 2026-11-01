@@ -56,6 +56,17 @@ func FlClashStopTun() { core.StopOhosTun() }
 //export FlClashStopCore
 func FlClashStopCore() { core.StopEmbedded() }
 
+//export FlClashTrimMemory
+func FlClashTrimMemory() { core.TrimEmbeddedMemory() }
+
+//export FlClashEnterLightweight
+func FlClashEnterLightweight(settings *C.char) *C.char {
+	if err := core.EnableEmbeddedLightweight(C.GoString(settings)); err != nil {
+		return C.CString(err.Error())
+	}
+	return nil
+}
+
 //export FlClashTakeOwners
 func FlClashTakeOwners() *C.char { return C.CString(core.TakeOhosOwners()) }
 

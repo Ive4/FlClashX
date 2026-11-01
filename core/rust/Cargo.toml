@@ -1,0 +1,85 @@
+[package]
+name = "flclash-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+publish = false
+
+[lib]
+name = "flclash"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "FlClashCore"
+path = "src/main.rs"
+
+[dependencies]
+meow-common = "=0.28.0"
+meow-rules = "=0.28.0"
+meow-config = { version = "=0.28.0", features = ["anytls", "trusttunnel"] }
+meow-api = "=0.28.0"
+meow-tunnel = "=0.28.0"
+meow-dns = { version = "=0.28.0", features = ["encrypted"] }
+meow-proxy = { version = "=0.28.0", default-features = false }
+meow-listener = { version = "=0.28.0", features = ["listener-tproxy", "listener-shadowsocks"] }
+meow-lwip = "=0.28.0"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde-saphyr = "=2.0.0"
+parking_lot = "0.12"
+dashmap = "6"
+anyhow = "1"
+axum = "0.8"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+base64 = "0.22"
+regex = "1"
+fancy-regex = "0.16"
+time = { version = "0.3", features = ["formatting"] }
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.8"
+aes-gcm = "0.10"
+pbkdf2 = "0.12"
+xz2 = "0.1"
+age = { version = "0.11", features = ["armor"] }
+meow-transport = { version = "=0.28.0", features = ["tls"] }
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+shadowsocks = { version = "=1.24.0", default-features = false }
+h2 = "=0.4.18"
+sysinfo = "0.32"
+zstd = "0.14"
+ipnet = "2"
+maxminddb = "0.27"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(not(any(target_os = "android", target_env = "ohos")))'.dependencies]
+meow-api = { version = "=0.28.0", features = ["listener-tun"] }
+meow-listener = { version = "=0.28.0", features = ["listener-tun"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+
+[dev-dependencies]
+tempfile = "3"
+
+[patch.crates-io]
+meow-listener = { path = "vendor/meow-listener" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = "s"
+

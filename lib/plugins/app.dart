@@ -44,6 +44,10 @@ class App {
     return methodChannel.invokeMethod<bool>('moveTaskToBack');
   }
 
+  Future<bool?> enterLightweightMode() async {
+    return methodChannel.invokeMethod<bool>('enterLightweightMode');
+  }
+
   Future<List<Package>> getPackages({
     List<String> knownPackages = const [],
   }) async {

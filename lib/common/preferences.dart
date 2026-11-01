@@ -86,6 +86,18 @@ class Preferences {
     await preferences?.setString('sharedState', json.encode(shareState));
   }
 
+  Future<void> saveLightweightResume() async {
+    final preferences = await _store.value;
+    await preferences?.setBool('lightweightResume', true);
+  }
+
+  Future<bool> takeLightweightResume() async {
+    final preferences = await _store.value;
+    final lightweight = preferences?.getBool('lightweightResume') ?? false;
+    await preferences?.remove('lightweightResume');
+    return lightweight;
+  }
+
   /// The md5 of the config.yaml the Core last accepted, which is also what
   /// the Android service applies when it starts without Flutter.
   Future<String?> getAppliedConfigMd5() async {

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'build_cache.dart';
 import 'fingerprint.dart';
 import 'options.dart';
+import 'rust_core_builder.dart';
 import 'target.dart';
 import 'util.dart';
 
@@ -18,34 +19,40 @@ class RustBuilder {
     required this.cache,
     required this.notice,
     this.harnessInputs = const [],
-  });
+    Map<String, String>? environment,
+  }) : environment = environment ?? Platform.environment;
 
   final String rootDir;
   final BuildConfig config;
   final BuildCache cache;
   final BuildNotice notice;
   final List<String> harnessInputs;
+  final Map<String, String> environment;
 
   String get _helperPath => p.join(rootDir, config.helperDir);
   String get _outputPath => p.join(rootDir, config.outputDir);
 
   Future<BuildExecution> build(Target target, String coreSha256) async {
     final triple = target.rustTriple;
+    final targetDirectory = p.normalize(p.join(_helperPath, 'target'));
     final args = [
       'build',
+      '--locked',
       '--target',
       triple,
+      '--target-dir',
+      targetDirectory,
       if (target.goos == 'windows') ...['--features', 'windows-service'],
       '--release',
     ];
     final env = {
+      ...rustBuildEnvironment(environment),
       'CORE_SHA256': coreSha256,
       'CORE_NAME': '${config.coreName}${target.executableExtension}',
     };
 
     final srcPath = p.join(
-      _helperPath,
-      'target',
+      targetDirectory,
       triple,
       'release',
       'helper${target.executableExtension}',
@@ -94,45 +101,27 @@ class RustBuilder {
       ..addValue('target', {'goos': target.goos, 'goarch': target.goarch})
       ..addValue('arguments', args)
       ..addValue('core_sha256', coreSha256)
-      ..addValue('environment', _rustEnvironment())
+      ..addValue('environment', rustBuildEnvironment(environment))
+      ..addValue('native_tools', rustNativeTools(environment))
       ..addValue('config', config.toFingerprintMap());
 
-    final cargoVersion = runCommand('cargo', [
-      '--version',
-    ], workingDirectory: _helperPath);
+    final cargoVersion = runCommand(
+      'cargo',
+      ['--version'],
+      workingDirectory: _helperPath,
+      environment: rustBuildEnvironment(environment),
+    );
     builder.addValue('cargo_version', (cargoVersion.stdout as String).trim());
-    final rustVersion = runCommand('rustc', [
-      '-Vv',
-    ], workingDirectory: _helperPath);
+    final rustVersion = runCommand(
+      'rustc',
+      ['-Vv'],
+      workingDirectory: _helperPath,
+      environment: rustBuildEnvironment(environment),
+    );
     builder.addValue('rustc_version', (rustVersion.stdout as String).trim());
 
-    final inputs = collectFiles(
-      _helperPath,
-      excludedDirectories: const {'target', '.git', '.idea'},
-    )..addAll(harnessInputs);
+    final inputs = rustBuildInputs(_helperPath, rootDir)..addAll(harnessInputs);
     builder.addFiles(inputs);
     return builder.finishWithInputs();
-  }
-
-  Map<String, String> _rustEnvironment() {
-    const exactKeys = {
-      'CARGO_BUILD_TARGET',
-      'CARGO_ENCODED_RUSTFLAGS',
-      'RUSTFLAGS',
-      'RUSTUP_TOOLCHAIN',
-      'RUSTC_WRAPPER',
-      'RUSTC_WORKSPACE_WRAPPER',
-    };
-    final values = <String, String>{};
-    final entries = Platform.environment.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    for (final entry in entries) {
-      if (exactKeys.contains(entry.key) ||
-          entry.key.startsWith('CARGO_PROFILE_') ||
-          entry.key.startsWith('CARGO_TARGET_')) {
-        values[entry.key] = entry.value;
-      }
-    }
-    return values;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/core/ohos/diagnostics.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/action.dart';
@@ -23,10 +24,12 @@ class VpnManager extends ConsumerStatefulWidget {
 class _VpnContainerState extends ConsumerState<VpnManager> {
   Timer? _statusTimer;
   bool _checkingStatus = false;
+  int _coreEpoch = 0;
 
   @override
   void initState() {
     super.initState();
+    ref.listenManual(coreStatusProvider, (_, _) => _coreEpoch++);
     if (system.isOhos || widget.vpnStatusReader != null) {
       _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
         unawaited(_checkStatus());
@@ -48,7 +51,13 @@ class _VpnContainerState extends ConsumerState<VpnManager> {
 
   Future<void> _checkStatus() async {
     final running = ref.read(runningVpnOptionsProvider);
-    if (_checkingStatus || running?.enable != true) return;
+    if (_checkingStatus ||
+        running == null ||
+        !running.enable ||
+        ref.read(coreStatusProvider) != CoreStatus.connected) {
+      return;
+    }
+    final epoch = _coreEpoch;
     _checkingStatus = true;
     try {
       final active =
@@ -56,16 +65,29 @@ class _VpnContainerState extends ConsumerState<VpnManager> {
               const MethodChannel(
                 'com.follow.clash/vpn',
               ).invokeMethod<bool>('status'));
-      if (mounted &&
-          active == false &&
-          identical(running, ref.read(runningVpnOptionsProvider))) {
-        await ref.read(setupActionProvider.notifier).setRunning(false);
+      if (active != false || !_isCurrentStatus(epoch, running)) return;
+      final recoverable = await OhosDiagnostics.canRecover();
+      if (!_isCurrentStatus(epoch, running)) return;
+      if (recoverable) {
+        unawaited(
+          OhosDiagnostics.record('vpn_status_ignored', 'unfinished_session'),
+        );
+        return;
       }
+      unawaited(OhosDiagnostics.record('vpn_external_stop_confirmed'));
+      await ref.read(setupActionProvider.notifier).setRunning(false);
     } on PlatformException catch (error) {
       commonPrint.log(error.toString());
     } finally {
       _checkingStatus = false;
     }
+  }
+
+  bool _isCurrentStatus(int epoch, VpnOptions running) {
+    return mounted &&
+        epoch == _coreEpoch &&
+        ref.read(coreStatusProvider) == CoreStatus.connected &&
+        identical(running, ref.read(runningVpnOptionsProvider));
   }
 
   @override

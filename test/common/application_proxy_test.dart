@@ -8,7 +8,7 @@ final _time = DateTime.utc(2026, 10, 22);
 ApplicationConnection _connection(
   String id, {
   String path = '/apps/browser',
-  String process = 'browser',
+  String? process,
   String? outbound = 'Proxy',
   int upload = 0,
   int download = 0,
@@ -16,7 +16,7 @@ ApplicationConnection _connection(
 }) => (
   id: id,
   path: path,
-  process: process,
+  process: process ?? path.split(RegExp(r'[/\\]')).last,
   outbound: outbound,
   start: start ?? _time.subtract(const Duration(minutes: 1)),
   upload: upload,
@@ -39,6 +39,87 @@ ApplicationProxySnapshot _snapshot(
 ));
 
 void main() {
+  test(
+    'HTTP and SOCKS mode survives rule export without a forced proxy policy',
+    () {
+      final rule = Rule.parse(
+        'AND,((PROCESS-NAME,Browser.exe),(IN-TYPE,TUN)),DIRECT',
+      );
+      final restored = Rule.fromJson(rule.toJson());
+      final snapshot = _snapshot(
+        [
+          _connection(
+            '1',
+            path: r'C:\Apps\browser.exe',
+            process: 'browser.exe',
+          ),
+        ],
+        windows: true,
+        rules: [restored],
+      );
+      final row = snapshot.applications.singleWhere(
+        (row) => row.connections > 0,
+      );
+      expect(row.mode, ApplicationProxyMode.httpSocks);
+      expect(row.target, isNull);
+      expect(row.policyIdentity!.content, 'Browser.exe');
+      expect(restored.rawValue, rule.rawValue);
+      expect(
+        _snapshot(
+          [],
+          windows: true,
+          rules: [restored],
+        ).applications.single.mode,
+        ApplicationProxyMode.httpSocks,
+      );
+    },
+  );
+
+  test(
+    'default HTTP and SOCKS exempts explicit follow modes and existing policies',
+    () {
+      final rules = [
+        Rule.parse('PROCESS-NAME,browser,Proxy'),
+        Rule.parse('AND,((PROCESS-NAME,editor),(IN-TYPE,TUN)),PASS-RULE'),
+        Rule.parse('AND,((PROCESS-NAME,download),(IN-TYPE,TUN)),DIRECT'),
+      ];
+      final policies = applicationProxyPoliciesOf(rules, windows: false);
+      expect(
+        policies['PROCESS-NAME:editor']!.mode,
+        ApplicationProxyMode.follow,
+      );
+      expect(policies['PROCESS-NAME:editor']!.target, isNull);
+      expect(
+        applicationProxyDefaultRule(rules, windows: false),
+        'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser))),(NOT,((PROCESS-NAME,editor)))),DIRECT',
+      );
+      expect(
+        applicationProxyDefaultRule([], windows: false),
+        'IN-TYPE,TUN,DIRECT',
+      );
+      expect(_snapshot([_connection('1')]).applications.single.mode, isNull);
+    },
+  );
+
+  test('default mode safely exempts process names containing logic delimiters', () {
+    expect(applicationProxyDefaultRule([
+      Rule.parse('PROCESS-NAME,odd(app.exe,Proxy'),
+    ], windows: true),
+      r'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME-REGEX,^odd\x28app\.exe$)))),DIRECT');
+  });
+
+  test('unrelated logical and source rules are not editable app modes', () {
+    for (final rule in [
+      Rule.parse('AND,((PROCESS-NAME,browser),(DOMAIN,test.example)),DIRECT'),
+      Rule.parse('AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),Proxy'),
+      Rule.parse(
+        'AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT',
+      ).copyWith(src: true),
+    ]) {
+      expect(applicationRuleIdentity(rule, windows: false), isNull);
+    }
+  });
+
   test('name policies survive versioned install paths and Windows casing', () {
     const identity = ApplicationIdentity(
       action: RuleAction.PROCESS_PATH,
@@ -64,7 +145,8 @@ void main() {
     final active = snapshot.applications
         .where((row) => row.connections > 0)
         .toList();
-    expect(active.where((row) => row.target == 'DIRECT'), hasLength(2));
+    expect(snapshot.applications, hasLength(2));
+    expect(active.singleWhere((row) => row.target == 'DIRECT').connections, 2);
     expect(
       active.singleWhere((row) => row.identity!.name == 'Other.exe').target,
       isNull,
@@ -80,44 +162,50 @@ void main() {
     );
   });
 
-  test('Windows paths ignore casing and separators, but keep installs apart', () {
-    final snapshot = _snapshot([
-      _connection('1', path: r'C:\Apps\Browser.exe'),
-      _connection('2', path: 'c:/apps/browser.exe'),
-      _connection('3', path: r'D:\Apps\Browser.exe'),
-    ], windows: true);
+  test(
+    'Windows names merge installs and casing; other platforms keep casing',
+    () {
+      final snapshot = _snapshot([
+        _connection('1', path: r'C:\Apps\Browser.exe'),
+        _connection('2', path: 'c:/apps/browser.exe'),
+        _connection('3', path: r'D:\Apps\Browser.exe'),
+      ], windows: true);
 
-    expect(snapshot.applications, hasLength(2));
-    expect(snapshot.applications.first.connections, 2);
-    expect(snapshot.applications.first.identity!.name, 'Browser.exe');
-    expect(
-      _snapshot([
-        _connection('1', path: '/apps/Browser'),
-        _connection('2', path: '/apps/browser'),
-      ]).applications,
-      hasLength(2),
-    );
-  });
+      expect(snapshot.applications, hasLength(1));
+      expect(snapshot.applications.single.connections, 3);
+      expect(snapshot.applications.first.identity!.name, 'Browser.exe');
+      expect(
+        _snapshot([
+          _connection('1', path: '/apps/Browser'),
+          _connection('2', path: '/apps/browser'),
+        ]).applications,
+        hasLength(2),
+      );
+    },
+  );
 
-  test('actual routes distinguish mixed, blocked, unknown and named proxies', () {
-    final snapshot = _snapshot([
-      _connection('1'),
-      _connection('2', outbound: 'DIRECT'),
-      _connection('3', path: '/apps/blocked', outbound: 'REJECT-DROP'),
-      _connection('4', path: '/apps/unknown', outbound: null),
-      _connection('5', path: '/apps/custom', outbound: 'direct'),
-      _connection('6', path: '/apps/direct', outbound: 'COMPATIBLE'),
-    ]);
-    ApplicationRoute route(String path) => snapshot.applications
-        .singleWhere((row) => row.identity?.content == path)
-        .route;
+  test(
+    'actual routes distinguish mixed, blocked, unknown and named proxies',
+    () {
+      final snapshot = _snapshot([
+        _connection('1'),
+        _connection('2', outbound: 'DIRECT'),
+        _connection('3', path: '/apps/blocked', outbound: 'REJECT-DROP'),
+        _connection('4', path: '/apps/unknown', outbound: null),
+        _connection('5', path: '/apps/custom', outbound: 'direct'),
+        _connection('6', path: '/apps/direct', outbound: 'COMPATIBLE'),
+      ]);
+      ApplicationRoute route(String name) => snapshot.applications
+          .singleWhere((row) => row.identity?.content == name)
+          .route;
 
-    expect(route('/apps/browser'), ApplicationRoute.mixed);
-    expect(route('/apps/blocked'), ApplicationRoute.blocked);
-    expect(route('/apps/unknown'), ApplicationRoute.unknown);
-    expect(route('/apps/custom'), ApplicationRoute.proxy);
-    expect(route('/apps/direct'), ApplicationRoute.direct);
-  });
+      expect(route('browser'), ApplicationRoute.mixed);
+      expect(route('blocked'), ApplicationRoute.blocked);
+      expect(route('unknown'), ApplicationRoute.unknown);
+      expect(route('custom'), ApplicationRoute.proxy);
+      expect(route('direct'), ApplicationRoute.direct);
+    },
+  );
 
   test('configured apps stay visible while idle and source rules are excluded', () {
     final snapshot = _snapshot([], rules: [
@@ -139,11 +227,12 @@ void main() {
       ),
     ]);
 
-    final row = snapshot.applications.single;
-    expect(row.identity!.content, '/apps/browser');
-    expect(row.target, 'DIRECT');
-    expect(row.route, ApplicationRoute.idle);
-  });
+      final row = snapshot.applications.single;
+      expect(row.identity!.content, 'browser');
+      expect(row.target, 'DIRECT');
+      expect(row.route, ApplicationRoute.idle);
+    },
+  );
 
   test('the first matching process rule wins across names and paths', () {
     const byName = Rule(
@@ -164,42 +253,110 @@ void main() {
     ]) {
       final row = _snapshot([connection], rules: rules).applications.singleWhere((row) => row.connections > 0);
       expect(row.target, rules.first.ruleTarget);
-      expect(row.identity!.action, RuleAction.PROCESS_PATH);
+      expect(row.identity!.action, RuleAction.PROCESS_NAME);
       expect(row.policyIdentity!.action, rules.first.ruleAction);
       expect(row.connectionIds, [connection.id]);
     }
   });
 
-  test('missing process paths fall back to names; unknown apps cannot be edited', () {
-    final snapshot = _snapshot([
-      _connection('1', path: '', process: 'browser'),
-      _connection('2', path: '', process: '', outbound: null),
-    ]);
+  test(
+    'missing process paths fall back to names; unknown apps cannot be edited',
+    () {
+      final snapshot = _snapshot([
+        _connection('1', path: '', process: 'browser'),
+        _connection('2', path: '', process: '', outbound: null),
+      ]);
 
-    expect(
-      snapshot.applications
-          .singleWhere((row) => row.identity != null)
-          .identity!
-          .action,
-      RuleAction.PROCESS_NAME,
-    );
-    final unknown = snapshot.applications.singleWhere((row) => row.identity == null);
-    expect(unknown.route, ApplicationRoute.unknown);
-    final fallback = _snapshot([
-      _connection('3', path: '/apps/vendor, inc/browser'),
-    ]).applications.single;
-    expect(fallback.identity!.action, RuleAction.PROCESS_PATH);
-    expect(fallback.policyIdentity!.action, RuleAction.PROCESS_NAME);
-    expect(fallback.policyIdentity!.canRoute, isTrue);
-    for (final content in ['', 'app,other', 'app\nother']) {
       expect(
-        ApplicationIdentity(
-          action: RuleAction.PROCESS_NAME,
-          content: content,
-          windows: false,
-        ).canRoute,
-        isFalse,
+        snapshot.applications
+            .singleWhere((row) => row.identity != null)
+            .identity!
+            .action,
+        RuleAction.PROCESS_NAME,
       );
+      final unknown = snapshot.applications.singleWhere(
+        (row) => row.identity == null,
+      );
+      expect(unknown.route, ApplicationRoute.unknown);
+      final fallback = _snapshot([
+        _connection('3', path: '/apps/vendor, inc/browser'),
+      ]).applications.single;
+      expect(fallback.identity!.action, RuleAction.PROCESS_NAME);
+      expect(fallback.identity!.content, 'browser');
+      expect(fallback.identity!.canRoute, isTrue);
+      for (final content in ['', 'app,other', 'app\nother']) {
+        expect(
+          ApplicationIdentity(
+            action: RuleAction.PROCESS_NAME,
+            content: content,
+            windows: false,
+          ).canRoute,
+          isFalse,
+        );
+      }
+    },
+  );
+
+  test(
+    'same-name installs combine traffic, speeds, routes and connection IDs',
+    () {
+      final first = _snapshot([
+        _connection('1', path: '/v1/browser', upload: 100, download: 200),
+        _connection('2', path: '/v2/browser', upload: 200, download: 300),
+        _connection('3', path: '', process: 'browser'),
+      ]);
+      final next = _snapshot(
+        [
+          _connection('1', path: '/v1/browser', upload: 300, download: 600),
+          _connection(
+            '2',
+            path: '/v2/browser',
+            process: '',
+            outbound: 'DIRECT',
+            upload: 600,
+            download: 900,
+          ),
+          _connection(
+            '3',
+            path: '',
+            process: 'browser',
+            upload: 100,
+            download: 200,
+          ),
+        ],
+        at: _time.add(const Duration(seconds: 1)),
+        previous: first,
+      );
+
+      final row = next.applications.single;
+      expect(row.identity!.content, 'browser');
+      expect(row.connections, 3);
+      expect(row.connectionIds, ['1', '2', '3']);
+      expect(row.upload, 1000);
+      expect(row.download, 1700);
+      expect(row.uploadSpeed, 700);
+      expect(row.downloadSpeed, 1200);
+      expect(row.route, ApplicationRoute.mixed);
+    },
+  );
+
+  test('merged installs show the first matching policy regardless of connection order', () {
+    final rules = [
+      Rule.parse('PROCESS-PATH,/offline/browser,REJECT'),
+      Rule.parse('PROCESS-PATH,/v1/browser,DIRECT'),
+      Rule.parse('PROCESS-PATH,/v2/browser,Proxy'),
+    ];
+    final connections = [
+      _connection('1', path: '/v1/browser'),
+      _connection('2', path: '/v2/browser'),
+      _connection('3', path: '/v3/browser'),
+    ];
+    expect(_snapshot([], rules: rules).applications.single.target, 'REJECT');
+    for (final ordered in [connections, connections.reversed.toList()]) {
+      final row = _snapshot(ordered, rules: rules).applications.single;
+      expect(row.connections, 3);
+      expect(row.target, 'DIRECT');
+      expect(row.policyIdentity!.content, '/v1/browser');
     }
   });
 

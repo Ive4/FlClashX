@@ -41,11 +41,18 @@ class ApplicationHistory extends ChangeNotifier {
                   ? RuleAction.PROCESS_PATH : RuleAction.PROCESS_NAME,
               content: row['content'] as String,
               windows: row['windows'] == true,
-            );
+            ).byName;
             if (identity.content.trim().isEmpty) continue;
-            entries[identity.key] = ApplicationHistoryEntry(identity,
-              DateTime.parse(row['first'] as String),
-              DateTime.parse(row['last'] as String));
+            final first = DateTime.parse(row['first'] as String);
+            final last = DateTime.parse(row['last'] as String);
+            final old = entries[identity.key];
+            entries[identity.key] = ApplicationHistoryEntry(
+              old?.identity ?? identity,
+              old != null && old.firstSeen.isBefore(first)
+                  ? old.firstSeen
+                  : first,
+              old != null && old.lastSeen.isAfter(last) ? old.lastSeen : last,
+            );
           } catch (_) { /* Skip a damaged entry, retaining the others. */ }
         }
       } catch (_) { /* Old or damaged history does not prevent startup. */ }
@@ -58,17 +65,19 @@ class ApplicationHistory extends ChangeNotifier {
     await load();
     var added = false;
     for (final connection in connections) {
-      final hasPath = connection.path.trim().isNotEmpty;
-      final content = hasPath ? connection.path : connection.process;
-      if (content.trim().isEmpty) continue;
-      final identity = ApplicationIdentity(
-        action: hasPath ? RuleAction.PROCESS_PATH : RuleAction.PROCESS_NAME,
-        content: content, windows: windows);
+      final identity = ApplicationIdentity.fromConnection(
+        connection,
+        windows: windows,
+      );
+      if (identity.content.trim().isEmpty) continue;
       final old = entries[identity.key];
       if (old != null && old.lastSeen.isAfter(at)) continue;
       added |= old == null;
       entries[identity.key] = ApplicationHistoryEntry(
-        identity, old?.firstSeen ?? at, at);
+        old?.identity ?? identity,
+        old?.firstSeen ?? at,
+        at,
+      );
     }
     if (connections.isEmpty) return;
     notifyListeners();

@@ -1,8 +1,7 @@
-tags: with_gvisor
-go_ldflags: "-w -s"
-core_version: v1.19.33
-core_dir: core
+core_version: meow-rs-0.28.0
+core_dir: core/rust
 core_name: FlClashCore
+core_features: ""
 output_dir: libclash
 helper_dir: services/helper
 helper_name: FlClashHelperService

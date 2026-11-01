@@ -2,13 +2,10 @@
 
 ## Building
 
-Update submodules first. The ClashMeta Go core lives in `core/Clash.Meta/`.
+The active Core crate lives in `core/rust/` and pins meow-rs 0.28.0 through Cargo.lock. `core/Clash.Meta/` and the
+remaining Go wrapper are inactive contract references; packaging does not compile them.
 
-```bash
-git submodule update --init --recursive
-```
-
-Full package build, including Go core, Flutter, and packaging, runs through `setup.dart`:
+Full package build, including the Rust Core, Flutter, and packaging, runs through `setup.dart`:
 
 ```bash
 dart setup.dart macos
@@ -17,13 +14,42 @@ dart setup.dart windows
 dart setup.dart android
 ```
 
-The desktop Go core and the Rust helper build automatically: Flutter runs
+Install the native prerequisites in `project.md` first. On Windows the setup hook calls `tool/rust_windows.ps1`
+to select MSVC and import Visual Studio's compiler/SDK environment. `FLCLASH_RUST_TOOLCHAIN` can select an installed
+MSVC Rust toolchain; `LIBCLANG_PATH` can point to LLVM or the Harmony SDK's directory containing `libclang.dll`.
+NASM must be on `PATH` for x64 builds.
+
+Flutter's hook runner forwards `PATH` and `LIBCLANG_PATH`, but strips arbitrary environment variables such as
+`FLCLASH_RUST_TOOLCHAIN`, `CARGO_BUILD_JOBS` and custom Rust flags. Pass those explicitly through the root
+`pubspec.yaml` hook configuration so changes also invalidate the hook cache:
+
+```yaml
+hooks:
+  user_defines:
+    setup:
+      build_assets: true
+      environment:
+        FLCLASH_RUST_TOOLCHAIN: 1.99.1-msvc
+        CARGO_BUILD_JOBS: '2'
+```
+
+HarmonyOS packaging and an isolated Core build use:
+
+```powershell
+./tool/build_ohos.ps1
+./tool/build_rust_ohos.ps1 -NativeSdk $env:OHOS_NDK_HOME -TargetDirectory D:/Temp/flclash-ohos-core -OutputDirectory D:/Temp/flclash-ohos-libs
+```
+
+The desktop Rust Core, Rust Helper and Go background host build automatically: Flutter runs
 `plugins/setup/hook/build.dart` on every `flutter build` and `flutter test`,
 and the hook drives `CoreBuilder` from the `setup_hooks` package in
-`plugins/setup/setup_hooks/`. Artifacts land in `libclash/`. Android's Core is
-the AAR the `:core` Gradle module builds with `gomobile bind` before anything
-compiles against it; that needs `go` on `PATH` and nothing else, since the
-gomobile tools come from `core/go.mod` and the NDK from AGP. The hook reruns only when Go, Rust, or
+`plugins/setup/setup_hooks/`. Artifacts land in `libclash/`. The Core command is `cargo build --locked --release
+--bin FlClashCore --target <triple>`; Windows uses MSVC, Linux uses GNU, and macOS uses Apple Darwin targets, each
+for x64 and ARM64. `FLCLASH_CORE_TARGET_DIR` can isolate the Core's Cargo cache.
+Android's `:core` Gradle module cross-builds the Rust cdylib with `--locked --lib` for the requested Flutter ABIs,
+using AGP's NDK clang/sysroot and host libclang for bindgen. JNI declarations live in the module; generated
+`libflclash.so` and `libc++_shared.so` feed AGP's variant JNI sources without an intermediate AAR or Go.
+The hook reruns when Go background-host, Rust Core/Helper, or
 `setup_hooks` inputs change; the fingerprint cache lives in
 `.dart_tool/setup_build_cache/`. To force a rebuild, delete that directory:
 
@@ -36,22 +62,22 @@ not rebuilt read `.dart_tool/setup_build_cache/hook.log`; each invocation starts
 with a `===` line carrying its timestamp and target.
 
 The hook runs for `flutter test` and for `dart run` of any root-package script
-too, so a pure Dart test run needs the Go toolchain, and on Linux and Windows
-also `cargo` and `rustc` — the Helper fingerprint shells out to both even on a
-cache hit. The hook protocol carries no build mode and no caller, so the only
+too, so a root Dart test run needs Go for the background host, plus Cargo/Rust and the native dependencies in
+`project.md` on every desktop. Core and Helper fingerprints query the Rust toolchain even on a cache hit.
+The hook protocol carries no build mode and no caller, so the only
 switch is the user-define in the root `pubspec.yaml`:
 
 ```yaml
 hooks:
   user_defines:
     setup:
-      build_assets: true   # false turns the Go core and Helper hook into a no-op
+      build_assets: true   # false skips the Core, Helper and desktop host
     rust_api:
       build_assets: true   # false does the same for the Rust library
 ```
 
 CI flips `setup` to `false` with `yq` in its throwaway checkout before
-`dart run tool/changelog.dart` and `dart run tool/test.dart`; no test loads the Go core. `rust_api`
+`dart run tool/changelog.dart` and `dart run tool/test.dart`; no test loads the Core executable. `rust_api`
 stays on there because the editor tests in `test/plugins/code_forge/` and the socket
 test in `test/core/desktop/ipc_native_test.dart` load the Rust library the hook
 builds; the release-notes job, which runs no tests, flips both.
@@ -157,6 +183,13 @@ flutter test test/setup_test.dart
 flutter test plugins/proxy/test/proxy_test.dart
 ```
 
+The native lightweight-mode host has its own Go module:
+
+```bash
+cd services/desktop
+go test ./...
+```
+
 For the whole suite, or a directory of more than a few files, use `tool/test.dart`, which is also what CI runs:
 
 ```bash
@@ -208,13 +241,13 @@ What those suites own:
 
 ## Native Component Verification
 
-The CI Go-wrapper checks can be reproduced without CGO, the Android files included:
+The active Rust Core and native background host checks are:
 
 ```bash
-cd core
-CGO_ENABLED=0 go test .
-CGO_ENABLED=0 go vet . ./cmd/...
-GOOS=android GOARCH=arm64 CGO_ENABLED=0 go vet -tags=with_gvisor . ./mobile ./tun ./platform
+cargo test --locked --manifest-path core/rust/Cargo.toml
+cd services/desktop
+go test ./...
+go vet ./...
 ```
 
 The Windows Helper's loopback/session protocol tests are host-independent by default. Windows CI additionally enables its
@@ -233,7 +266,7 @@ registered with `java_home`, so export it by prefix:
 ```bash
 cd android
 export JAVA_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"   # elsewhere: any JDK 17
-./gradlew :core:compileDebugKotlin -Ptarget-platform=android-arm64   # builds the gomobile AAR for one ABI
+./gradlew :core:compileDebugKotlin :core:mergeDebugJniLibFolders -Ptarget-platform=android-arm64
 ./gradlew :service:compileDebugKotlin
 ./gradlew :app:compileDebugKotlin
 ```
@@ -355,9 +388,9 @@ Release builds run only for `v*` tag pushes; pull requests trigger nothing.
 Root analysis excludes `plugins/**`, and root tests do not discover nested
 plugin packages, so parallel jobs validate the rest from their own package
 directories: `plugins` (local Flutter packages and the setup build tool), `go`
-(the Core wrapper, plus a vet of the Android files), `android` (JVM unit tests
+(the native background host), `android` (JVM unit tests
 for `:common`, `:service` and `:app`, with the Flutter compile tasks excluded
-and the gomobile AAR built for one ABI), `rust` (both crates), and a
+and the Rust JNI library built for one ABI), `rust` (Core, Helper and rust_api crates), and a
 Windows runner for the helper's `windows-service` feature. On branch pushes a
 `desktop` job also compiles a debug build per desktop platform; a tag skips it,
 since its release matrix compiles the same native code. Release builds run only
@@ -377,9 +410,8 @@ repository holds 10 GB before evicting the least recently used entries. Every re
 reads from, so `BRANCH_CACHE` turns caching off in tag runs: one release used to write about 9 GB of such entries and
 evict everything `dev` had saved. Release builds therefore start cold; branch runs, chiefly `dev`, keep the caches.
 
-- setup-go keys its entry on the `cache-dependency-path` files alone and saves only on a miss, so jobs listing the
-  same files share one entry holding the build cache of whichever finished first. `desktop` and `android` each add
-  the file that drives their Core build to get an entry of their own.
+- setup-go caches only the desktop background host module. Rust caches include `core/rust`, the Helper and
+  `rust_api`; Android also caches its generated native Cargo directory under `build/core`.
 - setup-gradle writes only on the default branch unless told otherwise, so `android` lets `dev` write as well. Its
   entries are keyed by job, which is one more reason the release build gains nothing from caching.
 

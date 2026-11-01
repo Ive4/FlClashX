@@ -2,22 +2,23 @@
 
 ## Core Integration
 
-The Go proxy core in `core/` operates in two modes.
+The active proxy Core in `core/rust/` embeds meow-rs 0.28.0. Desktop builds use its `FlClashCore` binary; Android and
+HarmonyOS load its `libflclash.so` cdylib. The Go wrapper and Clash.Meta tree remain inactive contract references.
 
 Android lib mode:
 
-- `gomobile bind` builds `core/mobile` into an AAR: a native library per ABI, shipped as `libclash.so`, and the Java
-  classes gobind generates in `com.follow.clash.core.mobile`. The `:core` Gradle module builds it and takes in its
-  classes and libraries (see Android Core Build).
-- The Android `:core` module owns the binding: `Core.kt` is the only caller of the generated `Mobile` class. Flutter
+- Cargo builds one `libflclash.so` per ABI. The `:core` Gradle module supplies generated JNI library directories to
+  AGP (see Android Core Build); JNI classes and callback interfaces are module source in
+  `com.follow.clash.core.mobile`.
+- The Android `:core` module owns the binding: `Core.kt` calls the Java `Mobile` JNI declarations. Flutter
   crosses MethodChannels through `lib/plugins/service.dart` and Android's `ServicePlugin` rather than calling the Core
   directly: `${packageName}/service` for lifecycle commands and Core events, `${packageName}/core` for Core method
   calls.
 - Flutter runs the UI isolate on Android's main thread (3.47 merges the two and ignores the opt-out in release), so
   main-thread work anywhere in the process, the Core's included, costs frames. Only sending to Dart needs that thread;
   a `MethodChannel.Result` may be answered from any thread. `${packageName}/core` is handled on a serial background
-  task queue and answered from the Core's goroutine, an event batch is encoded on the Core's thread and only sent on
-  the main one, `ForceGC` (called from `onLowMemory`/`onTrimMemory`) collects on its own goroutine, and
+  task queue and answered from the Core's Rust runtime, an event batch is encoded on the Core's thread and only sent on
+  the main one, and
   `NetworkObserver` refreshes DNS on its own looper.
 - `lib/core/lib.dart` (`CoreLib`) implements the shared Core interface, gates method calls on its connection completer,
   initializes and synchronizes Android shared state, and closes the native service path exactly once.
@@ -25,7 +26,7 @@ Android lib mode:
 
 Desktop core mode:
 
-- Go core runs as a separate process with `CGO_ENABLED=0`.
+- The Rust Core runs as a separate process; native TLS and lwIP dependencies are built for the same target.
 - `rust_api`'s `ipc` module provides the native local-IPC primitives: a Unix domain socket on macOS/Linux and a named pipe
   on Windows, served by an `IpcServer` handle. Dart owns the transport state, RPC correlation, process ownership, and
   lifecycle convergence above those primitives.
@@ -41,22 +42,37 @@ Desktop core mode:
 - `lib/core/desktop/lifecycle.dart` serializes process intents and owns the authoritative desktop state machine.
 - `lib/core/desktop/launcher.dart` abstracts direct child-process and privileged Helper ownership through idempotent process
   leases. `lib/core/desktop/helper_client.dart` is the typed local HTTP client for the privileged Helper.
+- `services/desktop/` builds `FlClashDesktop`, the native background owner selected by
+  `lib/core/desktop/background_client.dart` when bundled. It owns the Core connection and forwards frames to the UI.
+  Its lease exposes the background PID; the background validates the actual Core peer and Helper session.
+  Entering lightweight mode hands off to a native tray before exiting Flutter. Reopening attaches to the same Core
+  and adopts its running state without reapplying the profile or reopening listeners. RPC IDs include a UI-session prefix.
+  AppImage stages the native runtime outside its temporary mount. Normal exit stops the owned Core and background;
+  native tray exit also clears the applied system proxy and restores macOS DNS through the cleanup entrypoint.
+
+Android lightweight mode finishes the Flutter activity while the native service keeps its current intent.
+HarmonyOS hands the control listener to the VPN extension before terminating the UI ability; an authenticated
+reconnection adopts the existing Core and TUN. UI-owned scheduled profile updates pause until the UI returns,
+and SSID rules or active local updates prevent entry.
+
+`LightweightManager` counts a continuous hidden interval from
+`AppSettingProps.autoLightweightMinutes` (5 by default; 0 disables it). Desktop
+visibility comes from native window events and an initial visibility/minimize probe,
+since Flutter can still report resumed for a hidden startup window. Showing the UI or changing
+the delay invalidates an in-flight automatic handoff. Automatic entry also waits
+while any navigator has a pushed page or dialog, preserving unfinished edits.
+The native desktop tray sends a bounded set of Core requests while lightweight;
+its acknowledged mode returns in `CoreResumeState` when Flutter reattaches.
 
 `lib/core/controller.dart` (`CoreController`) selects the implementation based on platform. `lib/core/interface.dart` defines the shared `CoreHandlerInterface`.
 
-Key Go core files:
+Key Rust Core files under `core/rust/src/`:
 
-- `core/protocol.go`: method names, event types, and the parameter and result shapes shared with Dart.
-- `core/method.go`: MethodChannel-style method-call dispatch, the handler table, and response envelopes.
-- `core/lifecycle.go`, `config.go`, `proxy.go`, `delay.go`, `provider.go`, `geo.go`, `connection.go`, `log.go`: the
-  handler functions, one file per area. `core/hooks.go` wires mihomo's hooks to them.
-- `core/message.go`: non-blocking state/priority/bulk event queues and bounded message batching.
-- `core/lib.go`: the Android library API: TUN callbacks, the event listener, and the entry points `core/mobile` binds.
-- `core/mobile/`: the package gomobile binds. gobind generates Java for its exported API, so it speaks only `int32`,
-  `bool`, `string`, `[]byte` and its own interfaces; a Go `int` would become a Java `long`.
-- `core/cmd/core/`: the desktop entry point. `core/` itself is the library package `core`, because gomobile cannot bind
-  a `main` package.
-- `core/server.go`: desktop socket/named-pipe client and framed message forwarding.
+- `protocol.rs`, `core.rs`: shared method/event envelopes and Core method dispatch.
+- `engine.rs`, `profile.rs`: meow-rs configuration, listeners and runtime state.
+- `events.rs`, `ipc.rs`, `main.rs`: event delivery and the desktop socket/named-pipe executable.
+- `mobile.rs`, `mobile_tun.rs`, `ohos.rs`: Android JNI, the mobile file-descriptor TUN stack, and HarmonyOS C ABI.
+- `backup.rs`, `extras.rs`, `links.rs`, `probe.rs`, `service_checks.rs`: shared Core services.
 
 ## DNS, NTP and Sniffer Overrides
 
@@ -344,49 +360,51 @@ values rather than embedding pre-encoded JSON strings. Plain domain strings, suc
 remain strings.
 
 A response over 1 MiB goes to a file under `<home>/responses/`, and the envelope carries only its `file`
-(`core/spill.go`). Sent inline, Android copies it into the Java heap three times (the gomobile `byte[]`, the codec and a
-direct buffer), and desktop IPC drops a frame above `maxIPCFrameSize`. `lib/core/spill.dart` reads a spilled file only
+(`core/rust/src/core.rs`, `profile.rs`). Rust stages and commits the encoded response before returning that envelope;
+spill failure returns `response_spill_error`. Desktop framing in `ipc.rs` uses a four-byte little-endian length and
+rejects a frame above 64 MiB. `lib/core/spill.dart` reads a spilled file only
 from that directory, decodes it in an isolate and deletes it; `initClash` clears what an earlier run left.
 
 A profile file's proxies, groups and rules never cross the bridge. `getProfileBase` returns the config without
 `proxies`, `proxy-groups`, `sub-rules` and `rules`, with their counts, the profile's MATCH rules and a sha256 digest.
-`SetupAction.getProfile` patches it as before and sends the result as `SetupParams.base.overlay`. `core/profile_base.go`
-puts the profile's bulk sections into the overlay, appends the profile's rules after the overlay's, writes `config.yaml`
-for the Android service and the controller's reload, and parses it. `config.yaml` is encoded a slice at a time, because on a
-profile of 100k proxies and 2M rules one `Encode` call doubles the peak heap. The preview reads the YAML `buildProfile`
+`SetupAction.getProfile` patches it as before and sends the result as `SetupParams.base.overlay`.
+`core/rust/src/profile.rs` merges the source bulk sections into the overlay and appends source rules after overlay
+rules. The Core validates and applies the runtime before committing staged `config.yaml`, retaining the prior file
+and runtime on failure. Rust currently serializes the staged document as a complete YAML string; the old Go slice-wise
+encoder is an inactive reference, not a current large-profile memory guarantee. The preview reads the YAML `buildProfile`
 merges into the spill directory, and the extend page only the names
 and types `getProfileOutbounds` lists; a script extension still needs the whole config from `getConfig`.
 
-Go event delivery is intentionally non-blocking:
+Rust event delivery is owned by `core/rust/src/events.rs`, with desktop delivery in `ipc.rs` and Android delivery in
+`mobile.rs`. Producers enqueue under a short mutex without waiting for transport I/O:
 
-- Loaded-provider, geo-update, and route-changed events use a state queue that never evicts; the rules for it are under
-  Core API Safety in `.agents/rules.md`. Every other event except the bulk kinds, delay included, uses a 256-entry
-  priority queue. Desktop process crashes are generated locally by `CoreService` from lifecycle failures rather than
-  sent through the Go queue.
-- High-volume log, request/connection, and DNS query events use a separate 256-entry bulk queue, so bulk floods cannot
-  evict state.
-- A full priority or bulk queue evicts only its own oldest event and retries the newest; DNS events never evict. Core
-  work never blocks on event delivery.
-- The batcher flushes at 32 messages or every 16 milliseconds. Priority events are preferred, but one bulk opportunity is
-  guaranteed after eight priority messages to prevent starvation.
-- `sendMessage` drops an event before it is queued when `hasEventListener` is false. That only happens on Android, after
-  the Flutter engine detaches while the service keeps the Core running; request and DNS events would otherwise be
-  encoded per connection and per query for nobody.
+- Each queue holds at most 256 events. `loaded`, `geoUpdate` and `routeChanged` use the state queue, which drops an
+  incoming event when full and never evicts an existing one. Other ordinary events use the priority queue, which
+  evicts its oldest event on overflow. Desktop crash events remain local to `CoreService` lifecycle failures.
+- `log`, `request`, `dns` and `requestTraffic` share the bulk queue. Incoming `dns` and `requestTraffic` are dropped
+  when it is full; `log` and `request` may evict its oldest entry. Bulk overflow cannot evict state or priority events.
+- A delivery tick runs every 16 milliseconds and drains at most 32 events. State is drained first; when no state
+  event is ready, a bulk event gets a turn after eight priority events. This is a bounded periodic batch, not an
+  immediate flush when the queue reaches 32 items.
+- `Events::push` returns before enqueueing while delivery is disabled. Android toggles this with its JNI event
+  callback; desktop IPC enables it for a connection and disables it when that connection ends. The one-second
+  connection/DNS observer skips constructing those snapshot events while disabled.
+- Desktop method responses have their own bounded 64-entry channel, and at most 64 invocations run concurrently.
+  The writer awaits each framed write; a transport write failure terminates that delivery task. Accepted method
+  mutations are allowed to finish when a lightweight handoff closes their transport.
 
-DNS query events come from the Clash.Meta fork's `dns/patch.go` and are raised where mihomo writes its `[DNS]` debug
-log, so the DNS page lists the same resolutions: one event per cache hit, and one per upstream exchange however many
-callers singleflight merged into it, carrying the upstream whose answer was used. Fake-IP and hosts answers never reach
-a resolver and are not recorded. Queries from apps arrive with the `DNSContext` that `Service.ServeMsg` created and
-report `app`; other initiators come from `resolver.WithInitiator` at the call site (rule matching, DIRECT, proxy
-server dialing), and unlabeled queries report `other`.
+`core/rust/src/core.rs` observes active/recent connection snapshots and up to 4096 resolver snapshot records once a
+second. It emits new connection records, changed traffic totals and DNS observations deduplicated by name and answers.
+The Flutter JSON shapes remain, but this is not lossless connection or per-query history: a burst may disappear
+between observations. DNS records carry a neutral initiator, zero delay, an observation timestamp and `cached:true`;
+the source field is the backend snapshot's value. They do not reproduce original query initiators, resolver exchange
+latency or Mihomo's cache-hit/singleflight event semantics. See `core/rust/README.md` for the active compatibility limits.
 
-Dialer-loop events come from the fork's `component/proxydialer/patch.go`. mihomo follows a `dialer-proxy` that leads
-back to its own proxy until the stack overflows, so a dial that asks the same `dialer-proxy` for an address it is
-already dialing through it fails with `ErrDialerLoop`. `core/hooks.go` reports each looping name at most once every
-three seconds as a priority event, which the app shows as an error notice whether or not logs are captured. The custom
-profile pages flag only the loops FlClash can follow on its own, through a group's own list or an `include-all-proxies`
-that no filter, exclude filter or exclude type narrows; what filters and providers pick, including provider proxies
-that carry their own `dialer-proxy`, is left to this guard.
+The old `core/Clash.Meta/dns/patch.go`, `component/proxydialer/patch.go` and `core/hooks.go` remain inactive references.
+Their exact DNS and rate-limited `dialerLoop` hooks are not current Rust event guarantees. The custom profile pages
+retain their static loop checks; backend validation and explicit probe results report the active engine's failures.
+Automatic backend health-check delay notifications also do not reproduce the old hook; explicit delay tests return
+their results through the shared method interface.
 
 `ProxyGroup.fromJson` reads `include-all` as both `include-all-proxies` and `include-all-providers`, as the core does, so
 import and quick edit keep it. They take in only what the config declares, which is what some group of the profile
@@ -1495,13 +1513,14 @@ that asks the OS for a permission, a global shortcut or a registration, must con
 the `chen08209/flutter_distributor` fork pinned to a `v<version>-flclash.<n>` tag (cut a new tag there and bump
 `--git-ref` when the fork changes), and leaves the Core artifacts to the build hook.
 
-The desktop Go core and the Rust helper are built by a Dart build hook; Android's Core is built by Gradle (see Android
+The desktop Rust Core and Helper are built by a Dart build hook alongside the separate Go background host;
+Android's Rust Core is built by Gradle (see Android
 Core Build). `plugins/setup/hook/build.dart` only constructs
 `CoreBuilder`, a `package:hooks` `Builder` in `plugins/setup/setup_hooks/`, the same shape `rust_api` uses. Flutter
 runs it for every platform build and for `flutter test`, once per target architecture. `CoreBuilder` turns the hook
 input into a `BuildRequest` (repository root, `Target`) and hands it to `buildPlatform`. It lives in
 `setup_hooks` so `dart test` there can cover it; a test run of `plugins/setup` itself would execute the hook. Failures
-reach the runner as `BuildError` (Go or Cargo failed, no Core for the architecture) or `InfraError` (a toolchain could
+reach the runner as `BuildError` (Cargo or the background-host build failed, no Core for the architecture) or `InfraError` (a toolchain could
 not start, the package is not at `plugins/setup`).
 
 What the hook protocol forces:
@@ -1521,8 +1540,8 @@ What the hook protocol forces:
 
 Platform projects copy the artifacts out of `libclash/`; application code must not import `plugins/setup`:
 
-- Android: nothing. The hook returns without building, because it runs once per architecture while gomobile packs
-  every ABI and one set of Java classes into a single AAR.
+- Android: the setup hook returns without building. AGP owns the Rust JNI builds and the generated JNI library
+  directories; the JNI bridge is ordinary module source.
 - macOS: a standalone `FlClashCore`. `Release.xcconfig` pins release and profile `ARCHS` to the host because
   flutter_tools otherwise builds a universal binary and every artifact ships one slice; the hook skips a non-host slice
   for the same reason. The `Stage Core` phase copies the Core after the hook may have rewritten it and fails when it is
@@ -1535,11 +1554,12 @@ Platform projects copy the artifacts out of `libclash/`; application code must n
   configuration is known, and a Release install never stops a registered service. The step matches the process by
   executable path rather than image name, so a Helper registered from an installed release keeps running.
 
-Setup keeps its own cache under `.dart_tool/setup_build_cache/v1/` because it builds a Go core and, on Windows and
-Linux, a Rust helper:
+Setup keeps its own cache under `.dart_tool/setup_build_cache/v1/` for the Rust Core, desktop background host, and
+the Rust Helper on Windows and Linux:
 
-- Go fingerprints cover the target-specific `go list -deps` inputs in `core/` and `Clash.Meta`, module files, the
-  effective build configuration, `setup_hooks` sources, target flags and the Go toolchain.
+- Core fingerprints cover the Rust crate's sources, Cargo.lock, Cargo config/toolchain files, the effective build
+  configuration, `setup_hooks` sources, Cargo/Rust versions and native compiler, linker, CMake, NASM and bindgen
+  environment. Rust targets are MSVC on Windows, GNU on Linux and Apple Darwin on macOS, for x64 and ARM64.
   Helper fingerprints cover its Rust sources and manifests, Cargo/Rust toolchains and flags, and the expected Core
   SHA256.
 - A hit requires the fingerprint and every recorded output's path, size and modification state to match, and skips
@@ -1580,7 +1600,7 @@ Windows helper integrity/version check:
   Windows the Helper puts the Core in a Job Object with `KILL_ON_JOB_CLOSE`, so the kernel kills the Core when the Helper
   process ends for any reason, and the `install` subcommand configures SCM failure actions (three restarts, 5 s apart,
   reset after 24 h). Stopping a Core sends SIGTERM first on Linux, because only a shutdown removes the policy routes
-  sing-tun installed; the Core runs the same teardown itself when its IPC host disconnects or it receives a termination
+  the active TUN backend installed; the Core runs the same teardown itself when its IPC host disconnects or it receives a termination
   signal. `HelperClient.stopTimeout` must stay above the Helper's graceful-plus-kill budget.
 - Never take `MANAGED_CORE` or `LOGS` with `lock().unwrap()`. The Helper is a long-lived service running as SYSTEM, so a
   single panic while a lock is held would poison it and turn every later request into another panic — the service stays
@@ -1590,57 +1610,50 @@ Windows helper integrity/version check:
 Build configuration defaults live in `plugins/setup/setup_hooks/lib/src/options.dart` and can be overridden via the root
 `build_config.yaml`.
 
-`core_version` in `build_config.yaml` is the mihomo release tag the `core/Clash.Meta` fork is based on. Upstream injects
-its version only from its own CI, so the fork alone reports the placeholder `1.10.0` in `/version` and in protocol
-user agents; `GoBuilder` passes the value as `-X github.com/metacubex/mihomo/constant.Version=...` for every build,
-local and CI alike. Bump it whenever the submodule moves onto a new upstream release.
+`core_dir` in `build_config.yaml` selects `core/rust`, and `core_features` supplies optional Cargo features on all
+platforms. Engine dependencies and the runtime engine version live in that crate; the build's `core_version` records
+meow-rs 0.28.0. No active build invokes the old `GoBuilder` or injects a Mihomo linker version.
 
 Architecture detection is automatic. The `--description` flag passed to `flutter_distributor` adds arch suffixes to artifact names, such as `FlClash-0.8.93-macos-arm64.dmg`.
 
 #### Android Core Build
 
-`android/core/build.gradle.kts` registers `bindCore`, which runs `gomobile bind` on `core/mobile`. `:core` cannot
-depend on the AAR itself: `bundleAar` refuses a local AAR in a library, which would break `./gradlew assemble` and
-Android Studio's Make Project. It takes the AAR apart instead, `classes.jar` as a file dependency and `jni/` through
-an `unpack<Variant>CoreJniLibs` task per variant handed to `variant.sources.jniLibs.addGeneratedSourceDirectory`; the
-legacy `sourceSets` DSL rejects a task-built directory. Gradle therefore runs the Go build before any task that needs
-its classes or libraries, in every variant and whether or not Flutter started the build, and its up-to-date check over
-`core/` (tests, `testdata` and `cmd/` left out), `build_config.yaml`, the Go version, the ABIs, the API level and the
-NDK version stands in for the hook's cache.
+`android/core/build.gradle.kts` registers `build<Variant>RustCore`. Each task compiles the locked Rust cdylib for
+Flutter's `target-platform` ABIs (all three when invoked directly by Gradle): `armeabi-v7a` maps to
+`armv7-linux-androideabi`, `arm64-v8a` to `aarch64-linux-android`, and `x86_64` to `x86_64-linux-android`.
 
-- `gomobile` and `gobind` come from the `tool` directives in `core/go.mod` and are built into the task's temporary
-  directory, so their version moves only with `go.mod`. `bindCore` finds `go` on `PATH` or in the Homebrew and Go
-  installer locations that Android Studio's GUI `PATH` leaves out, and puts the JDK running Gradle first for
-  gomobile's `javac`.
-- The ABIs come from the `target-platform` property Flutter passes, and default to all three for a Gradle build Flutter
-  did not start. `ANDROID_HOME` and `ANDROID_NDK_HOME` are AGP's SDK and its `ndkVersion` NDK, so the Core and the app
-  share one NDK, and `-androidapi` is the app's `minSdk`.
-- `tags`, `go_ldflags` and `core_version` come from `build_config.yaml`, the file the hook reads.
-- Both Cores take their GODEBUG defaults from the `go` line of `core/go.mod`, whatever toolchain builds them. The
-  desktop Core gets them from the Go command because `core` is its main module. gomobile links the library as the main
-  package of a module it generates, whose `go` line is the toolchain's, so `bindCore` hands the desktop Core's
-  `DefaultGODEBUG` (from `go list` on `./cmd/core`) to the Android Core through `-X=runtime.godebugDefault`. Without
-  it, a toolchain newer than that line would move only Android's TLS, x509 and runtime defaults. Raising the `go`
-  line therefore changes both Cores' behaviour at once; pin a setting with a `godebug` line in `core/go.mod` to hold
-  it back on both.
-- The TLS settings among them do nothing for proxy traffic. Every TLS connection the Core makes goes through
-  `metacubex/tls` or `metacubex/utls`, ports of `crypto/tls` that hard-code their version's defaults and never read
-  GODEBUG, so `tlssha1` and `tlsmlkem` cannot be held back. They still parse and verify through the standard
-  `crypto/x509` and `crypto/rsa`, and both run before `skip-cert-verify` is consulted, so `core/go.mod` keeps
-  `x509negativeserial=1` and `rsa1024min=0`: a server certificate with a negative serial number or an RSA key under
-  1024 bits would otherwise fail the handshake even on a proxy that skips verification.
-- gomobile names the library `gojni`, both as the file it builds and in the `System.loadLibrary` of the `go.Seq`
-  runtime, with no option to change it. `bindCore` rewrites that string constant in `go/Seq.class` to `clash` as it
-  extracts `classes.jar`, and the unpack task renames `libgojni.so` to `libclash.so`; each fails the build unless it
-  finds what it rewrites, the constant exactly once. Go writes no `DT_SONAME` into a c-shared library, so the ELF
-  needs no change.
-- The AAR's own `proguard.txt` goes with the rest of it. `android/core/consumer-rules.pro` keeps `go.**` and
-  `com.follow.clash.core.mobile.**`, the classes gobind's C glue looks up by name.
-- The CI `android` job compiles `:core` without Flutter, so it passes `-Ptarget-platform=android-arm64` to build one ABI.
+- AGP's selected NDK provides the linker, C/C++ compilers, archiver, sysroot and libclang. Per-target compiler flags
+  and bindgen flags use the app's `minSdk`. A generated CMake toolchain includes the NDK toolchain with the exact ABI
+  and API level, so vendored BoringSSL builds with the same SDK as the rest of the app.
+- `--locked --release --lib` builds `libflclash.so`; JNI entry points use the target cfg, with no Android-only Cargo
+  feature. The bridge and callback interfaces are module sources, and consumer ProGuard rules preserve their
+  names. No gomobile runtime, generated Java classes, AAR extraction or Go toolchain participates.
+- The task stages every requested ABI successfully before syncing `libflclash.so` and the matching NDK
+  `libc++_shared.so` to AGP through `variant.sources.jniLibs.addGeneratedSourceDirectory`. Failed builds preserve the
+  previous generated JNI directory. Cargo's working cache stays under the task's temporary directory.
+- Task inputs cover Rust source/manifests, the lockfile, Cargo config, build configuration, Cargo/Rust versions, NDK
+  version, ABI/API and native build environment. CMake and Ninja must be installed; x64 assembly also needs NASM.
+- `:core:compileDebugKotlin` checks the Kotlin interface; `:core:mergeDebugJniLibFolders` additionally executes Cargo.
+  The CI Android job requests ARM64, while a release without `target-platform` builds all three ABIs.
+
+#### HarmonyOS Core Build
+
+`tool/build_ohos.ps1` calls `tool/build_rust_ohos.ps1` before packaging. The latter builds the locked Rust cdylib for
+`aarch64-unknown-linux-ohos`, using `OHOS_NDK_HOME` for clang, clang++, llvm-ar, libclang and the sysroot. It supplies
+a target linker wrapper, the SDK's OHOS CMake toolchain for BoringSSL, target-specific C/C++ and bindgen flags, and
+the SDK C++ runtime link directory. Only a successful build stages `libflclash.so` and `libc++_shared.so` into
+`ohos/entry/libs/arm64-v8a`.
+
+`-TargetDirectory` and `-OutputDirectory` support isolated verification; `-CheckToolchain` checks prerequisites
+without compiling. The default Cargo cache is `.dart_tool/ohos_core/`. The default OHOS Rust toolchain is `1.99.0-msvc`, configurable through
+`FLCLASH_OHOS_RUST_TOOLCHAIN`. The separate `rust_api` native-assets hook still builds its own crate; it does not
+provide the proxy Core. It also selects `1.99.0-msvc` on Windows, with an optional
+`hooks.user_defines.rust_api.ohos_toolchain` override. Native compilation does not prove device VPN/TUN behavior.
 
 ## Local Plugins
 
-- `setup`: build-time harness for Go core artifacts and the Rust helper, driven by a Dart build hook; no runtime Dart API.
+- `setup`: build-time harness for the Rust Core/Helper and the desktop background host, driven by a Dart build hook;
+  no runtime Dart API.
 - `proxy`: system proxy configuration. On Windows the package installer and uninstaller kill the app, and then run
   `FlClash.exe --clear-stale-proxy`, the installer once the new files are in place; the runner hands it to the plugin
   before any engine starts, and it turns off only a proxy still set to FlClash's `127.0.0.1:<port>` with nothing

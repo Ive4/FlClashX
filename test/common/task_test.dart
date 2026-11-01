@@ -9,6 +9,62 @@ import 'package:path/path.dart';
 import 'package:yaml/yaml.dart';
 
 void main() {
+  test(
+    'default app mode routes new TUN connections direct before website rules',
+    () async {
+      const state = MakeRealProfileState(
+        profilesPath: '/profiles',
+        profileId: 7,
+        rawConfig: {
+          'rules': ['DOMAIN,example.test,Proxy', 'MATCH,DIRECT'],
+        },
+        realPatchConfig: PatchClashConfig(),
+        appendSystemDns: false,
+        proxyGroups: [],
+        rules: [],
+        addedRules: [],
+        defaultUA: 'test',
+        applicationProxyMode: ApplicationProxyMode.httpSocks,
+      );
+      final config =
+          loadYaml((await makeRealProfileTask(state)).yaml) as YamlMap;
+      expect(config['rules'], [
+        'IN-TYPE,TUN,DIRECT',
+        'DOMAIN,example.test,Proxy',
+        'MATCH,DIRECT',
+      ]);
+
+      final existingPolicy = Rule.parse('PROCESS-NAME,browser,Proxy');
+      for (final custom in [false, true]) {
+        final config =
+            loadYaml(
+                  (await makeRealProfileTask(
+                    state.copyWith(
+                      rules: custom ? [existingPolicy] : [],
+                      addedRules: custom ? [] : [existingPolicy],
+                    ),
+                  )).yaml,
+                )
+                as YamlMap;
+        expect(
+          config['rules'].first,
+          'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser)))),DIRECT',
+        );
+        expect(config['rules'], contains('PROCESS-NAME,browser,Proxy'));
+      }
+      final following =
+          loadYaml(
+                (await makeRealProfileTask(
+                  state.copyWith(
+                    applicationProxyMode: ApplicationProxyMode.follow,
+                  ),
+                )).yaml,
+              )
+              as YamlMap;
+      expect(following['rules'].first, 'DOMAIN,example.test,Proxy');
+    },
+  );
+
   test('encoding helpers round-trip structured data', () async {
     final encoded = jsonEncode({
       'name': 'FlClash',

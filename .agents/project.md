@@ -1,6 +1,6 @@
 # Project Context
 
-FlClash is a multi-platform proxy client based on ClashMeta (mihomo), built with Flutter. It supports Android, Windows, macOS, and Linux, using Material You from `material_ui` as the base with Apple's Human Interface interaction conventions layered on top.
+FlClash is a multi-platform proxy client built with Flutter and a Rust meow-rs 0.28.0 Core. It supports Android, Windows, macOS, Linux, and HarmonyOS, using Material You from `material_ui` as the base with Apple's Human Interface interaction conventions layered on top.
 
 ## Version Notes
 
@@ -90,15 +90,26 @@ non-deprecated plugin accessor changes only that one function.
 Linux:
 
 ```bash
-sudo apt-get install libayatana-appindicator3-dev
+sudo apt-get install libayatana-appindicator3-dev cmake ninja-build clang libclang-dev nasm pkg-config
 ```
 
 Windows:
 
-- GCC and Inno Setup.
+- Visual Studio C++ Build Tools with the Windows SDK, an MSVC Rust toolchain, LLVM with libclang, CMake 3.22+, NASM
+  for x64 BoringSSL assembly, and Inno Setup. `tool/rust_windows.ps1` discovers the Visual Studio installation and
+  imports its environment; set `LIBCLANG_PATH` when LLVM is outside the standard installation locations.
 
 macOS:
 
 ```bash
+brew install cmake llvm nasm
+export LIBCLANG_PATH="$(brew --prefix llvm)/lib"
 npm install -g appdmg
 ```
+
+All desktop builds need Cargo/Rust and Go for the separate `services/desktop` background host. The Core itself never
+builds Go. Android needs the AGP-pinned NDK, CMake, Ninja, libclang and Rust targets `armv7-linux-androideabi`,
+`aarch64-linux-android`, and `x86_64-linux-android`; no gomobile toolchain is used. HarmonyOS uses the native SDK's
+clang, sysroot, CMake and Ninja with `aarch64-unknown-linux-ohos`; see `tool/build_rust_ohos.ps1`.
+Some NDK distributions omit host libclang; install LLVM separately and set `LIBCLANG_PATH` in that case. Android
+cross flags still always select the NDK's target triple and sysroot.

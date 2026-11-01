@@ -7,6 +7,7 @@ import 'package:fl_clash/core/desktop/transport.dart';
 import 'package:fl_clash/core/ohos/transport.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,10 +26,12 @@ void main() {
 
   setUp(() {
     stops = 0;
+    OhosCoreTransport.resumeState = null;
     transport = OhosCoreTransport('test-control');
   });
 
   tearDown(() async {
+    OhosCoreTransport.resumeState = null;
     await transport.close();
     for (final socket in sockets) {
       socket.destroy();
@@ -37,8 +40,65 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+  test(
+    'lightweight restore attaches to the native backend without starting it',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'ohos_lightweight_',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      const token =
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final accepted = Completer<Socket>();
+      server.listen((socket) {
+        sockets.add(socket);
+        final bytes = <int>[];
+        socket.listen((chunk) {
+          bytes.addAll(chunk);
+          if (!accepted.isCompleted && bytes.length >= 68) {
+            expect(utf8.decode(bytes.sublist(4, 68)), token);
+            send(socket, utf8.encode(token));
+            accepted.complete(socket);
+          }
+        });
+      });
+      final oldControl = p.join(directory.path, 'old.control');
+      await File(p.join(directory.path, '.ohos-core-host.json')).writeAsString(
+        jsonEncode({
+          'address': '127.0.0.1:${server.port}',
+          'token': token,
+          'control': oldControl,
+          'tunnelStatus': '$oldControl.status',
+          'runningSince': 12345,
+        }),
+      );
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method != 'diagnostic') calls.add(call);
+        return true;
+      });
+      final resumed = OhosCoreTransport(p.join(directory.path, 'new.control'));
+      await resumed.open();
+      await resumed.waitUntilConnected(const Duration(seconds: 2));
+      expect(calls.where((call) => call.method == 'startCore'), isEmpty);
+      expect(calls.single.method, 'resumeCore');
+      expect(resumed.address, oldControl);
+      expect(
+        OhosCoreTransport.resumeState?.runningSince?.millisecondsSinceEpoch,
+        12345,
+      );
+      final frame = resumed.frames.first;
+      send(await accepted.future, utf8.encode('same Core'));
+      expect(utf8.decode(await frame), 'same Core');
+      await resumed.close();
+    },
+  );
+
   test('unauthenticated clients cannot take the Core connection', () async {
     messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'diagnostic') return null;
       if (call.method == 'stopCore') {
         stops++;
         return true;
@@ -72,6 +132,7 @@ void main() {
   test('closing cancels a client that never sends authentication', () async {
     final connected = Completer<void>();
     messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'diagnostic') return null;
       if (call.method == 'stopCore') {
         stops++;
         return true;
@@ -96,6 +157,7 @@ void main() {
     () async {
       Map? stopArguments;
       messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'diagnostic') return null;
         if (call.method == 'stopCore') {
           stopArguments = call.arguments as Map;
           return true;

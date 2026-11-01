@@ -1,6 +1,8 @@
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
+import 'package:fl_clash/state.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:tray/tray.dart';
 
@@ -150,6 +152,14 @@ class AppTray implements TrayPort {
 
     return [
       showItem,
+      if (desktopBackground.available)
+        TrayMenuAction(
+          label: appLocalizations.lightweightMode,
+          onSelected: () {
+            window?.show();
+            globalState.safeRun(systemAction.enterLightweightMode);
+          },
+        ),
       TrayMenuCheckbox(
         label: trayState.isStart
             ? appLocalizations.stop

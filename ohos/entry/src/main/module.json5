@@ -21,6 +21,7 @@
         "label": "$string:EntryAbility_label",
         "startWindowIcon": "$media:app_icon_layered",
         "startWindowBackground": "$color:start_window_background",
+        "backgroundModes": ["dataTransfer"],
         "exported": true,
         "skills": [
           {
@@ -44,6 +45,7 @@
       {"name" :  "ohos.permission.INTERNET"},
       {"name" :  "ohos.permission.GET_NETWORK_INFO"},
       {"name" :  "ohos.permission.GET_BUNDLE_INFO"},
+      {"name" :  "ohos.permission.KEEP_BACKGROUND_RUNNING"},
     ]
   }
 }

@@ -5,6 +5,29 @@ import 'package:ffi/ffi.dart';
 
 typedef ProcessLivenessProbe = Future<bool> Function(int pid);
 
+Future<bool> isProcessExecutableAlive(int pid, String executablePath) async {
+  if (pid <= 0) {
+    return false;
+  }
+  if (Platform.isWindows) {
+    return _isWindowsProcessAlive(pid, executablePath: executablePath);
+  }
+  if (!await isProcessAlive(pid)) {
+    return false;
+  }
+  if (Platform.isLinux) {
+    try {
+      return await File('/proc/$pid/exe').resolveSymbolicLinks() ==
+          executablePath;
+    } on FileSystemException {
+      return false;
+    }
+  }
+  final result = await Process.run('ps', ['-p', '$pid', '-o', 'comm=']);
+  return result.exitCode == 0 &&
+      (result.stdout as String).trim() == executablePath;
+}
+
 /// A recycled pid reads as alive, which delays a confirmation but never fakes one.
 Future<bool> isProcessAlive(int pid) async {
   if (pid <= 0) {
@@ -38,7 +61,7 @@ const _stillActive = 259;
 
 // A Helper-spawned Core belongs to SYSTEM; OpenProcess fails with
 // ERROR_INVALID_PARAMETER only when no such process exists.
-bool _isWindowsProcessAlive(int pid) {
+bool _isWindowsProcessAlive(int pid, {String? executablePath}) {
   final kernel32 = DynamicLibrary.open('kernel32.dll');
   final openProcess = kernel32
       .lookupFunction<
@@ -67,7 +90,37 @@ bool _isWindowsProcessAlive(int pid) {
     if (getExitCodeProcess(handle, exitCode) == 0) {
       return true;
     }
-    return exitCode.value == _stillActive;
+    if (exitCode.value != _stillActive) {
+      return false;
+    }
+    if (executablePath == null) {
+      return true;
+    }
+    final queryImage = kernel32
+        .lookupFunction<
+          Int32 Function(
+            Pointer<Void>,
+            Uint32,
+            Pointer<Utf16>,
+            Pointer<Uint32>,
+          ),
+          int Function(Pointer<Void>, int, Pointer<Utf16>, Pointer<Uint32>)
+        >('QueryFullProcessImageNameW');
+    final image = calloc<Uint16>(32768);
+    final size = calloc<Uint32>()..value = 32768;
+    try {
+      if (queryImage(handle, 0, image.cast<Utf16>(), size) == 0) {
+        return true;
+      }
+      return image
+              .cast<Utf16>()
+              .toDartString(length: size.value)
+              .toLowerCase() ==
+          executablePath.replaceAll('/', r'\').toLowerCase();
+    } finally {
+      calloc.free(image);
+      calloc.free(size);
+    }
   } finally {
     calloc.free(exitCode);
     closeHandle(handle);

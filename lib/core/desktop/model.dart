@@ -1,7 +1,19 @@
 import 'dart:async';
 import 'dart:math';
 
-enum CoreProcessOwner { direct, helper }
+enum CoreProcessOwner { direct, helper, background }
+
+class CoreResumeState {
+  const CoreResumeState({
+    required this.coreReused,
+    this.runningSince,
+    this.mode,
+  });
+
+  final bool coreReused;
+  final DateTime? runningSince;
+  final String? mode;
+}
 
 enum CoreLifecycleOutcome { applied, coalesced, superseded }
 

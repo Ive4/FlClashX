@@ -986,6 +986,19 @@ void main() {
       container.read(setupPatchProvider),
       system.isDesktop ? isNot(withSystemDns) : withSystemDns,
     );
+    final beforeMode = container.read(setupPatchProvider);
+    container
+        .read(networkSettingProvider.notifier)
+        .update(
+          (state) => state.copyWith(
+            applicationProxyMode: ApplicationProxyMode.httpSocks,
+          ),
+        );
+    expect(container.read(setupPatchProvider), isNot(beforeMode));
+    expect(
+      container.read(setupPatchProvider).applicationProxyMode,
+      ApplicationProxyMode.httpSocks,
+    );
   });
 
   test('shared state carries the notification stop action switch', () async {

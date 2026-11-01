@@ -21,6 +21,32 @@ Future<Map<String, Object?>> _sentRequest(
 }
 
 void main() {
+  test(
+    'a response from the old UI cannot complete a rebuilt UI request',
+    () async {
+      final oldTransport = FakeDesktopCoreTransport.connected();
+      final oldClient = CoreRpcClient(oldTransport);
+      final oldCall = oldClient.invoke<bool>(method: CoreMethod.getIsInit);
+      final oldRequest = await _sentRequest(oldTransport);
+      oldTransport.addJson({'id': oldRequest['id'], 'result': true});
+      expect(await oldCall, isTrue);
+      await oldClient.close();
+      await oldTransport.close();
+
+      final transport = FakeDesktopCoreTransport.connected();
+      final client = CoreRpcClient(transport);
+      final call = client.invoke<bool>(method: CoreMethod.getIsInit);
+      final request = await _sentRequest(transport);
+      transport.addJson({'id': oldRequest['id'], 'result': true});
+      await pumpEventQueue();
+      expect(client.pendingCount, 1);
+      transport.addJson({'id': request['id'], 'result': false});
+      expect(await call, isFalse);
+      await client.close();
+      await transport.close();
+    },
+  );
+
   test('reads a response the Core spilled to a file', () async {
     final home = Directory.systemTemp.createTempSync('rpc_spill');
     addTearDown(() => home.deleteSync(recursive: true));

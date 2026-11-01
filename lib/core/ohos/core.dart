@@ -15,6 +15,7 @@ import '../desktop/transport.dart';
 import '../event.dart';
 import '../interface.dart';
 import '../method.dart';
+import 'diagnostics.dart';
 import 'transport.dart';
 
 final class OhosCore extends CoreHandlerInterface {
@@ -54,8 +55,12 @@ final class OhosCore extends CoreHandlerInterface {
           );
           _transport = transport;
           _rpc = CoreRpcClient(transport);
+          var disconnected = false;
           _events = transport.events.listen((event) {
-            if (event is TransportDisconnected || event is TransportFailed) {
+            if (!disconnected &&
+                (event is TransportDisconnected || event is TransportFailed)) {
+              disconnected = true;
+              unawaited(OhosDiagnostics.record('core_disconnected'));
               coreEventManager.sendEvent(
                 const CoreEvent(
                   type: CoreEventType.crash,
@@ -89,15 +94,21 @@ final class OhosCore extends CoreHandlerInterface {
   Future<void> _stop() async {
     final transport = _transport;
     final rpc = _rpc;
-    if (transport?.state == DesktopTransportState.connected) {
-      await vpnChannel.invokeMethod<bool>('stop');
-    }
     await _events?.cancel();
     _events = null;
-    await transport?.close();
-    await rpc?.close();
-    _transport = null;
-    _rpc = null;
+    try {
+      if (transport?.state == DesktopTransportState.connected) {
+        await vpnChannel.invokeMethod<bool>('stop');
+      }
+    } finally {
+      try {
+        await transport?.close();
+      } finally {
+        await rpc?.close();
+        _transport = null;
+        _rpc = null;
+      }
+    }
   }
 
   @override

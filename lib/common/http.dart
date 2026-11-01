@@ -13,10 +13,9 @@ class FlClashHttpOverrides extends HttpOverrides {
 
   FlClashHttpOverrides(this._container);
 
-  static const _coreRootsAsset =
-      'core/Clash.Meta/component/ca/ca-certificates.crt';
+  static const _coreRootsAsset = 'assets/data/ca-certificates.crt';
 
-  /// The bundle the core embeds; only release CI fills it.
+  /// Additional roots bundled by release CI for the Flutter HTTP client.
   static Future<void> trustCoreRoots() async {
     try {
       final data = await rootBundle.load(_coreRootsAsset);

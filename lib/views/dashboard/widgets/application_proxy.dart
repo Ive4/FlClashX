@@ -85,13 +85,14 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     int profileId,
     ApplicationIdentity application,
     String? target,
+    ApplicationProxyMode mode,
   ) async {
     if (_saving != null || ref.read(currentProfileIdProvider) != profileId) {
       return;
     }
     final l = context.appLocalizations;
     setState(() {
-      _saving = application.key;
+      _saving = application.byName.key;
       _error = null;
     });
     // ignore: avoid_print
@@ -103,6 +104,7 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
             profileId: profileId,
             application: application,
             target: target,
+            mode: mode,
           );
       // ignore: avoid_print
       print('>>> _change returned applied=$applied');
@@ -122,39 +124,105 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     }
   }
 
+  ApplicationIdentity? _identity(ApplicationProxyInfo application) {
+    final source = application.policyIdentity ?? application.identity;
+    return source != null && !source.canRoute ? source.byName : source;
+  }
+
   Widget _policy(
     ApplicationProxyInfo application,
     int? profileId,
     bool editable,
     List<String> groups,
+    ApplicationProxyMode defaultMode,
   ) {
     final l = context.appLocalizations;
-    final source = application.policyIdentity ?? application.identity;
-    final identity = source != null && !source.canRoute
-        ? ApplicationIdentity(action: RuleAction.PROCESS_NAME,
-            content: source.name, windows: source.windows)
-        : source;
+    final identity = _identity(application);
     String label(String? target) => switch (target) {
       null => l.applicationProxyFollowRules,
       'DIRECT' => l.direct,
-      String value => value,
+      final String value => value,
     };
-    final enabled = editable && identity?.canRoute == true && _saving == null;
-    // ignore: avoid_print
-    print(
-      '>>> _policy saving=$_saving identityKey=${identity?.key} '
-      'identityNull=${identity == null} enabled=$enabled',
+    final mode = application.mode ?? defaultMode;
+    final enabled =
+        editable &&
+        identity?.canRoute == true &&
+        _saving == null &&
+        mode != ApplicationProxyMode.httpSocks;
+    return _selector(
+      label: identity == null
+          ? l.unknown
+          : label(
+              mode == ApplicationProxyMode.httpSocks
+                  ? null
+                  : application.target,
+            ),
+      enabled: enabled,
+      saving: _saving != null && _saving == identity?.byName.key,
+      items: [
+        for (final target in <String?>[null, 'DIRECT', ...groups])
+          CommonPopupMenuItem(
+            label: label(target),
+            checked: target == application.target,
+            onPressed: enabled
+                ? () => _change(profileId!, identity!, target, mode)
+                : null,
+          ),
+      ],
     );
+  }
+
+  Widget _mode(
+    ApplicationProxyInfo application,
+    int? profileId,
+    bool editable,
+    String followLabel,
+    ApplicationProxyMode defaultMode,
+  ) {
+    final identity = _identity(application);
+    final enabled = editable && identity?.canRoute == true && _saving == null;
+    final selected = application.mode ?? defaultMode;
+    return Tooltip(
+      message: context.appLocalizations.applicationProxyModeHint,
+      child: _selector(
+        label: selected == ApplicationProxyMode.follow
+            ? followLabel
+            : selected.label,
+        enabled: enabled,
+        items: [
+          for (final mode in ApplicationProxyMode.values)
+            CommonPopupMenuItem(
+              label: mode.label,
+              checked: mode == selected,
+              onPressed: enabled
+                  ? () =>
+                        _change(profileId!, identity!, application.target, mode)
+                  : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _selector({
+    required String label,
+    required bool enabled,
+    required List<CommonPopupMenuItem> items,
+    bool saving = false,
+    Key? key,
+  }) {
     return CommonPopupBox(
       targetBuilder: (open) => TextButton(
+        key: key,
         onPressed: enabled ? open : null,
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           minimumSize: const Size(0, 32),
           foregroundColor: context.colorScheme.onSurface,
+          disabledForegroundColor: context.colorScheme.onSurface.withValues(alpha: 0.38),
           textStyle: AppTextStyle.footnote.of(context),
         ),
-        child: _saving != null && _saving == identity?.key
+        child: saving
             ? const SizedBox.square(
                 dimension: 14,
                 child: CircularProgressIndicator(strokeWidth: 2),
@@ -165,7 +233,9 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                 children: [
                   Flexible(
                     child: Text(
-                      identity == null ? l.unknown : label(application.target),
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (enabled)
@@ -173,19 +243,7 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                 ],
               ),
       ),
-      popupBuilder: (_) => CommonPopupMenu(
-        maxVisibleItems: 7,
-        items: [
-          for (final target in <String?>[null, 'DIRECT', ...groups])
-            CommonPopupMenuItem(
-              label: label(target),
-              checked: target == application.target,
-              onPressed: enabled
-                  ? () => _change(profileId!, identity!, target)
-                  : null,
-            ),
-        ],
-      ),
+      popupBuilder: (_) => CommonPopupMenu(maxVisibleItems: 7, items: items),
     );
   }
 
@@ -203,8 +261,12 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
         ? const AsyncData<List<Rule>>([])
         : ref.watch(applicationRulesProvider(profileId));
     final patch = ref.watch(patchClashConfigProvider);
+    final defaultMode = ref.watch(
+      networkSettingProvider.select((state) => state.applicationProxyMode),
+    );
     final invalidTarget = RegExp(r'[,\r\n]');
-    final groups = ref.watch(groupsProvider)
+    final groups = ref
+        .watch(groupsProvider)
         .map((group) => group.name)
         .where((name) => name != 'DIRECT' && !invalidTarget.hasMatch(name))
         .toSet()
@@ -234,6 +296,57 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(
+            left: _cellInset,
+            right: _cellInset,
+            bottom: 6,
+          ),
+          child: Row(
+            children: [
+              Text(
+                l.applicationProxyDefaultMode,
+                style: AppTextStyle.footnote.of(context),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Tooltip(
+                  message: l.applicationProxyDefaultModeHint,
+                  child: _selector(
+                    key: const ValueKey('application-proxy-default-mode'),
+                    label: defaultMode.label,
+                    enabled: editable && _saving == null,
+                    items: [
+                      for (final mode in ApplicationProxyMode.values)
+                        CommonPopupMenuItem(
+                          label: mode.label,
+                          checked: mode == defaultMode,
+                          onPressed: () {
+                            ref
+                                .read(networkSettingProvider.notifier)
+                                .update(
+                                  (state) => state.copyWith(
+                                    applicationProxyMode: mode,
+                                  ),
+                                );
+                            if (mode == ApplicationProxyMode.httpSocks) {
+                              ref
+                                  .read(patchClashConfigProvider.notifier)
+                                  .update(
+                                    (state) => state.copyWith(
+                                      findProcessMode: FindProcessMode.always,
+                                    ),
+                                  );
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         if (message != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: _cellInset),
@@ -281,11 +394,23 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                   rowHeight: widget.rowHeight,
                   scrollController: widget.scrollController,
                   onCountChanged: widget.onCountChanged,
+                  modeBuilder: (application) => _mode(
+                    application,
+                    profileId,
+                    editable,
+                    l.applicationProxyModeCurrent(
+                      patch.tun.enable
+                          ? l.tun
+                          : l.applicationProxyModeHttpSocks,
+                    ),
+                    defaultMode,
+                  ),
                   policyBuilder: (application) => _policy(
                     application,
                     profileId,
                     editable,
                     groups,
+                    defaultMode,
                   ),
                 ),
         ),
@@ -305,6 +430,7 @@ class _ApplicationRows extends ConsumerStatefulWidget {
     required this.aggregator,
     required this.rowHeight,
     required this.policyBuilder,
+    required this.modeBuilder,
     this.scrollController,
     this.onCountChanged,
   });
@@ -317,6 +443,7 @@ class _ApplicationRows extends ConsumerStatefulWidget {
   final ApplicationProxyAggregator aggregator;
   final double rowHeight;
   final Widget Function(ApplicationProxyInfo application) policyBuilder;
+  final Widget Function(ApplicationProxyInfo application) modeBuilder;
   final ScrollController? scrollController;
   final ValueChanged<int>? onCountChanged;
 
@@ -503,15 +630,15 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     final all = <String, ApplicationProxyInfo>{
       for (final item in live) item.identity?.key ?? '': item,
     };
+    final configured = <String, ApplicationProxyInfo>{
+      for (final item in snapshot.applications) item.identity?.key ?? '': item,
+    };
     for (final entry in history.entries.values) {
       final identity = entry.identity;
-      final nameIdentity = ApplicationIdentity(action: RuleAction.PROCESS_NAME,
-        content: identity.name, windows: identity.windows);
-      final rule = widget.rules.where((rule) =>
-        identity.matchesRule(rule) || nameIdentity.matchesRule(rule)).firstOrNull;
-      all.putIfAbsent(identity.key, () => ApplicationProxyInfo(identity, target: rule?.ruleTarget,
-        policyIdentity: rule == null ? null : ApplicationIdentity(
-          action: rule.ruleAction, content: rule.content ?? '', windows: identity.windows)));
+      all.putIfAbsent(
+        identity.key,
+        () => configured[identity.key] ?? ApplicationProxyInfo(identity),
+      );
     }
     final query = _search.text.trim().toLowerCase();
     final applications = (history.showHistory ? all.values : live).where((item) =>
@@ -595,7 +722,15 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
           sortKey: (item) => item.route.index,
         ),
         RecordColumn(
-          width < 700
+          TableColumn('mode', l.applicationProxyMode,
+            width: width < 460 ? (history.showHistory ? 80 : 96) : width < 700 ? 116 : 164),
+          cell: (_, item) => widget.modeBuilder(item),
+          sortKey: (item) => item.mode?.index ?? -1,
+        ),
+        RecordColumn(
+          width < 460
+              ? TableColumn('policy', l.strategy, width: history.showHistory ? 80 : 96)
+              : width < 700
               ? TableColumn('policy', l.strategy, width: 112)
               : TableColumn('policy', l.strategy, flex: 1),
           cell: (_, item) => widget.policyBuilder(item),
@@ -649,7 +784,7 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
             descendingFirst: true,
           ),
         RecordColumn(
-          TableColumn('actions', '', width: history.showHistory ? 94 : 48),
+          TableColumn('actions', '', width: history.showHistory ? 112 : 64),
           cell: (_, item) => Row(children: [
             IconButton(padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 32, height: 32), tooltip: l.applicationResetHint,

@@ -24,10 +24,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return ProxyPluginClearStaleProxy() ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
-  if (HWND running = WindowPluginFindRunningWindow()) {
-    SendAppLink(running);
-    WindowPluginActivateWindow(running);
-    return EXIT_SUCCESS;
+  const bool safe_instance =
+      std::find(command_line_arguments.begin(), command_line_arguments.end(),
+                "--safe-instance") != command_line_arguments.end();
+  if (!safe_instance) {
+    if (HWND running = WindowPluginFindRunningWindow()) {
+      SendAppLink(running);
+      WindowPluginActivateWindow(running);
+      return EXIT_SUCCESS;
+    }
   }
 
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -41,15 +46,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
-  // See "Impeller disabled on Windows" in .agents/flutter-upgrade.md.
-  project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+  const bool use_impeller =
+      std::find(command_line_arguments.begin(), command_line_arguments.end(),
+                "--no-enable-impeller") == command_line_arguments.end();
+  project.set_impeller_switch(use_impeller ? flutter::ImpellerSwitch::Enabled
+                                         : flutter::ImpellerSwitch::Disabled);
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"FlClashX", origin, size)) {
+  if (!window.Create(safe_instance ? L"FlClashX (Safe Mode)" : L"FlClashX",
+                     origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

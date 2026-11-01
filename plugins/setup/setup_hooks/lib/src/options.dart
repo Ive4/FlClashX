@@ -16,6 +16,7 @@ class BuildConfig {
     required this.outputDir,
     required this.helperDir,
     required this.helperName,
+    this.coreFeatures = '',
   });
 
   final String tags;
@@ -26,12 +27,13 @@ class BuildConfig {
   final String outputDir;
   final String helperDir;
   final String helperName;
+  final String coreFeatures;
 
   static const _defaults = BuildConfig(
     tags: 'with_gvisor',
     goLdflags: '-w -s',
     coreVersion: '',
-    coreDir: 'core',
+    coreDir: 'core/rust',
     coreName: 'FlClashCore',
     outputDir: 'libclash',
     helperDir: 'services/helper',
@@ -55,6 +57,7 @@ class BuildConfig {
       outputDir: yaml['output_dir'] as String? ?? _defaults.outputDir,
       helperDir: yaml['helper_dir'] as String? ?? _defaults.helperDir,
       helperName: yaml['helper_name'] as String? ?? _defaults.helperName,
+      coreFeatures: yaml['core_features'] as String? ?? _defaults.coreFeatures,
     );
   }
 
@@ -67,5 +70,6 @@ class BuildConfig {
     'output_dir': outputDir,
     'helper_dir': helperDir,
     'helper_name': helperName,
+    'core_features': coreFeatures,
   };
 }

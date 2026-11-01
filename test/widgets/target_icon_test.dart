@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -62,6 +63,8 @@ void main() {
     late List<String> reads;
 
     setUp(() {
+      setTargetIconCacheEnabled(true);
+      clearTargetIconCache();
       reads = [];
       readRemoteIcon = (src) {
         reads.add(src);
@@ -69,7 +72,54 @@ void main() {
       };
     });
 
-    tearDown(() => readRemoteIcon = null);
+    tearDown(() {
+      readRemoteIcon = null;
+      setTargetIconCacheEnabled(true);
+      clearTargetIconCache();
+    });
+
+    testWidgets('hidden icons neither prefetch nor retain loaded bytes', (
+      tester,
+    ) async {
+      const src = 'https://example.com/background.png';
+      setTargetIconCacheEnabled(false);
+      await precacheTargetIcons([src]);
+      expect(reads, isEmpty);
+
+      await _pump(tester, const CommonTargetIcon(src: src));
+      await tester.pump();
+      expect(reads, [src]);
+      expect(find.byType(Image), findsOne);
+
+      await tester.pumpWidget(const SizedBox());
+      setTargetIconCacheEnabled(true);
+      await _pump(tester, const CommonTargetIcon(src: src));
+      expect(reads, [src, src]);
+      await tester.pump();
+      expect(find.byType(Image), findsOne);
+    });
+
+    test(
+      'a stale prefetch cannot refill caches after hide and restore',
+      () async {
+        const src = 'https://example.com/pending.svg';
+        final pending = StreamController<Uint8List>();
+        final bytes = Uint8List.fromList(utf8.encode('<svg/>'));
+        readRemoteIcon = (src) {
+          reads.add(src);
+          return reads.length == 1 ? pending.stream : Stream.value(bytes);
+        };
+        final prefetch = precacheTargetIcons([src]);
+        setTargetIconCacheEnabled(false);
+        setTargetIconCacheEnabled(true);
+        pending.add(bytes);
+        await pending.close();
+        await prefetch;
+
+        await precacheTargetIcons([src]);
+        expect(reads, [src, src]);
+      },
+    );
 
     testWidgets('loads at once on a page that sits still', (tester) async {
       const src = 'https://example.com/still.png';

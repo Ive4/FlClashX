@@ -44,10 +44,14 @@ class _SetupAction extends SetupAction {
 
 final _time = DateTime.utc(2026, 10, 22);
 
-TrackerInfo _connection(String id, {String outbound = 'Proxy'}) => TrackerInfo(
+TrackerInfo _connection(
+  String id, {
+  String outbound = 'Proxy',
+  String path = '/apps/browser',
+}) => TrackerInfo(
   id: id,
   start: _time,
-  metadata: const Metadata(process: 'browser', processPath: '/apps/browser'),
+  metadata: Metadata(process: 'browser', processPath: path),
   chains: [outbound],
   rule: 'MATCH',
   rulePayload: '',
@@ -80,7 +84,11 @@ void main() {
         currentProfileIdProvider.overrideWithBuild((_, _) => 1),
         coreStatusProvider.overrideWithBuild((_, _) => CoreStatus.connected),
         patchClashConfigProvider.overrideWithBuild(
-          (_, _) => const PatchClashConfig(findProcessMode: FindProcessMode.always),
+          (_, _) =>
+              const PatchClashConfig(findProcessMode: FindProcessMode.always),
+        ),
+        networkSettingProvider.overrideWithBuild(
+          (_, _) => const NetworkProps(),
         ),
         setupActionProvider.overrideWith(() => action),
         applicationProxyAggregatorProvider.overrideWithValue(
@@ -92,6 +100,7 @@ void main() {
     container.listen(currentProfileIdProvider, (_, _) {});
     container.listen(profilesProvider, (_, _) {});
     container.listen(patchClashConfigProvider, (_, _) {});
+    container.listen(networkSettingProvider, (_, _) {});
     container.listen(coreStatusProvider, (_, _) {});
   });
 
@@ -175,16 +184,185 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('reset closes every connection belonging to the selected app', (tester) async {
-    await pumpPanel(tester, connections: [_connection('a'), _connection('b')]);
-    await tester.tap(find.byTooltip(
-      'Close this app’s current connections; new connections use the latest policy'));
+  testWidgets(
+    'HTTP and SOCKS mode disables the policy and can return to follow',
+    (tester) async {
+      await pumpPanel(tester);
+      await tester.tap(
+        find.widgetWithText(TextButton, 'Follow · HTTP & SOCKS'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('HTTP & SOCKS'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNull,
+      );
+      final rules = await database.rulesDao.queryApplicationRules(1).get();
+      expect(
+        rules.single.rawValue,
+        'AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT',
+      );
+
+      await tester.tap(find.widgetWithText(TextButton, 'HTTP & SOCKS'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Follow FlClash').last);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNotNull,
+      );
+      expect(await database.rulesDao.queryApplicationRules(1).get(), isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'default mode controls unconfigured apps while individual modes win',
+    (tester) async {
+      await pumpPanel(tester);
+      await tester.tap(
+        find.byKey(const ValueKey('application-proxy-default-mode')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('HTTP & SOCKS'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(networkSettingProvider).applicationProxyMode,
+        ApplicationProxyMode.httpSocks,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(find.widgetWithText(TextButton, 'HTTP & SOCKS').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Follow FlClash'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNotNull,
+      );
+      expect(
+        (await database.rulesDao.queryApplicationRules(1).get())
+            .single
+            .ruleTarget,
+        'PASS-RULE',
+      );
+      expect(
+        container.read(networkSettingProvider).applicationProxyMode,
+        ApplicationProxyMode.httpSocks,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'follow mode reflects the current TUN setting without storing an app override',
+    (tester) async {
+      await pumpPanel(tester);
+      container
+          .read(patchClashConfigProvider.notifier)
+          .update((state) => state.copyWith.tun(enable: true));
+      await tester.pumpAndSettle();
+      expect(find.text('Follow · TUN'), findsOneWidget);
+      expect(await database.rulesDao.queryApplicationRules(1).get(), isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('mode and policy selectors fit a narrow application table', (
+    tester,
+  ) async {
+    for (final width in [320.0, 390.0, 768.0]) {
+      await pumpPanel(tester, width: width);
+      expect(find.text('Proxy mode'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextButton, 'Follow · HTTP & SOCKS'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('HTTP and SOCKS apply failure keeps the saved mode and unlocks controls', (tester) async {
+    action.pending = Completer<bool>();
+    await pumpPanel(tester);
+    await tester.tap(find.widgetWithText(TextButton, 'Follow · HTTP & SOCKS'));
     await tester.pumpAndSettle();
-    verify(() => core.closeConnection('a')).called(1);
-    verify(() => core.closeConnection('b')).called(1);
-    verifyNever(() => core.closeConnections());
+    await tester.tap(find.text('HTTP & SOCKS'));
+    await waitForApply(tester);
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    action.pending!.completeError(StateError('apply failed'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'HTTP & SOCKS')).onPressed, isNotNull);
+    expect(tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'Follow rules')).onPressed, isNull);
+    expect(find.text('The rule was saved, but could not be applied. Apply the current profile to retry.'),
+      findsOneWidget);
+    expect((await database.rulesDao.queryApplicationRules(1).get()).single.rawValue,
+      'AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('history restores an offline app mode with its policy disabled', (tester) async {
+    await tester.runAsync(() async {
+      await applicationHistory.record(applicationConnectionsOf([_connection('1')]), false, _time);
+      await applicationHistory.select(true);
+      await database.rulesDao.putRule(
+        Rule.parse('AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT', id: 1),
+        profileId: 1,
+      );
+    });
+    await pumpPanel(tester, connections: [], width: 320);
+    expect(find.text('browser'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'HTTP & SOCKS'), findsOneWidget);
+    expect(tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'Follow rules')).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'same-name installs share a row, history entry and connection reset',
+    (tester) async {
+      await pumpPanel(
+        tester,
+        connections: [
+          _connection('a', path: '/apps/v1/browser'),
+          _connection('b', path: '/apps/v2/browser'),
+        ],
+      );
+      expect(find.text('browser'), findsOneWidget);
+      expect(find.text('Current apps (1)'), findsOneWidget);
+      expect(find.text('History (1)'), findsOneWidget);
+      await tester.runAsync(() => applicationHistory.select(true));
+      await tester.pumpAndSettle();
+      expect(find.text('browser'), findsOneWidget);
+      await tester.tap(
+        find.byTooltip(
+          'Close this app’s current connections; new connections use the latest policy',
+        ),
+      );
+      await tester.pumpAndSettle();
+      verify(() => core.closeConnection('a')).called(1);
+      verify(() => core.closeConnection('b')).called(1);
+      verifyNever(() => core.closeConnections());
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('search stays in a popup and can be cleared after dismissal', (tester) async {
     await pumpPanel(tester, width: 390);
@@ -204,30 +382,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('history keeps an offline app searchable and editable', (tester) async {
-    await applicationHistory.record(applicationConnectionsOf([_connection('1')]), false, _time);
-    await pumpPanel(tester, connections: []);
-    expect(find.text('browser'), findsNothing);
-    await tester.tap(find.text('History (1)'));
-    await tester.pumpAndSettle();
-    expect(find.text('browser'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-    await tester.tap(find.byTooltip('Search'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'missing');
-    await tester.pumpAndSettle();
-    expect(find.text('No matching apps'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'browser');
-    await tester.pumpAndSettle();
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    expect(find.byType(TextField), findsNothing);
-    await tester.tap(find.byTooltip('Remove from history'));
-    await tester.pumpAndSettle();
-    expect(applicationHistory.entries, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'history merges offline installs into one searchable and editable app',
+    (tester) async {
+      await tester.runAsync(
+        () => applicationHistory.record(
+          applicationConnectionsOf([
+            _connection('1', path: '/apps/v1/browser'),
+            _connection('2', path: '/apps/v2/browser'),
+          ]),
+          false,
+          _time,
+        ),
+      );
+      await pumpPanel(tester, connections: []);
+      expect(find.text('browser'), findsNothing);
+      await tester.runAsync(() => tester.tap(find.text('History (1)')));
+      await tester.pumpAndSettle();
+      expect(find.text('browser'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'missing');
+      await tester.pumpAndSettle();
+      expect(find.text('No matching apps'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'browser');
+      await tester.pumpAndSettle();
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNothing);
+      await tester.runAsync(
+        () => tester.tap(find.byTooltip('Remove from history')),
+      );
+      await tester.pumpAndSettle();
+      expect(applicationHistory.entries, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('actual mixed routing and an idle configured policy stay separate', (tester) async {
     await database.rulesDao.putRule(

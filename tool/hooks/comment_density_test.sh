@@ -117,6 +117,10 @@ expect_under 'generated plugin bindings are skipped' \
   "$repo/plugins/rust_api/lib/src/rust/frb_generated.io.dart" "$(dense 20 4)"
 expect_under 'the intl_utils localization class is skipped' "$repo/lib/l10n/l10n.dart" "$(dense 20 4)"
 expect_under 'a vendored upstream file is skipped' "$repo/Clash.Meta/hub.go" "$(dense 20 4)"
+expect_under 'vendored meow-listener comments are skipped' \
+  "$repo/core/rust/vendor/meow-listener/src/lib.rs" "$(dense 20 4)"
+expect_over 'first-party Rust Core comments are checked' \
+  "$repo/core/rust/src/lib.rs" "$(dense 8 24)"
 expect_under 'a markdown file is skipped' "$repo/notes.md" "$(dense 20 4)"
 
 expect_over 'a dense change to a tracked file' "$repo/tracked.dart" "$(dense 8 24)"
@@ -182,6 +186,7 @@ rm -f \
   "$repo/dense.dart" \
   "$repo/block.kt" \
   "$repo/argv.dart" \
+  "$repo/core/rust/src/lib.rs" \
   "$repo/plugins/proxy/lib/dense.dart"
 run_stdin
 if [ "$status" -ne 0 ] || [ -s "$temp_dir/err" ]; then

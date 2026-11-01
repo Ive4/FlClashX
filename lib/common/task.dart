@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/application_proxy.dart';
+import 'package:fl_clash/core/ohos/diagnostics.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:flutter/foundation.dart';
@@ -364,6 +366,15 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
   } else {
     rules = data.rules.map((item) => item.rawValue).toList();
   }
+  if (data.applicationProxyMode == ApplicationProxyMode.httpSocks) {
+    rules.insert(
+      0,
+      applicationProxyDefaultRule(
+        [...data.rules, ...data.addedRules],
+        windows: Platform.isWindows,
+      ),
+    );
+  }
   if (data.proxyGroups.isNotEmpty) {
     rawConfig['proxy-groups'] = data.proxyGroups
         .map((item) => item.definition)
@@ -469,7 +480,10 @@ void _migrateLegacyProviderFile({
 }
 
 Future<String> encodeLogsTask(List<Log> data) async {
-  return compute<List<Log>, String>(_encodeLogsTask, data);
+  final logs = await compute<List<Log>, String>(_encodeLogsTask, data);
+  if (!system.isOhos) return logs;
+  final diagnostics = await OhosDiagnostics.read();
+  return '$logs\n\n[HarmonyOS lifecycle diagnostics]\n$diagnostics';
 }
 
 Future<String> _encodeLogsTask(List<Log> data) async {

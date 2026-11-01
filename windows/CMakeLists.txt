@@ -130,6 +130,7 @@ install(CODE "
 " COMPONENT Runtime)
 install(FILES
   "${CORE_ARTIFACTS_DIR}/FlClashCore.exe"
+  "${CORE_ARTIFACTS_DIR}/FlClashDesktop.exe"
   "${CORE_ARTIFACTS_DIR}/FlClashHelperService.exe"
   "${CORE_ARTIFACTS_DIR}/manifest.json"
   DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

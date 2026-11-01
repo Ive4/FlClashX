@@ -66,10 +66,13 @@ class RulesDao extends DatabaseAccessor<Database> with _$RulesDaoMixin {
     final query = _ownedBy(profileId)
       ..where(
         (t) =>
-            t.ruleAction.isInValues([
-              RuleAction.PROCESS_NAME,
-              RuleAction.PROCESS_PATH,
-            ]) &
+            (t.ruleAction.isInValues([
+                  RuleAction.PROCESS_NAME,
+                  RuleAction.PROCESS_PATH,
+                ]) |
+                (t.ruleAction.equalsValue(RuleAction.AND) &
+                    (t.content.like('((PROCESS-NAME,%),(IN-TYPE,TUN))') |
+                        t.content.like('((PROCESS-PATH,%),(IN-TYPE,TUN))')))) &
             t.src.equals(false),
       );
     return query.map((item) => item.toRule());

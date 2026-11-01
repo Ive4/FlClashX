@@ -40,9 +40,12 @@ void main() {
     ]);
   });
 
-  test('names the Rust target triple for Helper platforms', () {
+  test('names the Rust target triple for every desktop platform', () {
     expect(Target.windowsAmd64.rustTriple, 'x86_64-pc-windows-msvc');
     expect(Target.linuxArm64.rustTriple, 'aarch64-unknown-linux-gnu');
-    expect(() => Target.macosArm64.rustTriple, throwsA(isA<BuildException>()));
+    expect(Target.macosArm64.rustTriple, 'aarch64-apple-darwin');
+    expect(Target.macosAmd64.rustTriple, 'x86_64-apple-darwin');
+    expect(Target.windowsArm64.rustTriple, 'aarch64-pc-windows-msvc');
+    expect(Target.linuxAmd64.rustTriple, 'x86_64-unknown-linux-gnu');
   });
 }

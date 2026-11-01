@@ -54,6 +54,12 @@ export default class InstalledApps implements MethodCallHandler {
         await this.context.moveAbilityToBackground();
         result.success(true);
         break;
+      case 'enterLightweightMode':
+        this.context.terminateSelf().catch((error: Error) => {
+          console.error(`FlClash UI close failed: ${error.message}`);
+        });
+        result.success(true);
+        break;
       default:
         result.notImplemented();
     }

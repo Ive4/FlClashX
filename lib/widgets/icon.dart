@@ -29,6 +29,7 @@ class _IconBytesCache {
   _IconBytesCache(this.maxBytes);
 
   final int maxBytes;
+  bool enabled = true;
   final _entries = <String, Uint8List?>{};
   var _bytes = 0;
 
@@ -44,7 +45,7 @@ class _IconBytesCache {
   void operator []=(String key, Uint8List? value) {
     remove(key);
     final size = value?.lengthInBytes ?? 0;
-    if (size > maxBytes) {
+    if (!enabled || size > maxBytes) {
       return;
     }
     _entries[key] = value;
@@ -57,10 +58,33 @@ class _IconBytesCache {
   void remove(String key) {
     _bytes -= _entries.remove(key)?.lengthInBytes ?? 0;
   }
+
+  void clear() {
+    _entries.clear();
+    _bytes = 0;
+  }
 }
 
 final _decodedIcons = _IconBytesCache(_maxCachedIconBytes);
 final _remoteIcons = _IconBytesCache(_maxCachedIconBytes);
+int _iconCacheGeneration = 0;
+
+void clearTargetIconCache() {
+  _iconCacheGeneration++;
+  _decodedIcons.clear();
+  _remoteIcons.clear();
+}
+
+void setTargetIconCacheEnabled(bool enabled) {
+  if (_remoteIcons.enabled == enabled) {
+    return;
+  }
+  _decodedIcons.enabled = enabled;
+  _remoteIcons.enabled = enabled;
+  if (!enabled) {
+    clearTargetIconCache();
+  }
+}
 
 Uint8List? _decodeIcon(String src) {
   if (!src.contains('base64,')) {
@@ -224,12 +248,16 @@ set readRemoteIcon(Stream<Uint8List> Function(String src)? value) {
 }
 
 Stream<Uint8List> _loadRemoteIcon(String src) {
+  final generation = _iconCacheGeneration;
   return _readRemoteIcon(src).map((bytes) {
     final current = _remoteIcons[src];
     final next = current != null && listEquals(current, bytes)
         ? current
         : bytes;
-    return _remoteIcons[src] = next;
+    if (generation == _iconCacheGeneration) {
+      _remoteIcons[src] = next;
+    }
+    return next;
   });
 }
 
@@ -251,6 +279,10 @@ Future<void> _decodeAhead(Uint8List bytes) {
 }
 
 Future<void> precacheTargetIcons(Iterable<String> srcs) async {
+  if (!_remoteIcons.enabled) {
+    return;
+  }
+  final generation = _iconCacheGeneration;
   final pending = srcs
       .toSet()
       .where(
@@ -262,6 +294,9 @@ Future<void> precacheTargetIcons(Iterable<String> srcs) async {
       .map((src) async {
         try {
           await for (final bytes in _loadRemoteIcon(src)) {
+            if (!_remoteIcons.enabled || generation != _iconCacheGeneration) {
+              break;
+            }
             if (!src.isSvg) {
               await _decodeAhead(bytes);
             }

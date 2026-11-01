@@ -17,17 +17,7 @@ try {
     & "$PSScriptRoot/prepare_ohos.ps1"
     & $flutter pub get
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS pub get failed' }
-    $env:GOOS = 'openharmony'
-    $env:GOARCH = 'arm64'
-    $env:CGO_ENABLED = '1'
-    $env:CC = Join-Path $HarmonyHome 'HM-Go/bin/ohos-clang.cmd'
-    $nativeOutput = Join-Path $root 'ohos/entry/libs/arm64-v8a'
-    New-Item -ItemType Directory -Force $nativeOutput | Out-Null
-    Push-Location (Join-Path $root 'core')
-    try {
-        & (Join-Path $env:HM_GO_HOME 'bin/go.exe') build -mod=readonly -buildmode=c-shared -tags=with_gvisor '-ldflags=-s -w' -o "$nativeOutput/libflclash.so" ./cmd/ohos
-        if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS Go Core build failed' }
-    } finally { Pop-Location }
+    & "$PSScriptRoot/build_rust_ohos.ps1" -NativeSdk $env:OHOS_NDK_HOME
     & $flutter build hap --release --target-platform ohos-arm64
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS HAP build failed; inspect the build output above' }
 } finally {

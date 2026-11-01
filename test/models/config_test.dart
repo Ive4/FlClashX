@@ -133,10 +133,27 @@ void main() {
       expect(restored.autoCheckUpdate, true);
       expect(restored.sidebarExpanded, true);
       expect(restored.minimizeOnExit, true);
+      expect(restored.autoLightweightMinutes, 5);
       expect(restored.restoreStrategy, RestoreStrategy.compatible);
       expect(restored.userAgents, defaultUserAgents);
       expect(restored.filters, defaultFilters);
     });
+
+    test(
+      'automatic lightweight delay persists and older configs default to five minutes',
+      () {
+        const props = AppSettingProps(autoLightweightMinutes: 7);
+        final restored = roundTrip(props.toJson, AppSettingProps.fromJson);
+        expect(restored.autoLightweightMinutes, 7);
+        expect(AppSettingProps.fromJson({}).autoLightweightMinutes, 5);
+        expect(
+          AppSettingProps.fromJson({
+            'autoLightweightMinutes': 0,
+          }).autoLightweightMinutes,
+          0,
+        );
+      },
+    );
 
     test('a saved outboundModeV2 card folds into outboundMode', () {
       final restored = AppSettingProps.fromJson({
@@ -410,6 +427,8 @@ void main() {
   group('NetworkProps JSON round-trip', () {
     test('default values', () {
       const props = NetworkProps();
+      expect(props.applicationProxyMode, ApplicationProxyMode.follow);
+      expect(NetworkProps.fromJson({}).applicationProxyMode, ApplicationProxyMode.follow);
       expect(props.systemProxy, true);
       expect(props.bypassDomain, defaultBypassDomain);
       expect(props.bypassPrivateRoute, true);
@@ -419,11 +438,13 @@ void main() {
 
     test('round-trip with custom values', () {
       const props = NetworkProps(
+        applicationProxyMode: ApplicationProxyMode.httpSocks,
         systemProxy: false,
         bypassDomain: ['example.com'],
         bypassPrivateRoute: true,
       );
       final restored = roundTrip(() => props.toJson(), NetworkProps.fromJson);
+      expect(restored.applicationProxyMode, ApplicationProxyMode.httpSocks);
       expect(restored.systemProxy, false);
       expect(restored.bypassDomain, ['example.com']);
       expect(restored.bypassPrivateRoute, true);

@@ -1,4 +1,6 @@
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
+import 'package:fl_clash/state.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/form/form.dart';
 import 'package:fl_clash/l10n/l10n.dart';
@@ -240,8 +242,18 @@ ConfigToggleItem _appSettingToggle({
 class GeneralView extends ConsumerWidget {
   const GeneralView({super.key});
 
-  List<Widget> _startupItems(AppLocalizations appLocalizations) {
+  List<Widget> _startupItems(AppLocalizations appLocalizations, WidgetRef ref) {
     return [
+      if (system.isAndroid || system.isOhos || desktopBackground.available)
+        ListItem(
+          title: Text(appLocalizations.lightweightMode),
+          subtitle: Text(appLocalizations.lightweightModeDesc),
+          onTap: () => globalState.safeRun(
+            ref.read(systemActionProvider.notifier).enterLightweightMode,
+          ),
+        ),
+      if (system.isAndroid || system.isOhos || desktopBackground.available)
+        const AutoLightweightModeItem(),
       if (system.isDesktop) ...[
         _appSettingToggle(
           title: (l) => l.autoLaunch,
@@ -403,11 +415,15 @@ class GeneralView extends ConsumerWidget {
         children: [
           generateSection(
             title: appLocalizations.startupAndBackground,
-            items: _startupItems(appLocalizations),
+            items: _startupItems(appLocalizations, ref),
             footer: [
               if (system.isDesktop) appLocalizations.silentLaunchDesc,
               appLocalizations.autoRunDesc,
               appLocalizations.onDemandDesc,
+              if (system.isAndroid ||
+                  system.isOhos ||
+                  desktopBackground.available)
+                appLocalizations.autoLightweightModeDesc,
             ].join('\n'),
           ),
           generateSection(
@@ -443,6 +459,39 @@ class GeneralView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class AutoLightweightModeItem extends ConsumerWidget {
+  const AutoLightweightModeItem({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.appLocalizations;
+    final minutes = ref.watch(
+      appSettingProvider.select((state) => state.autoLightweightMinutes),
+    );
+    return ListItem.input(
+      title: Text(l.autoLightweightMode),
+      subtitle: Text(minutes <= 0 ? l.disabled : '$minutes ${l.minutes}'),
+      dialogTitle: l.autoLightweightMode,
+      value: '$minutes',
+      maxLength: 4,
+      keyboardType: TextInputType.number,
+      validator: (text) {
+        final value = int.tryParse(text?.trim() ?? '');
+        return value == null || value < 0 || value > 1440
+            ? l.autoLightweightMinutesInvalid
+            : null;
+      },
+      onChanged: (text) {
+        final value = int.tryParse(text?.trim() ?? '');
+        if (value == null || value < 0 || value > 1440) return;
+        ref
+            .read(appSettingProvider.notifier)
+            .update((state) => state.copyWith(autoLightweightMinutes: value));
+      },
     );
   }
 }

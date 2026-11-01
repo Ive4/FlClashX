@@ -111,6 +111,7 @@ endforeach(bundled_library)
 set(CORE_ARTIFACTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libclash/linux")
 install(PROGRAMS
   "${CORE_ARTIFACTS_DIR}/FlClashCore"
+  "${CORE_ARTIFACTS_DIR}/FlClashDesktop"
   "${CORE_ARTIFACTS_DIR}/FlClashHelperService"
   DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)

@@ -5,12 +5,16 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 
 import '../desktop/transport.dart';
+import '../desktop/model.dart';
+import 'diagnostics.dart';
 
 final class OhosCoreTransport implements DesktopCoreTransport {
   @override
-  final String address;
+  String address;
+  static CoreResumeState? resumeState;
   @override
   DesktopTransportState state = DesktopTransportState.idle;
   final _events = StreamController<DesktopTransportEvent>.broadcast();
@@ -45,6 +49,10 @@ final class OhosCoreTransport implements DesktopCoreTransport {
       throw StateError('HarmonyOS Core transport already opened');
     }
     state = DesktopTransportState.starting;
+    unawaited(OhosDiagnostics.record('transport_open'));
+    if (await _resume()) {
+      return;
+    }
     final random = Random.secure();
     _token = List.generate(
       32,
@@ -59,6 +67,9 @@ final class OhosCoreTransport implements DesktopCoreTransport {
         return;
       }
       _candidates.add(socket);
+      unawaited(
+        socket.done.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
       final reader = _readFrames(socket);
       _readers.add(reader);
       unawaited(reader.whenComplete(() => _readers.remove(reader)));
@@ -69,16 +80,88 @@ final class OhosCoreTransport implements DesktopCoreTransport {
             'endpoint': jsonEncode({
               'address': '127.0.0.1:${_server!.port}',
               'token': _token,
+              'control': address,
             }),
             'control': address,
           }),
         })
         .then<void>((_) {})
         .catchError((Object error, StackTrace stack) {
+          unawaited(
+            OhosDiagnostics.record('transport_start_failed', error.toString()),
+          );
           state = DesktopTransportState.failed;
           if (!_connected.isCompleted) _connected.completeError(error, stack);
           _events.add(TransportFailed(error, stack));
         });
+  }
+
+  Future<bool> _resume() async {
+    if (!p.isAbsolute(address)) {
+      return false;
+    }
+    final file = File(p.join(p.dirname(address), '.ohos-core-host.json'));
+    if (!await file.exists()) {
+      return false;
+    }
+    final record = jsonDecode(await file.readAsString()) as Map;
+    final endpoint = record['address'];
+    final token = record['token'];
+    final control = record['control'];
+    final uri = endpoint is String ? Uri.tryParse('tcp://$endpoint') : null;
+    if (uri == null ||
+        uri.host != '127.0.0.1' ||
+        !uri.hasPort ||
+        uri.userInfo.isNotEmpty ||
+        uri.path.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        token is! String ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(token) ||
+        control is! String ||
+        p.dirname(control) != p.dirname(address)) {
+      throw const FormatException('Invalid HarmonyOS backend session');
+    }
+    address = control;
+    _token = token;
+    final socket = await Socket.connect(
+      InternetAddress.loopbackIPv4,
+      uri.port,
+      timeout: const Duration(seconds: 3),
+    );
+    _candidates.add(socket);
+    unawaited(
+      socket.done.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+    );
+    final reader = _readFrames(socket);
+    _readers.add(reader);
+    unawaited(reader.whenComplete(() => _readers.remove(reader)));
+    final header = ByteData(4)..setUint32(0, 64, Endian.little);
+    socket.add(header.buffer.asUint8List());
+    socket.add(utf8.encode(token));
+    await socket.flush();
+    await _connected.future.timeout(const Duration(seconds: 3));
+    await _channel.invokeMethod<bool>('resumeCore', {
+      'control': control,
+      'status': record['tunnelStatus'],
+    });
+    resumeState = CoreResumeState(
+      coreReused: true,
+      runningSince: switch (record['runningSince']) {
+        final int value => DateTime.fromMillisecondsSinceEpoch(value),
+        _ => null,
+      },
+    );
+    return true;
+  }
+
+  static Future<void> enterLightweight(DateTime? runningSince) async {
+    if (await _channel.invokeMethod<bool>('enterLightweight', {
+          'runningSince': runningSince?.millisecondsSinceEpoch,
+        }) !=
+        true) {
+      throw StateError('HarmonyOS backend did not accept lightweight mode');
+    }
   }
 
   Future<void> _readFrames(Socket socket) async {
@@ -122,6 +205,7 @@ final class OhosCoreTransport implements DesktopCoreTransport {
       const connection = TransportConnected(pid: null, generation: 1);
       _connected.complete(connection);
       _events.add(connection);
+      unawaited(OhosDiagnostics.record('transport_connected'));
       while (_closeOperation == null) {
         final header = await read(4);
         if (header == null) break;
@@ -135,14 +219,19 @@ final class OhosCoreTransport implements DesktopCoreTransport {
       }
     } catch (error, stack) {
       if (_closeOperation == null && identical(socket, _socket)) {
+        state = DesktopTransportState.failed;
+        unawaited(OhosDiagnostics.record('transport_failed', error.toString()));
         _events.add(TransportFailed(error, stack));
       }
     } finally {
       await chunks.cancel();
       socket.destroy();
       _candidates.remove(socket);
-      if (identical(socket, _socket) && !_events.isClosed) {
+      if (identical(socket, _socket) &&
+          _closeOperation == null &&
+          !_events.isClosed) {
         state = DesktopTransportState.closed;
+        unawaited(OhosDiagnostics.record('transport_disconnected'));
         _events.add(const TransportDisconnected(1));
       }
     }
@@ -166,6 +255,7 @@ final class OhosCoreTransport implements DesktopCoreTransport {
   Future<void> close() => _closeOperation ??= _close();
 
   Future<void> _close() async {
+    unawaited(OhosDiagnostics.record('transport_close'));
     final disconnected =
         state == DesktopTransportState.closed ||
         state == DesktopTransportState.failed;

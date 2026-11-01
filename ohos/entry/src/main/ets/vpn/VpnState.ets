@@ -20,6 +20,8 @@ export interface VpnCommand {
   action: string;
   status: string;
   request?: VpnRequest;
+  runningSince?: number;
+  tunnelStatus?: string;
 }
 
 export function writeVpnState(path: string, state: string): void {

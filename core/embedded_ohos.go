@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -21,6 +22,17 @@ var embeddedMu sync.Mutex
 var embeddedConnection net.Conn
 var embeddedTun *sing_tun.Listener
 var ohosOwners ownerlookup.Broker
+var embeddedTrimming atomic.Bool
+
+func TrimEmbeddedMemory() {
+	if !embeddedTrimming.CompareAndSwap(false, true) {
+		return
+	}
+	safeGo("ohos trim memory", func() {
+		defer embeddedTrimming.Store(false)
+		handleForceGC()
+	})
+}
 
 func init() {
 	process.DefaultPackageNameResolver = func(metadata *constant.Metadata) (string, error) {
@@ -54,6 +66,7 @@ func RunEmbedded(raw string) error {
 	var settings struct {
 		Address string `json:"address"`
 		Token   string `json:"token"`
+		Control string `json:"control"`
 	}
 	if err := json.Unmarshal([]byte(raw), &settings); err != nil {
 		return err
@@ -75,14 +88,7 @@ func RunEmbedded(raw string) error {
 		return err
 	}
 	connection.SetWriteDeadline(time.Time{})
-	serveWithCleanup(connection, func() {
-		StopOhosTun()
-		handleShutdown()
-		embeddedMu.Lock()
-		embeddedConnection = nil
-		embeddedMu.Unlock()
-	})
-	return nil
+	return serveEmbeddedController(connection, settings.Token, settings.Control)
 }
 
 func StartOhosTun(fd int, raw string) error {
@@ -125,6 +131,10 @@ func StopOhosTun() {
 func StopEmbedded() {
 	embeddedMu.Lock()
 	defer embeddedMu.Unlock()
+	if activeEmbeddedController != nil {
+		activeEmbeddedController.closed = true
+		activeEmbeddedController.listener.Close()
+	}
 	if embeddedConnection != nil {
 		embeddedConnection.Close()
 	}

@@ -118,6 +118,71 @@ Future<Color> _behind(WidgetTester tester, _Pane pane, Offset point) async {
 void main() {
   setUp(() => LiquidGlassHost.debugLastCapture = null);
 
+  testWidgets('hidden glass releases captures without a frame and rebuilds '
+      'them on return', (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    addTearDown(() {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    });
+    final held = LiquidGlassHost.debugHeldCaptures;
+    await tester.pumpWidget(
+      _app(
+        Stack(
+          children: [
+            const Positioned.fill(child: ColoredBox(color: _red)),
+            _pane(const Rect.fromLTWH(100, 100, 200, 100)),
+          ],
+        ),
+      ),
+    );
+    final first = _capture().panes.single.atlas;
+    expect(LiquidGlassHost.debugHeldCaptures, held + 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    expect(first.debugDisposed, isFalse);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    expect(first.debugDisposed, isTrue);
+    expect(LiquidGlassHost.debugHeldCaptures, held);
+    await tester.pump();
+    expect(LiquidGlassHost.debugHeldCaptures, held);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    final pane = _capture().panes.single;
+    expect(pane.atlas, isNot(same(first)));
+    expect(LiquidGlassHost.debugHeldCaptures, held + 1);
+    expect(await _behind(tester, pane, const Offset(200, 150)), _red);
+  });
+
+  testWidgets(
+    'memory pressure drops glass captures and redraws visible glass',
+    (tester) async {
+      final held = LiquidGlassHost.debugHeldCaptures;
+      await tester.pumpWidget(
+        _app(
+          Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: _blue)),
+              _pane(const Rect.fromLTWH(100, 100, 200, 100)),
+            ],
+          ),
+        ),
+      );
+      final first = _capture().panes.single.atlas;
+
+      tester.binding.handleMemoryPressure();
+      expect(first.debugDisposed, isTrue);
+      expect(LiquidGlassHost.debugHeldCaptures, held);
+      await tester.pump();
+      final pane = _capture().panes.single;
+      expect(pane.atlas, isNot(same(first)));
+      expect(await _behind(tester, pane, const Offset(200, 150)), _blue);
+    },
+  );
+
   testWidgets('a pane reads what lies behind it and not what it holds', (
     tester,
   ) async {

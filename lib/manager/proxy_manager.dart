@@ -1,4 +1,5 @@
 import 'package:fl_clash/common/proxy.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
 import 'package:fl_clash/providers/state.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,7 @@ class _ProxyManagerState extends ConsumerState<ProxyManager> {
   void initState() {
     super.initState();
     ref.listenManual(proxyStateProvider, (prev, next) {
-      if (prev != next) {
+      if (prev != next && !desktopBackground.restorePending) {
         systemProxyQueue?.apply(next);
       }
     }, fireImmediately: true);

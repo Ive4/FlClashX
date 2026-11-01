@@ -302,7 +302,8 @@ class _LiquidGlassHostBox extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderLiquidGlassHost extends RenderProxyBox {
+class _RenderLiquidGlassHost extends RenderProxyBox
+    with WidgetsBindingObserver {
   _RenderLiquidGlassHost({
     required bool enabled,
     required double devicePixelRatio,
@@ -343,6 +344,37 @@ class _RenderLiquidGlassHost extends RenderProxyBox {
 
   @override
   bool get alwaysNeedsCompositing => _enabled;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void detach() {
+    WidgetsBinding.instance.removeObserver(this);
+    _layer.layer?._clearCaptures();
+    super.detach();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden ||
+          AppLifecycleState.paused ||
+          AppLifecycleState.detached:
+        _layer.layer?._clearCaptures();
+      case AppLifecycleState.resumed || AppLifecycleState.inactive:
+        markNeedsPaint();
+    }
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    _layer.layer?._clearCaptures();
+    markNeedsPaint();
+  }
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -395,6 +427,11 @@ class _LiquidGlassHostLayer extends ContainerLayer {
 
   @override
   void dispose() {
+    _clearCaptures();
+    super.dispose();
+  }
+
+  void _clearCaptures() {
     for (final pane in _panes) {
       pane._dropCaptured();
     }
@@ -403,13 +440,20 @@ class _LiquidGlassHostLayer extends ContainerLayer {
       atlas.image.dispose();
     }
     _atlases.clear();
-    super.dispose();
   }
 
   /// A pane over one painted before it in the same root, but for one of its
   /// own group, sits a level above it, and reads a capture with that one drawn
   /// as glass.
   void _capture() {
+    switch (WidgetsBinding.instance.lifecycleState) {
+      case AppLifecycleState.hidden ||
+          AppLifecycleState.paused ||
+          AppLifecycleState.detached:
+        _clearCaptures();
+        return;
+      case _:
+    }
     _pass++;
     final found = <_Behind>[];
     _gather(this, Matrix4.identity(), this, Matrix4.identity(), [], found);

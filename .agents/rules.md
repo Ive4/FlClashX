@@ -170,6 +170,10 @@ leaving a repo-wide policy as a comment reaches only the reader of that one file
 
 ## Core API Safety
 
+The active engine is `core/rust/`, built against meow-rs. The Go wrapper and `core/Clash.Meta` remain inactive
+contract references; Go-specific implementation notes below apply to that reference code. Preserve the shared
+behavioral requirements in the Rust implementation. Current compatibility limits are in `core/rust/README.md`.
+
 - `core/Clash.Meta` is a fork of mihomo, and changes to it are budgeted for features, not repairs. Fixing a bug there is
   low priority even when the bug is real and the fix is small: every patch is one more thing to carry across an upstream
   rebase. Solve it on the FlClash side of the boundary and note the mihomo behaviour you are working around. Reach into
@@ -181,17 +185,20 @@ leaving a repo-wide policy as a comment reaches only the reader of that one file
   the socket lives in `/tmp`, and the Core connects as root whenever it runs setuid for TUN or under the Linux Helper.
   A launch mode that runs the Core as any other user has to widen `admit` in `ipc/access.rs`, and Windows
   keeps its identity check on the Dart side, which compares the named-pipe peer PID with the Core it launched.
-- Keep the shared `CoreMethodCall`/`CoreMethodResponse` JSON envelope structurally identical across Dart, Go, the
-  gomobile binding, and desktop IPC. Do not double-encode `arguments`, `result`, or event batches. A response whose
+- Keep the shared `CoreMethodCall`/`CoreMethodResponse` JSON envelope structurally identical across Dart, Rust,
+  Android JNI, HarmonyOS C ABI, desktop IPC and the Go reference. Do not double-encode `arguments`, `result`, or event batches. A response whose
   `file` is set was spilled to disk; a transport resolves it with `resolveSpilledResponse` before reading `result`.
-- `core/message.go` carries three event queues, and the split is load-bearing: state (loaded, geo-update,
+- `core/rust/src/events.rs` carries three event queues, matching `core/message.go`; the split is load-bearing: state (loaded, geo-update,
   route-changed), priority (every other event), and bulk (log, request, DNS). Priority and bulk evict their own oldest
   entry under backpressure, except DNS, which enters the bulk queue through `enqueueState` so a lookup burst cannot push
   out the request events the connection list is built from; state uses `enqueueState`, which never evicts, because a dropped `geoUpdate{updating:false}` leaves `isUpdatingProvider` stuck at true in the UI until
   `UpdatingAction` sweeps it as stale minutes later. Do not merge the tiers or give state eviction semantics. `enqueueState` drops silently on a full
   queue and must stay that way: reaching it means the host stopped reading, which `logDeliveryError` already reports,
   and reporting it from the message layer feeds the same batcher.
-- Every method of the callback interfaces in `core/mobile` (`TunHandler`, `ResultHandler`) returns an `error`. gobind
+- The Rust JNI bridge must check and clear Java callback exceptions before using JNI again, and translate failed
+  protect/owner/result callbacks into their defined failure values. Mobile FD teardown must join stack tasks before
+  replacing the stack; clearing callbacks must remain safe while outbound dials are in flight.
+- Every method of the reference callback interfaces in `core/mobile` (`TunHandler`, `ResultHandler`) returns an `error`. gobind
   clears a Java exception and hands it to Go only for a method that declares one; otherwise the exception stays pending
   and the next JNI call on that thread aborts the process, so a throw in `protect`/`resolveUid`/`resolvePackage`/
   `onResult` would crash unrelated code. `core/mobile` turns the error into the answer the system gives when it will not

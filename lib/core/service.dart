@@ -7,6 +7,7 @@ import 'package:fl_clash/models/core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'desktop/helper_client.dart';
+import 'desktop/background_client.dart';
 import 'desktop/launcher.dart';
 import 'desktop/lifecycle.dart';
 import 'desktop/model.dart';
@@ -39,11 +40,14 @@ class CoreService extends CoreHandlerInterface {
 
     final lifecycle = DesktopCoreLifecycle(
       transportFactory: () => IpcCoreTransport(address: address),
-      launcherResolver: HelperLauncherResolver(
-        hasHelper: system.hasHelperService && !safeModeBuild,
-        directLauncher: directLauncher,
-        helperLauncher: HelperLauncher(helperClient),
-        helperReady: () => helperClient.readiness(),
+      launcherResolver: BackgroundLauncherResolver(
+        HelperLauncherResolver(
+          hasHelper: system.hasHelperService && !safeModeBuild,
+          directLauncher: directLauncher,
+          helperLauncher: HelperLauncher(helperClient),
+          helperReady: () => helperClient.readiness(),
+        ),
+        desktopBackground,
       ),
       verifyPeerPid: system.isWindows,
     );

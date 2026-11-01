@@ -10,6 +10,8 @@ import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/manager/hotkey_manager.dart';
 import 'package:fl_clash/manager/manager.dart';
+import 'package:fl_clash/manager/ui_memory_manager.dart';
+import 'package:fl_clash/manager/lightweight_manager.dart';
 import 'package:fl_clash/plugins/app.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
@@ -31,10 +33,13 @@ Widget buildManagerStack({
       ? WindowHeaderContainer(child: child)
       : VpnManager(child: child);
   final state = AppStateManager(
-    child: CoreManager(
-      child: ConnectivityManager(
-        onConnectivityChanged: onConnectivityChanged,
-        child: platformApp,
+    child: LightweightManager(
+      isDesktop: isDesktop,
+      child: CoreManager(
+        child: ConnectivityManager(
+          onConnectivityChanged: onConnectivityChanged,
+          child: platformApp,
+        ),
       ),
     ),
   );
@@ -165,15 +170,17 @@ class ApplicationState extends ConsumerState<Application> {
             ...GlobalMaterialLocalizations.delegates,
           ],
           builder: (context, child) {
-            return ThemeCrossFade(
-              child: buildManagerStack(
-                isDesktop: system.isDesktop,
-                onConnectivityChanged: _handleConnectivityChanged,
-                terminateSignals: _terminateSignals,
-                child: RemoteFocusAdapter(
-                  enabled: system.isTV,
-                  floatingKeyboard: app?.floatingKeyboard,
-                  child: child!,
+            return UiMemoryManager(
+              child: ThemeCrossFade(
+                child: buildManagerStack(
+                  isDesktop: system.isDesktop,
+                  onConnectivityChanged: _handleConnectivityChanged,
+                  terminateSignals: _terminateSignals,
+                  child: RemoteFocusAdapter(
+                    enabled: system.isTV,
+                    floatingKeyboard: app?.floatingKeyboard,
+                    child: child!,
+                  ),
                 ),
               ),
             );

@@ -5,9 +5,130 @@ class SystemAction extends _$SystemAction {
   CoreController get _core => ref.read(coreHandlerProvider);
 
   SystemExitCoordinator? _exitCoordinator;
+  Future<void>? _lightweightOperation;
 
   @override
   void build() {}
+
+  Future<void> enterLightweightMode({
+    bool automatic = false,
+    bool Function()? shouldContinue,
+  }) {
+    return _lightweightOperation ??=
+        _enterLightweightMode(automatic, shouldContinue).whenComplete(() {
+          _lightweightOperation = null;
+        });
+  }
+
+  bool _canEnterAutomatically(bool Function()? shouldContinue) {
+    if (shouldContinue?.call() == false ||
+        !ref.mounted ||
+        (shouldContinue == null && ref.read(appVisibleProvider)) ||
+        ref.read(appSettingProvider).autoLightweightMinutes <= 0 ||
+        ref.read(excludeSSIDsProvider).isNotEmpty ||
+        ref.read(coreStatusProvider) != CoreStatus.connected ||
+        _exitCoordinator != null) {
+      return false;
+    }
+    final navigator = globalState.navigatorKey.currentState;
+    if (navigator == null || navigator.canPop()) {
+      return false;
+    }
+    var blocked = false;
+    void check(Element element) {
+      if (blocked) return;
+      if (element is StatefulElement && element.state is NavigatorState) {
+        blocked = (element.state as NavigatorState).canPop();
+        return;
+      }
+      element.visitChildElements(check);
+    }
+
+    navigator.context.visitChildElements(check);
+    return !blocked;
+  }
+
+  Future<void> _enterLightweightMode(
+    bool automatic,
+    bool Function()? shouldContinue,
+  ) async {
+    final supported =
+        system.isAndroid || system.isOhos || desktopBackground.available;
+    if (!supported || ref.read(coreStatusProvider) != CoreStatus.connected) {
+      return;
+    }
+    if (automatic && !_canEnterAutomatically(shouldContinue)) return;
+    final localizations = currentAppLocalizations;
+    if (ref.read(excludeSSIDsProvider).isNotEmpty) {
+      throw MessageException(localizations.lightweightModeOnDemand);
+    }
+    final updating = ref.read(updatingKeysProvider.notifier);
+    if (ref
+        .read(updatingKeysProvider)
+        .any((key) => updating.scopeOf(key) == UpdatingScope.local)) {
+      if (automatic) return;
+      throw MessageException(localizations.lightweightModeBusy);
+    }
+    final confirmed =
+        automatic ||
+        await dialogs.showMessage(
+              title: localizations.lightweightMode,
+              message: TextSpan(text: localizations.lightweightModeConfirm),
+            ) ==
+            true;
+    if (confirmed != true || _exitCoordinator != null || !ref.mounted) {
+      return;
+    }
+    if (!await ref
+        .read(setupActionProvider.notifier)
+        .applyProfile(silence: automatic)) {
+      return;
+    }
+    if (_exitCoordinator != null || !ref.mounted) {
+      return;
+    }
+    if (automatic && !_canEnterAutomatically(shouldContinue)) return;
+    if (ref
+        .read(updatingKeysProvider)
+        .any((key) => updating.scopeOf(key) == UpdatingScope.local)) {
+      if (automatic) return;
+      throw MessageException(localizations.lightweightModeBusy);
+    }
+    await savePreferences();
+    if (automatic && !_canEnterAutomatically(shouldContinue)) return;
+    if (system.isAndroid) {
+      await preferences.saveLightweightResume();
+      await bootGuard.markClosed();
+      _core.stopLog();
+      await SystemNavigator.pop();
+      return;
+    }
+    final runningSince = ref.read(setupActionProvider.notifier).runningSince;
+    if (system.isOhos) {
+      await OhosCoreTransport.enterLightweight(runningSince);
+      _core.stopLog();
+      await app?.enterLightweightMode();
+      return;
+    }
+    await desktopBackground.enter(
+      cleanupProxy: systemProxyQueue?.hasAppliedProxy ?? false,
+      runningSince: runningSince,
+      mode: ref.read(patchClashConfigProvider).mode.name,
+    );
+    if (automatic && !_canEnterAutomatically(shouldContinue)) {
+      await desktopBackground.cancelEnter();
+      return;
+    }
+    _core.stopLog();
+    if (_exitCoordinator != null) {
+      await handleExit();
+      return;
+    }
+    await trayPort?.shutdown().onError<Object>((error, stackTrace) {
+      commonPrint.log('Tray handoff failed: ${compactError(error)}');
+    });
+    await exitApplication();
+  }
 
   Future<List<Package>> getPackages() async {
     final access = ref.read(vpnSettingProvider).accessControlProps;

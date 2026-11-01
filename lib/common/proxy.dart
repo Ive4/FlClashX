@@ -21,6 +21,8 @@ class SystemProxyQueue {
 
   SystemProxyQueue(this._proxy);
 
+  bool get hasAppliedProxy => _applied;
+
   Future<void> apply(ProxyState state) {
     return _enqueue(() async {
       if (_closed) {

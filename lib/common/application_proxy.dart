@@ -5,6 +5,92 @@ import 'package:fl_clash/models/models.dart';
 import 'package:path/path.dart' as p;
 
 final _invalidProcessRuleContent = RegExp(r'[,\r\n]');
+final _applicationInboundRule = RegExp(
+  r'^\(\((PROCESS-NAME|PROCESS-PATH),([^(),\r\n]+)\),\(IN-TYPE,TUN\)\)$',
+);
+
+typedef ApplicationProxyPolicy = ({
+  ApplicationIdentity identity,
+  ApplicationProxyMode mode,
+  String? target,
+  int index,
+});
+
+ApplicationIdentity? applicationRuleIdentity(
+  Rule rule, {
+  required bool windows,
+}) {
+  if (rule.src) return null;
+  final match = rule.ruleAction == RuleAction.AND
+      ? _applicationInboundRule.firstMatch(rule.content ?? '')
+      : null;
+  if (rule.ruleAction == RuleAction.AND &&
+      (match == null ||
+          !const ['DIRECT', 'PASS-RULE'].contains(rule.ruleTarget))) {
+    return null;
+  }
+  final identity = ApplicationIdentity(
+    action: match == null
+        ? rule.ruleAction
+        : match[1] == 'PROCESS-NAME'
+        ? RuleAction.PROCESS_NAME
+        : RuleAction.PROCESS_PATH,
+    content: match == null ? rule.content ?? '' : match[2]!,
+    windows: windows,
+  );
+  return identity.canRoute ? identity : null;
+}
+
+Map<String, ApplicationProxyPolicy> applicationProxyPoliciesOf(
+  List<Rule> rules, {
+  required bool windows,
+}) {
+  final policies = <String, ApplicationProxyPolicy>{};
+  for (var index = 0; index < rules.length; index++) {
+    final rule = rules[index];
+    final identity = applicationRuleIdentity(rule, windows: windows);
+    if (identity == null) continue;
+    final mode =
+        rule.ruleAction == RuleAction.AND && rule.ruleTarget == 'DIRECT'
+        ? ApplicationProxyMode.httpSocks
+        : ApplicationProxyMode.follow;
+    policies.putIfAbsent(
+      identity.key,
+      () => (
+        identity: identity,
+        mode: mode,
+        target: rule.ruleAction == RuleAction.AND ? null : rule.ruleTarget,
+        index: index,
+      ),
+    );
+  }
+  return policies;
+}
+
+String applicationProxyDefaultRule(List<Rule> rules, {required bool windows}) {
+  final exceptions = applicationProxyPoliciesOf(rules, windows: windows).values
+      .where((policy) => policy.mode == ApplicationProxyMode.follow)
+      .map(
+        (policy) =>
+            '(NOT,(${_applicationProcessCondition(policy.identity)}))',
+      );
+  return exceptions.isEmpty
+      ? 'IN-TYPE,TUN,DIRECT'
+      : 'AND,((IN-TYPE,TUN),${exceptions.join(',')}),DIRECT';
+}
+
+String _applicationProcessCondition(ApplicationIdentity identity) {
+  if (!RegExp(r'[()]').hasMatch(identity.content)) {
+    return '(${identity.action.value},${identity.content})';
+  }
+  final action = identity.action == RuleAction.PROCESS_NAME
+      ? RuleAction.PROCESS_NAME_REGEX
+      : RuleAction.PROCESS_PATH_REGEX;
+  final escaped = RegExp.escape(identity.content)
+      .replaceAll(r'\(', r'\x28')
+      .replaceAll(r'\)', r'\x29');
+  return '(${action.value},^$escaped\$)';
+}
 
 class ApplicationIdentity {
   const ApplicationIdentity({
@@ -12,6 +98,18 @@ class ApplicationIdentity {
     required this.content,
     required this.windows,
   });
+
+  factory ApplicationIdentity.fromConnection(
+    ApplicationConnection connection, {
+    required bool windows,
+  }) {
+    final hasName = connection.process.trim().isNotEmpty;
+    return ApplicationIdentity(
+      action: hasName ? RuleAction.PROCESS_NAME : RuleAction.PROCESS_PATH,
+      content: hasName ? connection.process : connection.path,
+      windows: windows,
+    ).byName;
+  }
 
   final RuleAction action;
   final String content;
@@ -77,11 +175,17 @@ List<ApplicationConnection> applicationConnectionsOf(
 ];
 
 class ApplicationProxyInfo {
-  ApplicationProxyInfo(this.identity, {this.target, this.policyIdentity});
+  ApplicationProxyInfo(
+    this.identity, {
+    this.target,
+    this.policyIdentity,
+    this.mode,
+  });
 
   final ApplicationIdentity? identity;
   String? target;
   ApplicationIdentity? policyIdentity;
+  ApplicationProxyMode? mode;
   final connectionIds = <String>[];
   int connections = 0;
   int proxy = 0;
@@ -135,28 +239,24 @@ typedef ApplicationProxyInput = ({
 ApplicationProxySnapshot aggregateApplicationProxies(
   ApplicationProxyInput input,
 ) {
-  final configured =
-      <String, ({ApplicationIdentity identity, Rule rule, int index})>{};
-  for (var index = 0; index < input.rules.length; index++) {
-    final rule = input.rules[index];
-    final identity = ApplicationIdentity(
-      action: rule.ruleAction,
-      content: rule.content ?? '',
-      windows: input.windows,
-    );
-    if (rule.src || !identity.canRoute) continue;
-    configured.putIfAbsent(
+  final configured = applicationProxyPoliciesOf(
+    input.rules,
+    windows: input.windows,
+  );
+  final applications = <String, ApplicationProxyInfo>{};
+  for (final policy in configured.values) {
+    final identity = policy.identity.byName;
+    applications.putIfAbsent(
       identity.key,
-      () => (identity: identity, rule: rule, index: index),
+      () => ApplicationProxyInfo(
+        identity,
+        target: policy.target,
+        mode: policy.mode,
+        policyIdentity: policy.identity,
+      ),
     );
   }
-  final applications = <String, ApplicationProxyInfo>{
-    for (final entry in configured.entries)
-      entry.key: ApplicationProxyInfo(
-        entry.value.identity,
-        target: entry.value.rule.ruleTarget,
-      ),
-  };
+  final activePolicies = <String, ApplicationProxyPolicy>{};
   final samples = <String, ApplicationTrafficSample>{};
   final previousTime = input.previousAt;
   final sampledAt = input.sampledAt;
@@ -169,35 +269,36 @@ ApplicationProxySnapshot aggregateApplicationProxies(
       content: connection.path,
       windows: input.windows,
     );
-    final name = ApplicationIdentity(
-      action: RuleAction.PROCESS_NAME,
-      content: connection.process.trim().isNotEmpty
-          ? connection.process
-          : path.byName.content,
+    final name = ApplicationIdentity.fromConnection(
+      connection,
       windows: input.windows,
     );
     final pathRule = configured[path.key];
     final nameRule = configured[name.key];
-    final ApplicationIdentity? identity;
-    if (path.content.trim().isNotEmpty) {
-      identity = path;
-    } else if (name.content.trim().isNotEmpty) {
-      identity = name;
-    } else {
-      identity = null;
-    }
-    final target = pathRule != null &&
-        (nameRule == null || pathRule.index < nameRule.index)
-        ? pathRule.rule.ruleTarget : nameRule?.rule.ruleTarget;
+    final identity = name.content.trim().isNotEmpty ? name : null;
+    final policy =
+        pathRule != null &&
+            (nameRule == null || pathRule.index < nameRule.index)
+        ? pathRule
+        : nameRule;
+    final key = identity?.key ?? '';
     final application = applications.putIfAbsent(
-      identity?.key ?? '',
-      () => ApplicationProxyInfo(identity, target: target),
+      key,
+      () => ApplicationProxyInfo(identity),
     );
-    application.target = target;
-    application.policyIdentity = pathRule != null &&
-        (nameRule == null || pathRule.index < nameRule.index)
-        ? pathRule.identity : nameRule?.identity ??
-            (!path.canRoute && name.canRoute ? name : null);
+    if (application.connections == 0) {
+      application.target = null;
+      application.mode = null;
+      application.policyIdentity = null;
+    }
+    final previousPolicy = activePolicies[key];
+    if (policy != null &&
+        (previousPolicy == null || policy.index < previousPolicy.index)) {
+      activePolicies[key] = policy;
+      application.target = policy.target;
+      application.mode = policy.mode;
+      application.policyIdentity = policy.identity;
+    }
     application.connections++;
     application.connectionIds.add(connection.id);
     application.upload += connection.upload;

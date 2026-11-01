@@ -55,6 +55,76 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
+  /// `Proxy mode`
+  String get applicationProxyMode {
+    return Intl.message(
+      'Proxy mode',
+      name: 'applicationProxyMode',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Follow FlClash`
+  String get applicationProxyModeFollow {
+    return Intl.message(
+      'Follow FlClash',
+      name: 'applicationProxyModeFollow',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `HTTP & SOCKS`
+  String get applicationProxyModeHttpSocks {
+    return Intl.message(
+      'HTTP & SOCKS',
+      name: 'applicationProxyModeHttpSocks',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Follow · {mode}`
+  String applicationProxyModeCurrent(Object mode) {
+    return Intl.message(
+      'Follow · $mode',
+      name: 'applicationProxyModeCurrent',
+      desc: '',
+      args: [mode],
+    );
+  }
+
+  /// `In HTTP & SOCKS mode, TUN connections go direct and explicit proxy requests follow the current profile. Configure the proxy in the app.`
+  String get applicationProxyModeHint {
+    return Intl.message(
+      'In HTTP & SOCKS mode, TUN connections go direct and explicit proxy requests follow the current profile. Configure the proxy in the app.',
+      name: 'applicationProxyModeHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Default proxy mode`
+  String get applicationProxyDefaultMode {
+    return Intl.message(
+      'Default proxy mode',
+      name: 'applicationProxyDefaultMode',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Used by apps without an individual mode. Existing app rules keep their mode.`
+  String get applicationProxyDefaultModeHint {
+    return Intl.message(
+      'Used by apps without an individual mode. Existing app rules keep their mode.',
+      name: 'applicationProxyDefaultModeHint',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Apps`
   String get applicationProxy {
     return Intl.message('Apps', name: 'applicationProxy', desc: '', args: []);
@@ -2691,10 +2761,10 @@ class AppLocalizations {
     );
   }
 
-  /// `The Software is an open-source network proxy client built on the Clash.Meta (mihomo) core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.`
+  /// `The Software is an open-source network proxy client built on the meow-rs core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.`
   String get disclaimerSoftwareContent {
     return Intl.message(
-      'The Software is an open-source network proxy client built on the Clash.Meta (mihomo) core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.',
+      'The Software is an open-source network proxy client built on the meow-rs core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.',
       name: 'disclaimerSoftwareContent',
       desc: '',
       args: [],
@@ -2841,10 +2911,10 @@ class AppLocalizations {
     );
   }
 
-  /// `The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the Clash.Meta core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.`
+  /// `The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the meow-rs core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.`
   String get disclaimerLicenseContent {
     return Intl.message(
-      'The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the Clash.Meta core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.',
+      'The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the meow-rs core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.',
       name: 'disclaimerLicenseContent',
       desc: '',
       args: [],
@@ -8657,6 +8727,96 @@ class AppLocalizations {
     return Intl.message(
       'Access denied or rate limited. Check token permissions or retry later.',
       name: 'snippetPermissionError',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Lightweight mode`
+  String get lightweightMode {
+    return Intl.message(
+      'Lightweight mode',
+      name: 'lightweightMode',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Keep the proxy running while the interface is closed.`
+  String get lightweightModeDesc {
+    return Intl.message(
+      'Keep the proxy running while the interface is closed.',
+      name: 'lightweightModeDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The interface will close and reopen fresh next time. Save any unfinished edits before continuing. Scheduled profile updates pause until you reopen the interface.`
+  String get lightweightModeConfirm {
+    return Intl.message(
+      'The interface will close and reopen fresh next time. Save any unfinished edits before continuing. Scheduled profile updates pause until you reopen the interface.',
+      name: 'lightweightModeConfirm',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Turn off on-demand Wi-Fi rules before entering lightweight mode.`
+  String get lightweightModeOnDemand {
+    return Intl.message(
+      'Turn off on-demand Wi-Fi rules before entering lightweight mode.',
+      name: 'lightweightModeOnDemand',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Wait for the current update to finish before entering lightweight mode.`
+  String get lightweightModeBusy {
+    return Intl.message(
+      'Wait for the current update to finish before entering lightweight mode.',
+      name: 'lightweightModeBusy',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Automatic lightweight mode (minutes)`
+  String get autoLightweightMode {
+    return Intl.message(
+      'Automatic lightweight mode (minutes)',
+      name: 'autoLightweightMode',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.`
+  String get autoLightweightModeDesc {
+    return Intl.message(
+      'After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.',
+      name: 'autoLightweightModeDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enter a whole number from 0 to 1440. Use 0 to disable.`
+  String get autoLightweightMinutesInvalid {
+    return Intl.message(
+      'Enter a whole number from 0 to 1440. Use 0 to disable.',
+      name: 'autoLightweightMinutesInvalid',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Open configuration directory`
+  String get openConfigDirectory {
+    return Intl.message(
+      'Open configuration directory',
+      name: 'openConfigDirectory',
       desc: '',
       args: [],
     );

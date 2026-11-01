@@ -65,6 +65,47 @@ void main() {
     expect(find.text(l.tcpConcurrent), findsOneWidget);
   });
 
+  testWidgets(
+    'automatic lightweight minutes validates and saves custom values',
+    (tester) async {
+      container
+          .read(appSettingProvider.notifier)
+          .update((state) => state.copyWith(autoLightweightMinutes: 0));
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const TestApp(
+            child: Scaffold(body: AutoLightweightModeItem()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final l = currentAppLocalizations;
+      expect(find.text(l.disabled), findsOneWidget);
+      await tester.tap(find.text(l.autoLightweightMode));
+      await tester.pumpAndSettle();
+      for (final invalid in ['-1', '1441', '1.5', 'abc']) {
+        await tester.enterText(find.byType(TextField), invalid);
+        await tester.tap(find.text(l.submit));
+        await tester.pumpAndSettle();
+        expect(find.text(l.autoLightweightMinutesInvalid), findsOneWidget);
+        expect(container.read(appSettingProvider).autoLightweightMinutes, 0);
+      }
+      await tester.enterText(find.byType(TextField), '7');
+      await tester.tap(find.text(l.submit));
+      await tester.pumpAndSettle();
+      expect(container.read(appSettingProvider).autoLightweightMinutes, 7);
+      expect(find.text('7 ${l.minutes}'), findsOneWidget);
+      await tester.tap(find.text(l.autoLightweightMode));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '0');
+      await tester.tap(find.text(l.submit));
+      await tester.pumpAndSettle();
+      expect(container.read(appSettingProvider).autoLightweightMinutes, 0);
+      expect(find.text(l.disabled), findsOneWidget);
+    },
+  );
+
   testWidgets('removing an override resets its value', (tester) async {
     container
         .read(patchClashConfigProvider.notifier)
