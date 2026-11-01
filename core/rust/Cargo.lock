@@ -1046,7 +1046,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1132,6 +1132,7 @@ dependencies = [
  "jni 0.21.1",
  "libc",
  "maxminddb",
+ "meow-anytls",
  "meow-api",
  "meow-common",
  "meow-config",
@@ -1151,6 +1152,8 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "shadowsocks",
+ "socket2 0.5.10",
+ "subtle",
  "sysinfo",
  "tempfile",
  "time",
@@ -1161,6 +1164,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "windows-sys 0.60.2",
  "xz2",
  "zstd",
 ]
@@ -2245,8 +2249,6 @@ dependencies = [
 [[package]]
 name = "meow-anytls"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5350dbb2f684cee64a55290c6d5d7ecfa86d3a762fce9f1650fffaf6ef43b1"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2305,8 +2307,6 @@ dependencies = [
 [[package]]
 name = "meow-common"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff2c92f737bb481ba8a759fb7e65b8f7b518432fe24877318d8df255fe4a8f8c"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2780,7 +2780,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3381,7 +3381,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3941,7 +3941,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4654,7 +4654,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5071,7 +5071,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

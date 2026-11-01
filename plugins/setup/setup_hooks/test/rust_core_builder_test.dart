@@ -143,4 +143,16 @@ void main() {
     dependency.writeAsStringSync('pub const GENERATION: usize = 2;');
     expect((await builder().build(Target.linuxAmd64)).rebuilt, isTrue);
   });
+
+  test('Cargo config follows the selected build environment', () async {
+    final config = File(p.join(root.path, 'custom-cargo', 'config.toml'));
+    config.parent.createSync();
+    config.writeAsStringSync('[build]\nrustflags = ["-Copt-level=2"]\n');
+    environment['CARGO_HOME'] = config.parent.path;
+    final first = await builder().build(Target.windowsAmd64);
+    expect(first.inputs, contains(config.path));
+    expect((await builder().build(Target.windowsAmd64)).rebuilt, isFalse);
+    config.writeAsStringSync('[build]\nrustflags = ["-Copt-level=3"]\n');
+    expect((await builder().build(Target.windowsAmd64)).rebuilt, isTrue);
+  });
 }

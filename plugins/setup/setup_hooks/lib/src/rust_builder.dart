@@ -120,7 +120,11 @@ class RustBuilder {
     );
     builder.addValue('rustc_version', (rustVersion.stdout as String).trim());
 
-    final inputs = rustBuildInputs(_helperPath, rootDir)..addAll(harnessInputs);
+    final inputs = rustBuildInputs(
+      _helperPath,
+      rootDir,
+      environment: environment,
+    )..addAll(harnessInputs);
     builder.addFiles(inputs);
     return builder.finishWithInputs();
   }

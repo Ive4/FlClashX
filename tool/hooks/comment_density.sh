@@ -18,7 +18,7 @@ is_checkable() {
   esac
   case "$file" in
     */build/* | */generated/* | */l10n/intl/* | */l10n/l10n.dart | */Clash.Meta/* | */.dart_tool/*) return 1 ;;
-    */core/rust/vendor/meow-listener/*) return 1 ;;
+    */core/rust/vendor/meow-listener/* | */core/rust/vendor/meow-common/* | */core/rust/vendor/meow-anytls/*) return 1 ;;
     *.g.dart | *.freezed.dart | */frb_generated*.dart | */frb_generated.rs | */open_container.dart) return 1 ;;
   esac
   return 0

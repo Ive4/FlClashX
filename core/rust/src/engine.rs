@@ -1,8 +1,11 @@
 use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     body::{to_bytes, Body},
-    http::Request,
-    Router,
+    extract::State,
+    http::{header, Method, Request, StatusCode},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    Json, Router,
 };
 use dashmap::DashMap;
 use meow_api::{
@@ -18,6 +21,7 @@ use meow_tunnel::Tunnel;
 use parking_lot::RwLock;
 use serde_json::{json, Value};
 use std::{collections::HashMap, path::Path, sync::Arc};
+use subtle::ConstantTimeEq;
 use tokio::{
     net::TcpListener,
     sync::{broadcast, Mutex},
@@ -30,6 +34,7 @@ pub struct Engine {
     pub router: Router,
     tasks: Mutex<Tasks>,
     interface_binding: RwLock<Option<meow_common::OutboundIfaceGuard>>,
+    socket_policy: RwLock<Option<crate::socket_policy::PolicyGuard>>,
 }
 
 #[derive(Default)]
@@ -65,6 +70,7 @@ impl Engine {
         meow_common::home_dir::set_home_dir(home.to_owned());
         meow_config::set_external_plugins_allowed(false);
         crate::ownership::schedule(home);
+        let socket_policy = crate::socket_policy::install(document)?;
         let interface_binding = outbound_binding(document)?;
         let raw = meow_config::parse_raw_yaml(&serde_saphyr::to_string(document)?)?;
         let config = meow_config::build_config(raw, Some(home)).await?;
@@ -124,6 +130,7 @@ impl Engine {
             state,
             tasks: Mutex::new(Tasks::default()),
             interface_binding: RwLock::new(interface_binding),
+            socket_policy: RwLock::new(Some(socket_policy)),
         }))
     }
 
@@ -161,6 +168,7 @@ impl Engine {
 
     pub async fn reload(&self, document: &Value) -> Result<()> {
         use base64::Engine as _;
+        let socket_policy = crate::socket_policy::install(document)?;
         let interface_binding = outbound_binding(document)?;
         let mut routing = document.clone();
         routing["tun"] = json!({"enable": false});
@@ -178,6 +186,7 @@ impl Engine {
             binding.commit();
         }
         *self.interface_binding.write() = interface_binding;
+        *self.socket_policy.write() = Some(socket_policy);
         Ok(())
     }
 
@@ -255,7 +264,10 @@ impl Engine {
                     traffic_feed: Default::default(),
                     dns_server: Arc::clone(&state.dns_server),
                 });
-                let router = meow_api::routes::create_router(external);
+                let secret = external.secret.clone().unwrap_or_default();
+                let router = meow_api::routes::create_router(external).layer(
+                    middleware::from_fn_with_state(secret, reject_controller_config_mutation),
+                );
                 staged.0.push(tokio::spawn(async move {
                     if let Err(error) = axum::serve(socket, router).await {
                         tracing::error!("Controller failed: {error}");
@@ -533,7 +545,43 @@ impl Engine {
             .proxy_provider_refresh
             .reconcile(&self.state.proxy_providers, None);
         self.interface_binding.write().take();
+        self.socket_policy.write().take();
     }
+}
+
+async fn reject_controller_config_mutation(
+    State(secret): State<String>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    if request.uri().path() != "/configs"
+        || !matches!(*request.method(), Method::PUT | Method::PATCH)
+    {
+        return next.run(request).await;
+    }
+    let token = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "));
+    if !token.is_some_and(|token| {
+        token.len() == secret.len() && bool::from(token.as_bytes().ct_eq(secret.as_bytes()))
+    }) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"message":"Unauthorized"})),
+        )
+            .into_response();
+    }
+    (
+        StatusCode::METHOD_NOT_ALLOWED,
+        [(header::ALLOW, "GET")],
+        Json(json!({
+            "code":"unsupported_config_mutation",
+            "message":"Apply configuration through FlClash; external-controller configuration writes are not supported.",
+        })),
+    )
+        .into_response()
 }
 
 fn outbound_binding(document: &Value) -> Result<Option<meow_common::OutboundIfaceGuard>> {

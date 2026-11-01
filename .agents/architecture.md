@@ -24,6 +24,15 @@ Android lib mode:
   initializes and synchronizes Android shared state, and closes the native service path exactly once.
 - Because Core is in the application process on Android, application RSS already includes Core memory.
 
+HarmonyOS embedded mode:
+
+- The VPN extension loads the Rust C ABI through `libflclash_vpn.so`; Flutter sends the shared method protocol over
+  the authenticated local control connection.
+- The existing setup preload attaches the VPN descriptor before applying the profile. `Core.prepare_mobile_tunnel`
+  requires initialization and active listener intent, then supplies a temporary `MATCH,REJECT` engine with refused
+  DNS when no engine exists. It does not write the saved profile. Successful profile setup reloads the same engine
+  and tunnel; a failed initial setup keeps the blocking policy, while an existing engine is preserved.
+
 Desktop core mode:
 
 - The Rust Core runs as a separate process; native TLS and lwIP dependencies are built for the same target.
@@ -76,6 +85,11 @@ Key Rust Core files under `core/rust/src/`:
 
 ## DNS, NTP and Sniffer Overrides
 
+The saved setting schema and fixture defaults in the following settings sections remain Mihomo-compatible. References
+to `core/Clash.Meta` and its Go wrapper describe that compatibility contract, not active build inputs. Rust validation
+decides which settings meow-rs can apply; the active mobile backend uses lwIP, and saved sing-tun stack names do not
+select another implementation. See `core/rust/README.md` for runtime support limits.
+
 A URL or file profile brings its own sections; a custom profile brings none. The app's DNS page
 (`PatchClashConfig.dns` with `dnsOverrideKeys`) is written over the DNS of every URL and file profile, and offers only
 `DnsOverrideKey.normalProfileKeys`: keys that name nothing of a profile's own, because a subscription's groups and rule
@@ -107,8 +121,9 @@ mihomo upper-cases sniff protocol names and ignores the deprecated `sniffing` li
 `mergeSnifferOverride` drops the profile's entry for an overridden protocol in any case and first carries `sniffing`
 into `sniff`. A `rule-set:` key of a custom profile's DNS policy counts as a use of that rule provider, so
 `_resolveInjectedProviders` injects it like one a rule names. Safe mode forces `write-to-system` off on whatever `ntp`
-section reaches the core, because setting the system clock is a host change; `loadConfig` in the Go wrapper also drops
-it on Android, where the seccomp policy kills the process for `settimeofday`.
+section reaches the core, because setting the system clock is a host change. The inactive Go wrapper's `loadConfig`
+also dropped it on Android, where the seccomp policy kills the process for `settimeofday`; active Rust validation
+rejects enabled NTP.
 
 TUN is the exception to covering the raw struct. The network settings own only `Tun.coreJson` (`enable`, `device`,
 `stack`, and `auto-route` always on), spread last over the profile's section and patched again on every
@@ -124,8 +139,9 @@ that value. A key sing-tun reads on some platforms only is listed only there
 (`_isRead` in `lib/views/config/tun.dart`): strict route on Linux and Windows, GSO and the interface, user ID and port
 filters on Linux. `udp-timeout` reaches only the gvisor and system stacks and congestion control only mips, which their
 descriptions say. Route address sets are left out: sing-tun applies them only through `auto-redirect`.
-`test/models/tun_override_test.dart` fails if a key comes to overlap `Tun.coreJson`. Android starts its VPN from
-`core/tun` without the section, so TUN is listed on desktop only. Being a part of the section, the page has no quick
+`test/models/tun_override_test.dart` fails if a key comes to overlap `Tun.coreJson`. Android passes its VPN descriptor
+and options to Rust's `mobile_tun.rs` separately from the section, so TUN is listed on desktop only. Being a part of the
+section, the page has no quick
 edit; see Quick Edit.
 
 A custom profile's overview keeps rows for rules, providers and DNS, which every custom profile runs on, and puts the
@@ -224,9 +240,9 @@ Android and `_makeRealProfileTask` on desktop. VpnService can only add routes be
 `Tun.vpnRouteAddress` cuts the exclusions out of the routes with `subtractCidrs` and lists every family it routes;
 `VpnService.addRoutes` routes everything only for an empty list. A config saved with the old `routeMode` keeps its
 choice: `bypassPrivate`, which ignored the route list, loads with the flag on and the list cleared, and `config` with
-the flag off. No stack in the vendored sing-tun reads `endpoint-independent-nat`, so it is not offered. Android builds
-its TUN from the VpnService descriptor in `core/tun/tun.go`, so only MTU and the congestion controller reach it,
-through `VpnOptions` and the `options` argument of `startTun`; the VpnService builder takes the same MTU.
+the flag off. `endpoint-independent-nat` is not offered. Android and HarmonyOS pass the platform VPN descriptor,
+addresses, DNS and MTU to `core/rust/src/mobile_tun.rs`; the platform interface uses the same MTU. The active backend
+is lwIP, so retained Mihomo stack and congestion-controller fields do not select a different Rust stack.
 
 The TUN fields start at mihomo's own defaults, and a saved zero MTU or empty congestion controller, which mihomo reads
 as those defaults, decodes to them. The outbound rows are plain settings written over every profile, and changing one

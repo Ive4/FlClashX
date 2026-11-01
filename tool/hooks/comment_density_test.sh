@@ -119,6 +119,10 @@ expect_under 'the intl_utils localization class is skipped' "$repo/lib/l10n/l10n
 expect_under 'a vendored upstream file is skipped' "$repo/Clash.Meta/hub.go" "$(dense 20 4)"
 expect_under 'vendored meow-listener comments are skipped' \
   "$repo/core/rust/vendor/meow-listener/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-common comments are skipped' \
+  "$repo/core/rust/vendor/meow-common/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-anytls comments are skipped' \
+  "$repo/core/rust/vendor/meow-anytls/src/lib.rs" "$(dense 20 4)"
 expect_over 'first-party Rust Core comments are checked' \
   "$repo/core/rust/src/lib.rs" "$(dense 8 24)"
 expect_under 'a markdown file is skipped' "$repo/notes.md" "$(dense 20 4)"

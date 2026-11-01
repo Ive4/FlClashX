@@ -4,6 +4,8 @@ This crate replaces the active Mihomo runtime with the MIT-licensed meow-rs 0.28
 checksums; the corresponding upstream source revision is `80816302e7ad8f868fdf1619a11bf3c8121696dd`.
 `vendor/meow-listener` contains that release with the narrow task-ownership patch documented in
 `FLCLASH-PATCHES.md`: listener stop cancels and joins accepted clients and UDP relays before rebinding.
+`vendor/meow-common` and `vendor/meow-anytls` carry the documented TCP socket-policy hooks, including preservation
+of supplied keepalive idle/interval/disable values through the AnyTLS connection setup.
 The upstream notice is bundled at `assets/data/meow-rs-license.txt` and registered in Flutter's license registry.
 The old Go Core remains an inactive protocol reference. `services/desktop` remains the separate background owner.
 
@@ -21,6 +23,13 @@ Responses over 1 MiB spill into `<home>/responses`. Initialization registers the
 `config.yaml`; configuration writes commit after runtime application succeeds, with rollback on failure.
 Android socket protection and UID/package callbacks remain active through the Rust bridge, including the pre-29
 procfs fallback. HarmonyOS owner resolution uses a bounded broker and retains the original flow tuple.
+HarmonyOS may attach TUN before profile setup. Its initial Engine rejects all traffic and refuses DNS until the
+profile commits; setup keeps the same Engine/Tunnel, and a failed setup retains the rejecting policy and saved file.
+
+TCP keepalive settings apply to new outbound TCP sockets. The wrapper sets and reads back the requested OS idle,
+probe interval and enable state; unsupported values fail before applying the profile. Reload rollback restores the
+prior policy, and existing connections retain their original options. Protocol heartbeats and UDP/QUIC timers are
+independent of these TCP settings.
 
 ## Builds and checks
 
@@ -59,6 +68,8 @@ short-lived connection under a large burst. Cache observations carry a neutral i
 backend health-check delay notifications are not equivalent to Mihomo's hook; explicit delay tests return results.
 Memory reporting provides RSS; the old Go heap/stack counters have no Rust equivalent and return zero.
 Encrypted profile import currently supports age X25519 identities, rather than every identity type supported by Go.
+Public external-controller configuration mutations (`PUT`/`PATCH /configs`) return an explicit unsupported response;
+configuration changes must use FlClash's transaction owner. Other supported controller APIs remain available.
 
 Compilation and portable packet tests do not establish real VPN routing, platform permission/revoke behavior,
 screen-off survival, or an installed app's end-to-end traffic. Those require the corresponding platform/device run.

@@ -194,3 +194,90 @@ fn android_java_abi_matches_rust_jni_exports() {
         );
     }
 }
+
+#[tokio::test]
+async fn preconfig_tun_keeps_reject_policy_and_disk_until_real_setup_commits() {
+    use flclash::{core::Core, probe};
+    use serde_json::Value;
+    use tokio::net::TcpListener;
+    async fn call(core: &Core, method: &str, arguments: Value) -> Value {
+        serde_json::from_slice(
+            &core
+                .invoke(
+                    &serde_json::to_vec(
+                        &json!({"id":"bootstrap","method":method,"arguments":arguments}),
+                    )
+                    .unwrap(),
+                    core.next_sequence(),
+                )
+                .await,
+        )
+        .unwrap()
+    }
+    let home = tempfile::tempdir().unwrap();
+    let original = b"not: [valid YAML";
+    let config = home.path().join("config.yaml");
+    std::fs::write(&config, original).unwrap();
+    let core = Core::new();
+    assert!(core.prepare_mobile_tunnel().await.is_err());
+    assert_eq!(
+        call(
+            &core,
+            "initClash",
+            json!({"home-dir":home.path(),"version":35})
+        )
+        .await["result"],
+        true
+    );
+    assert!(core.prepare_mobile_tunnel().await.is_err());
+    assert_eq!(
+        call(&core, "startListener", Value::Null).await["result"],
+        true
+    );
+    let engine = core.prepare_mobile_tunnel().await.unwrap();
+    assert_eq!(std::fs::read(&config).unwrap(), original);
+    assert!(probe::exit(&engine, "bootstrap.invalid:443", "")
+        .await
+        .unwrap()
+        .contains("REJECT"));
+    let occupied = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let profile = home.path().join("profile.yaml");
+    let candidate = json!({"mode":"direct","mixed-port":occupied.local_addr().unwrap().port(),"dns":{"enable":false},"rules":["MATCH,DIRECT"]});
+    let yaml = serde_saphyr::to_string(&candidate).unwrap();
+    std::fs::write(&profile, &yaml).unwrap();
+    let failed = call(
+        &core,
+        "setupConfig",
+        json!({"base":{"path":profile,"overlay":yaml}}),
+    )
+    .await;
+    assert!(
+        failed["error"].is_object()
+            || failed["result"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty()),
+        "{failed}"
+    );
+    assert_eq!(std::fs::read(&config).unwrap(), original);
+    assert!(probe::exit(&engine, "bootstrap.invalid:443", "")
+        .await
+        .unwrap()
+        .contains("REJECT"));
+    let mut candidate = candidate;
+    candidate["mixed-port"] = json!(0);
+    let yaml = serde_saphyr::to_string(&candidate).unwrap();
+    std::fs::write(&profile, &yaml).unwrap();
+    let setup = call(
+        &core,
+        "setupConfig",
+        json!({"base":{"path":profile,"overlay":yaml}}),
+    )
+    .await;
+    assert_eq!(setup["result"], "", "{setup}");
+    assert!(Arc::ptr_eq(&engine, &core.active().unwrap()));
+    assert!(probe::exit(&engine, "bootstrap.invalid:443", "")
+        .await
+        .unwrap()
+        .contains("DIRECT"));
+    core.shutdown().await;
+}

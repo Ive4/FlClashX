@@ -102,7 +102,7 @@ class RustCoreBuilder {
           );
         }
         fingerprint.addFiles([
-          ...rustBuildInputs(_crate, rootDir),
+          ...rustBuildInputs(_crate, rootDir, environment: environment),
           ...harnessInputs,
         ]);
         return fingerprint.finishWithInputs();
@@ -240,7 +240,11 @@ Map<String, String> rustBuildEnvironment(Map<String, String> environment) {
   return {for (final key in keys) key: environment[key]!};
 }
 
-List<String> rustBuildInputs(String crate, String rootDir) {
+List<String> rustBuildInputs(
+  String crate,
+  String rootDir, {
+  Map<String, String>? environment,
+}) {
   final files = collectFiles(
     crate,
     excludedDirectories: const {'target', 'target-ohos', '.git', '.idea'},
@@ -258,10 +262,12 @@ List<String> rustBuildInputs(String crate, String rootDir) {
       if (File(file).existsSync()) files.add(file);
     }
   }
+  final buildEnvironment = environment ?? Platform.environment;
+  final profileKey = Platform.isWindows ? 'USERPROFILE' : 'HOME';
   final cargoHome =
-      Platform.environment['CARGO_HOME'] ??
+      buildEnvironment['CARGO_HOME'] ??
       p.join(
-        Platform.environment[Platform.isWindows ? 'USERPROFILE' : 'HOME'] ?? '',
+        buildEnvironment[profileKey] ?? Platform.environment[profileKey] ?? '',
         '.cargo',
       );
   for (final name in const ['config', 'config.toml']) {

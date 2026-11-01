@@ -99,6 +99,7 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = boundary.toImageSync();

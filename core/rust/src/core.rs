@@ -272,6 +272,27 @@ impl Core {
             .ok_or_else(|| MethodError::new("not_initialized", "No configuration has been applied"))
     }
 
+    pub async fn prepare_mobile_tunnel(&self) -> protocol::Result<Arc<Engine>> {
+        let mut state = self.state.lock().await;
+        if !state.initialized || !state.listening {
+            return Err(MethodError::new(
+                "not_initialized",
+                "No active listener intent",
+            ));
+        }
+        if let Some(engine) = self.engine.read().clone() {
+            return Ok(engine);
+        }
+        // HarmonyOS attaches TUN before setupConfig; its initial policy must not pass traffic.
+        let document = json!({"mode":"rule","rules":["MATCH,REJECT"],"dns":{"enable":true,"nameserver":["rcode://refused"]},"tun":{"enable":false}});
+        let home = self.home.read().clone();
+        let engine = Engine::create(&document, &home, self.logs.clone()).await?;
+        state.document = document;
+        *self.engine.write() = Some(Arc::clone(&engine));
+        self.refresh_route(&engine, true);
+        Ok(engine)
+    }
+
     pub fn next_sequence(&self) -> u64 {
         self.sequence.fetch_add(1, Ordering::AcqRel) + 1
     }

@@ -375,7 +375,10 @@ pub async fn start_tun(fd: i32, raw: &str) -> Result<()> {
     let options = crate::mobile_tun::TunOptions::parse(&settings.address, &settings.dns, raw)?;
     #[cfg(unix)]
     {
-        let engine = crate::shared_core().active()?;
+        let engine = crate::shared_core().prepare_mobile_tunnel().await?;
+        if controller.cancel.is_cancelled() || !controller.connected.load(Ordering::Acquire) {
+            bail!("Core is not connected");
+        }
         crate::mobile_tun::start(fd, engine.state.tunnel.clone(), options, OWNERS.clone()).await?;
         crate::shared_core().route_changed(false);
         Ok(())

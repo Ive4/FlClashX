@@ -98,13 +98,14 @@ async fn rejected_reload_keeps_the_previous_proxy_generation() {
 
 #[tokio::test]
 async fn external_controller_requires_its_secret_and_releases_failed_startup() {
+    use base64::Engine as _;
     let home = home();
     let reserved = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = reserved.local_addr().unwrap().port();
     drop(reserved);
     let controller = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = controller.local_addr().unwrap();
-    let document = json!({"mixed-port":port,"external-controller":address.to_string(),"secret":"test-secret","dns":{"enable":false},"rules":["MATCH,DIRECT"]});
+    let document = json!({"mixed-port":port,"external-controller":address.to_string(),"secret":"test-secret","keep-alive-interval":60,"dns":{"enable":false},"rules":["MATCH,DIRECT"]});
     let (logs, _) = broadcast::channel(16);
     let engine = Engine::create(&document, home.path(), logs).await.unwrap();
     assert!(engine.start_listeners(&document).await.is_err());
@@ -112,22 +113,75 @@ async fn external_controller_requires_its_secret_and_releases_failed_startup() {
     drop(reclaimed);
     drop(controller);
     engine.start_listeners(&document).await.unwrap();
-    for (authorization, status) in [
-        ("", "401"),
-        ("Authorization: Bearer test-secret\r\n", "200"),
-    ] {
-        let mut client = TcpStream::connect(address).await.unwrap();
-        client.write_all(format!("GET /proxies HTTP/1.1\r\nHost: {address}\r\n{authorization}Connection: close\r\n\r\n").as_bytes()).await.unwrap();
-        let mut response = String::new();
-        tokio::time::timeout(Duration::from_secs(5), client.read_to_string(&mut response))
-            .await
-            .unwrap()
-            .unwrap();
-        assert!(
-            response.starts_with(&format!("HTTP/1.1 {status}")),
-            "{response}"
-        );
+    for path in ["/proxies", "/configs"] {
+        for (authorization, status) in [
+            ("", "401"),
+            ("Authorization: Bearer test-secret\r\n", "200"),
+        ] {
+            let mut client = TcpStream::connect(address).await.unwrap();
+            client.write_all(format!("GET {path} HTTP/1.1\r\nHost: {address}\r\n{authorization}Connection: close\r\n\r\n").as_bytes()).await.unwrap();
+            let mut response = String::new();
+            tokio::time::timeout(Duration::from_secs(5), client.read_to_string(&mut response))
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(
+                response.starts_with(&format!("HTTP/1.1 {status}")),
+                "{response}"
+            );
+        }
     }
+    let before = engine.state.raw_config.read().clone();
+    for method in ["PUT", "PATCH"] {
+        let candidate = json!({"mode":"global","keep-alive-interval":17,"disable-keep-alive":true});
+        let body = if method == "PUT" {
+            json!({"payload":base64::engine::general_purpose::STANDARD.encode(serde_saphyr::to_string(&candidate).unwrap())})
+        } else {
+            candidate
+        }
+        .to_string();
+        for (authorization, status) in [
+            ("", "401"),
+            ("Authorization: Bearer wrong-secret\r\n", "401"),
+            ("Authorization: Bearer test-secret\r\n", "405"),
+        ] {
+            let mut client = TcpStream::connect(address).await.unwrap();
+            client.write_all(format!("{method} /configs HTTP/1.1\r\nHost: {address}\r\n{authorization}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).as_bytes()).await.unwrap();
+            let mut response = String::new();
+            tokio::time::timeout(Duration::from_secs(5), client.read_to_string(&mut response))
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(
+                response.starts_with(&format!("HTTP/1.1 {status}")),
+                "{response}"
+            );
+            let body: Value =
+                serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
+            if status == "405" {
+                assert_eq!(body["code"], "unsupported_config_mutation");
+                assert!(body["message"].as_str().unwrap().contains("FlClash"));
+            } else {
+                assert_eq!(body["message"], "Unauthorized");
+            }
+        }
+    }
+    assert_eq!(
+        serde_json::to_value(&*engine.state.raw_config.read()).unwrap(),
+        serde_json::to_value(&before).unwrap()
+    );
+    let target = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let outbound = meow_common::connect_tcp(target.local_addr().unwrap())
+        .await
+        .unwrap();
+    let options =
+        flclash::socket_policy::TcpKeepalivePolicy::read_socket(&socket2::SockRef::from(&outbound))
+            .unwrap();
+    assert!(options.enabled);
+    assert_eq!(options.idle.as_secs(), 15);
+    assert_eq!(options.interval.as_secs(), 60);
+    let configs = engine.api("GET", "/configs", Value::Null).await.unwrap();
+    assert!(configs.is_object());
     engine.shutdown().await;
 }
 
@@ -180,6 +234,7 @@ async fn stopping_mixed_listener_closes_pending_authentication() {
 
 #[tokio::test]
 async fn shadowsocks_udp_traffic_stops_and_releases_its_port_before_restart() {
+    use rand::Rng as _;
     use shadowsocks::{
         config::{ServerConfig, ServerType},
         context::Context,
@@ -187,9 +242,30 @@ async fn shadowsocks_udp_traffic_stops_and_releases_its_port_before_restart() {
         ProxySocket,
     };
     use tokio::net::UdpSocket;
-    let reserved = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = reserved.local_addr().unwrap();
-    drop(reserved);
+    let mut reserved = None;
+    let mut last_error = None;
+    for _ in 0..128 {
+        let address = std::net::SocketAddr::from((
+            [127, 0, 0, 1],
+            rand::thread_rng().gen_range(10000..=u16::MAX),
+        ));
+        let udp = match UdpSocket::bind(address).await {
+            Ok(udp) => udp,
+            Err(error) => {
+                last_error = Some((address, error));
+                continue;
+            }
+        };
+        match TcpListener::bind(address).await {
+            Ok(tcp) => {
+                reserved = Some((tcp, udp, address));
+                break;
+            }
+            Err(error) => last_error = Some((address, error)),
+        }
+    }
+    let (reserved_tcp, reserved_udp, address) = reserved
+        .unwrap_or_else(|| panic!("No loopback TCP/UDP port pair available: {last_error:?}"));
     let origin = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let target = origin.local_addr().unwrap();
     let echo = tokio::spawn(async move {
@@ -204,6 +280,8 @@ async fn shadowsocks_udp_traffic_stops_and_releases_its_port_before_restart() {
     let engine = Engine::create(&document, home().path(), logs)
         .await
         .unwrap();
+    drop(reserved_tcp);
+    drop(reserved_udp);
     for _ in 0..2 {
         engine.start_listeners(&document).await.unwrap();
         let config =

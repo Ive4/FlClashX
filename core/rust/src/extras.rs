@@ -127,6 +127,7 @@ fn unsupported(path: &str, value: &Value) -> MethodError {
 
 pub fn validate(document: &Value) -> protocol::Result<()> {
     protocol::object(document)?;
+    crate::socket_policy::validate(document)?;
     let effective = profile::runtime_document(
         document,
         false,
@@ -155,9 +156,7 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
             | "interface-name" => true,
             "find-process-mode" => matches!(value.as_str(), Some("off" | "strict" | "always")),
             "unified-delay" | "tcp-concurrent" => value.as_bool() == Some(true),
-            "keep-alive-interval" => matches!(value.as_u64(), Some(15 | 30)),
-            "keep-alive-idle" => value.as_u64() == Some(15),
-            "disable-keep-alive" => value.as_bool().is_some(),
+            "keep-alive-interval" | "keep-alive-idle" | "disable-keep-alive" => true,
             "geodata-loader" => matches!(value.as_str(), Some("memconservative" | "standard")),
             "geodata-mode" => value.as_bool() == Some(false),
             "ntp" | "iptables" => value["enable"].as_bool() != Some(true),
@@ -294,10 +293,6 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
 }
 
 pub fn runtime_options(document: &mut Value) -> Result<()> {
-    if document.get("keep-alive-interval").is_some() || document.get("disable-keep-alive").is_some()
-    {
-        tracing::warn!("meow-rs uses its native socket keepalive policy; compatibility defaults are retained, custom keepalive timing is unsupported");
-    }
     if document["tun"].get("stack").is_some() {
         tracing::warn!("meow-rs uses the lwIP TUN stack; the saved Mihomo stack name does not select a different implementation");
     }
