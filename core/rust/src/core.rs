@@ -297,6 +297,26 @@ impl Core {
         self.sequence.fetch_add(1, Ordering::AcqRel) + 1
     }
 
+    #[cfg(unix)]
+    pub async fn attach_mobile_tunnel(
+        &self,
+        fd: std::os::fd::RawFd,
+        options: crate::mobile_tun::TunOptions,
+        owners: Arc<dyn crate::mobile_tun::OwnerResolver>,
+    ) -> protocol::Result<()> {
+        let state = self.state.lock().await;
+        if !state.initialized || !state.listening {
+            return Err(MethodError::new(
+                "not_initialized",
+                "No active listener intent",
+            ));
+        }
+        crate::tun_routes::validate_mobile(&state.document, options.os_routes.as_ref())?;
+        let engine = self.active()?;
+        crate::mobile_tun::start(fd, engine.state.tunnel.clone(), options, owners).await?;
+        Ok(())
+    }
+
     pub async fn document(&self) -> Value {
         self.state.lock().await.document.clone()
     }
@@ -458,6 +478,8 @@ impl Core {
             return Err(MethodError::new("core_error", "not initialized"));
         }
         extras::validate(&document)?;
+        #[cfg(any(target_os = "android", target_env = "ohos"))]
+        crate::mobile_tun::validate_routes(&document).await?;
         extras::preflight_providers(self, &document).await?;
         let home = self.home.read().clone();
         let mobile = cfg!(any(target_os = "android", target_env = "ohos"));

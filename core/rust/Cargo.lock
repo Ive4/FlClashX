@@ -1046,7 +1046,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1120,11 +1120,13 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.22.1",
+ "boring",
  "dashmap",
  "fancy-regex",
  "futures",
  "h2",
  "hex",
+ "hickory-proto",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -1145,7 +1147,9 @@ dependencies = [
  "meow-tunnel",
  "parking_lot",
  "pbkdf2",
+ "quiche",
  "rand 0.8.8",
+ "rcgen",
  "regex",
  "serde",
  "serde-saphyr",
@@ -1158,12 +1162,14 @@ dependencies = [
  "tempfile",
  "time",
  "tokio",
+ "tokio-boring",
  "tokio-util",
  "tower",
  "tracing",
  "tracing-subscriber",
  "url",
  "uuid",
+ "webpki-root-certs",
  "windows-sys 0.60.2",
  "xz2",
  "zstd",
@@ -2271,8 +2277,6 @@ dependencies = [
 [[package]]
 name = "meow-api"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da7d55099e297d04a342ed88947129795b7122bc59eea8da05f227cf69a432ae"
 dependencies = [
  "anyhow",
  "axum",
@@ -2330,8 +2334,6 @@ dependencies = [
 [[package]]
 name = "meow-config"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d90e39eb49ca9558b8f15991142a8fd9b602d8e41332f139172ff08cce9aae0b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2363,8 +2365,6 @@ dependencies = [
 [[package]]
 name = "meow-dns"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff6ce3082740386e8227151e810a593bbfa20fac30ddceb90a1f3cc58667c8f3"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -2436,8 +2436,6 @@ dependencies = [
 [[package]]
 name = "meow-proxy"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ad912db733d8f6646bf693c467031960a842eec76bed66c02c6b4f513c45bdd"
 dependencies = [
  "aes 0.8.4",
  "argon2",
@@ -2780,7 +2778,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2885,6 +2883,16 @@ checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
 dependencies = [
  "digest 0.10.7",
  "hmac",
+]
+
+[[package]]
+name = "pem"
+version = "3.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d30c53c26bc5b31a98cd02d20f25a7c8567146caf63ed593a9d87b2775291be"
+dependencies = [
+ "base64 0.22.1",
+ "serde_core",
 ]
 
 [[package]]
@@ -3225,6 +3233,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcgen"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75e669e5202259b5314d1ea5397316ad400819437857b90861765f24c4cf80a2"
+dependencies = [
+ "pem",
+ "ring",
+ "rustls-pki-types",
+ "time",
+ "yasna",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3381,7 +3402,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3389,6 +3410,9 @@ name = "rustls-pki-types"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96"
+dependencies = [
+ "zeroize",
+]
 
 [[package]]
 name = "rustversion"
@@ -3941,7 +3965,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4654,7 +4678,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5071,7 +5095,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5120,6 +5144,15 @@ dependencies = [
  "pin-project",
  "static_assertions",
  "web-time",
+]
+
+[[package]]
+name = "yasna"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e17bb3549cc1321ae1296b9cdc2698e2b6cb1992adfa19a8c72e5b7a738f44cd"
+dependencies = [
+ "time",
 ]
 
 [[package]]

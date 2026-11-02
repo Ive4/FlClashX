@@ -132,6 +132,16 @@ final class OhosCore extends CoreHandlerInterface {
   @override
   Future<bool> startListener() async {
     final options = await globalState.container.read(vpnOptionsProvider.future);
+    final routeConfig = globalState.container
+        .read(patchClashConfigProvider)
+        .tun;
+    final hasRoutePolicy =
+        routeConfig.routeAddress.isNotEmpty ||
+        routeConfig.routeExcludeAddress.isNotEmpty ||
+        globalState.container.read(networkSettingProvider).bypassPrivateRoute;
+    final routes = options.routeAddress.isEmpty && !hasRoutePolicy
+        ? const ['0.0.0.0/0', '::/0']
+        : options.routeAddress;
     if (!await super.startListener()) return false;
     if (!options.enable) return true;
     final transport = _transport;
@@ -164,7 +174,7 @@ final class OhosCore extends CoreHandlerInterface {
           'dnsHijacking': options.dnsHijacking,
           'stack': options.stack,
           'mtu': options.mtu == 0 ? 1500 : options.mtu.clamp(576, 1500),
-          'routes': options.routeAddress,
+          'routes': routes,
           'accepted': accepted,
           'blocked': blocked,
         }),

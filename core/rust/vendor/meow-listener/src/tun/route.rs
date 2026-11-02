@@ -4,32 +4,61 @@
 //! split defaults (see the module docs in `mod.rs` for which and why;
 //! Linux global scope uses `policy_route.rs` instead). Routes are added
 //! with the blocking `route_manager` API at listener startup and removed on
-//! drop; a failed add is a warning, not a fatal error, because the device
+//! drop; for upstream scope defaults a failed add is a warning, because the device
 //! subnet's own on-link route frequently already covers the range (in which
-//! case some platforms report "route exists").
+//! case some platforms report "route exists"). Explicit plans fail closed and
+//! roll back every route successfully added before an installation failure.
 
 use ipnet::IpNet;
 use route_manager::{Route, RouteManager};
 use tracing::{debug, warn};
 
-pub(super) struct RouteGuard {
-    manager: RouteManager,
+pub(super) trait RouteTable {
+    fn add(&mut self, route: &Route) -> std::io::Result<()>;
+    fn delete(&mut self, route: &Route) -> std::io::Result<()>;
+}
+
+impl RouteTable for RouteManager {
+    fn add(&mut self, route: &Route) -> std::io::Result<()> {
+        RouteManager::add(self, route)
+    }
+
+    fn delete(&mut self, route: &Route) -> std::io::Result<()> {
+        RouteManager::delete(self, route)
+    }
+}
+
+pub(super) struct RouteGuard<M: RouteTable = RouteManager> {
+    manager: M,
     installed: Vec<Route>,
 }
 
 impl RouteGuard {
     /// Install one on-link route per net through interface `if_index`.
-    /// Individual failures are logged and skipped so a pre-existing
-    /// equivalent route does not abort listener startup.
-    pub(super) fn setup(if_index: u32, nets: &[IpNet]) -> std::io::Result<Self> {
-        let mut manager = RouteManager::new()?;
-        let mut installed = Vec::with_capacity(nets.len());
+    /// Explicit plans require every add to succeed; scope defaults retain upstream tolerance.
+    pub(super) fn setup(if_index: u32, nets: &[IpNet], strict: bool) -> std::io::Result<Self> {
+        Self::install(RouteManager::new()?, if_index, nets, strict)
+    }
+}
+
+impl<M: RouteTable> RouteGuard<M> {
+    fn install(manager: M, if_index: u32, nets: &[IpNet], strict: bool) -> std::io::Result<Self> {
+        let mut guard = Self {
+            manager,
+            installed: Vec::with_capacity(nets.len()),
+        };
         for net in nets {
             let route = Route::new(net.network(), net.prefix_len()).with_if_index(if_index);
-            match manager.add(&route) {
+            match guard.manager.add(&route) {
                 Ok(()) => {
                     debug!("tun auto-route: added {net} via if_index {if_index}");
-                    installed.push(route);
+                    guard.installed.push(route);
+                }
+                Err(e) if strict => {
+                    return Err(std::io::Error::new(
+                        e.kind(),
+                        format!("route {net} via if_index {if_index}: {e}"),
+                    ))
                 }
                 Err(e) => warn!(
                     "tun auto-route: failed to add {net} via if_index {if_index}: {e} \
@@ -37,13 +66,13 @@ impl RouteGuard {
                 ),
             }
         }
-        Ok(Self { manager, installed })
+        Ok(guard)
     }
 }
 
-impl Drop for RouteGuard {
+impl<M: RouteTable> Drop for RouteGuard<M> {
     fn drop(&mut self) {
-        for route in &self.installed {
+        for route in self.installed.iter().rev() {
             if let Err(e) = self.manager.delete(route) {
                 warn!("tun auto-route: failed to remove {route}: {e}");
             }
@@ -184,6 +213,102 @@ fn parse_default_interface(table: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{parse_default_interface, pick_default_interface, DefaultCandidate};
+
+    #[derive(Default)]
+    struct Changes {
+        added: Vec<(ipnet::IpNet, u32)>,
+        deleted: Vec<(ipnet::IpNet, u32)>,
+    }
+
+    struct RecordingTable {
+        changes: std::sync::Arc<std::sync::Mutex<Changes>>,
+        attempts: usize,
+        fail_at: Option<usize>,
+    }
+
+    fn route_key(route: &route_manager::Route) -> (ipnet::IpNet, u32) {
+        (
+            ipnet::IpNet::new(route.destination(), route.prefix()).unwrap(),
+            route.if_index().unwrap(),
+        )
+    }
+
+    impl super::RouteTable for RecordingTable {
+        fn add(&mut self, route: &route_manager::Route) -> std::io::Result<()> {
+            self.attempts += 1;
+            if self.fail_at == Some(self.attempts) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "injected route failure",
+                ));
+            }
+            self.changes.lock().unwrap().added.push(route_key(route));
+            Ok(())
+        }
+
+        fn delete(&mut self, route: &route_manager::Route) -> std::io::Result<()> {
+            self.changes.lock().unwrap().deleted.push(route_key(route));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn explicit_plan_installs_exactly_and_teardown_reverses_every_owned_route() {
+        let changes = std::sync::Arc::new(std::sync::Mutex::new(Changes::default()));
+        let table = RecordingTable {
+            changes: changes.clone(),
+            attempts: 0,
+            fail_at: None,
+        };
+        let nets: Vec<ipnet::IpNet> = ["10.0.0.0/26", "10.0.0.128/25", "2001:db8::/126"]
+            .iter()
+            .map(|net| net.parse().unwrap())
+            .collect();
+        let guard = super::RouteGuard::install(table, 19, &nets, true).unwrap();
+        let expected: Vec<_> = nets.iter().map(|net| (*net, 19)).collect();
+        assert_eq!(changes.lock().unwrap().added, expected);
+        assert!(changes.lock().unwrap().deleted.is_empty());
+        drop(guard);
+        assert_eq!(
+            changes.lock().unwrap().deleted,
+            expected.into_iter().rev().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn explicit_plan_failure_rolls_back_and_scope_defaults_keep_their_tolerance() {
+        let nets: Vec<ipnet::IpNet> = ["10.0.0.0/26", "10.0.0.128/25", "2001:db8::/126"]
+            .iter()
+            .map(|net| net.parse().unwrap())
+            .collect();
+        for strict in [true, false] {
+            let changes = std::sync::Arc::new(std::sync::Mutex::new(Changes::default()));
+            let table = RecordingTable {
+                changes: changes.clone(),
+                attempts: 0,
+                fail_at: Some(2),
+            };
+            let result = super::RouteGuard::install(table, 23, &nets, strict);
+            if strict {
+                let error = result.err().expect("explicit plans must fail closed");
+                assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+                assert!(error.to_string().contains("10.0.0.128/25"));
+                assert_eq!(changes.lock().unwrap().added, [(nets[0], 23)]);
+                assert_eq!(changes.lock().unwrap().deleted, [(nets[0], 23)]);
+            } else {
+                let guard = result.unwrap();
+                assert_eq!(
+                    changes.lock().unwrap().added,
+                    [(nets[0], 23), (nets[2], 23)]
+                );
+                drop(guard);
+                assert_eq!(
+                    changes.lock().unwrap().deleted,
+                    [(nets[2], 23), (nets[0], 23)]
+                );
+            }
+        }
+    }
 
     fn candidate(net: &str, if_name: &str, scoped: bool, metric: u32) -> DefaultCandidate {
         let net: ipnet::IpNet = net.parse().unwrap();

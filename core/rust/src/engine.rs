@@ -35,6 +35,7 @@ pub struct Engine {
     tasks: Mutex<Tasks>,
     interface_binding: RwLock<Option<meow_common::OutboundIfaceGuard>>,
     socket_policy: RwLock<Option<crate::socket_policy::PolicyGuard>>,
+    dns_http3: RwLock<Option<crate::dns_http3::PolicyGuard>>,
 }
 
 #[derive(Default)]
@@ -67,10 +68,12 @@ impl Engine {
         home: &Path,
         logs: broadcast::Sender<LogMessage>,
     ) -> Result<Arc<Self>> {
+        crate::direct_dns::validate(document)?;
         meow_common::home_dir::set_home_dir(home.to_owned());
         meow_config::set_external_plugins_allowed(false);
         crate::ownership::schedule(home);
         let socket_policy = crate::socket_policy::install(document)?;
+        let dns_http3 = crate::dns_http3::install(document)?;
         let interface_binding = outbound_binding(document)?;
         let raw = meow_config::parse_raw_yaml(&serde_saphyr::to_string(document)?)?;
         let config = meow_config::build_config(raw, Some(home)).await?;
@@ -131,6 +134,7 @@ impl Engine {
             tasks: Mutex::new(Tasks::default()),
             interface_binding: RwLock::new(interface_binding),
             socket_policy: RwLock::new(Some(socket_policy)),
+            dns_http3: RwLock::new(Some(dns_http3)),
         }))
     }
 
@@ -168,7 +172,9 @@ impl Engine {
 
     pub async fn reload(&self, document: &Value) -> Result<()> {
         use base64::Engine as _;
+        crate::direct_dns::validate(document)?;
         let socket_policy = crate::socket_policy::install(document)?;
+        let dns_http3 = crate::dns_http3::install(document)?;
         let interface_binding = outbound_binding(document)?;
         let mut routing = document.clone();
         routing["tun"] = json!({"enable": false});
@@ -187,6 +193,7 @@ impl Engine {
         }
         *self.interface_binding.write() = interface_binding;
         *self.socket_policy.write() = Some(socket_policy);
+        *self.dns_http3.write() = Some(dns_http3);
         Ok(())
     }
 
@@ -449,13 +456,20 @@ impl Engine {
         if !tun.enable {
             return Ok(());
         }
+        let config = meow_api::tun_config_to_listener_config(&tun);
+        let lists = crate::tun_routes::RouteLists::parse(
+            &serde_json::to_value(raw.tun.as_ref()).context("TUN route configuration")?,
+        )?;
+        let route_plan = lists.desktop_plan(
+            &config.default_routes(self.state.tunnel.resolver().fake_ip_v4_net()),
+            config.inet6_address.is_some(),
+        )?;
         let (ready, receiver) = tokio::sync::oneshot::channel();
-        let listener = TunListener::new(
-            self.state.tunnel.clone(),
-            meow_api::tun_config_to_listener_config(&tun),
-            "FlClash".into(),
-        )
-        .with_readiness_signal(ready);
+        let mut listener = TunListener::new(self.state.tunnel.clone(), config, "FlClash".into())
+            .with_readiness_signal(ready);
+        if let Some(routes) = route_plan {
+            listener = listener.with_route_plan(routes)?;
+        }
         let task = tokio::spawn(async move {
             if let Err(error) = listener.run().await {
                 tracing::error!("TUN listener failed: {error}");
@@ -546,6 +560,7 @@ impl Engine {
             .reconcile(&self.state.proxy_providers, None);
         self.interface_binding.write().take();
         self.socket_policy.write().take();
+        self.dns_http3.write().take();
     }
 }
 

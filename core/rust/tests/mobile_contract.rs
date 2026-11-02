@@ -36,11 +36,17 @@ fn network_dns_updates_replace_only_dns_sentinels() {
     mobile::set_system_dns("192.0.2.53,2001:db8::53,192.0.2.53");
     let document = json!({"proxies":[{"name":"system"}], "dns":{
         "nameserver":["https://resolver.example/dns-query","system"],
+        "direct-nameserver":["system://"],
         "nameserver-policy":{"example.test":["system://"]}
     }});
     let mut first = document.clone();
     mobile::patch_system_dns(&mut first);
     assert_eq!(first["proxies"], document["proxies"]);
+    assert_eq!(
+        first["dns"]["direct-nameserver"],
+        json!(["udp://192.0.2.53:53", "udp://[2001:db8::53]:53"])
+    );
+    assert!(flclash::direct_dns::validate(&first).is_ok());
     assert_eq!(
         first["dns"]["nameserver"],
         json!([
@@ -53,6 +59,10 @@ fn network_dns_updates_replace_only_dns_sentinels() {
     let mut moved = document.clone();
     mobile::patch_system_dns(&mut moved);
     assert_eq!(
+        moved["dns"]["direct-nameserver"],
+        json!(["udp://198.51.100.53:53"])
+    );
+    assert_eq!(
         moved["dns"]["nameserver-policy"]["example.test"],
         json!(["udp://198.51.100.53:53"])
     );
@@ -60,6 +70,11 @@ fn network_dns_updates_replace_only_dns_sentinels() {
     let mut offline = document;
     mobile::patch_system_dns(&mut offline);
     assert_eq!(offline["dns"]["nameserver"][1], "rcode://refused");
+    assert_eq!(
+        offline["dns"]["direct-nameserver"],
+        json!(["rcode://refused"])
+    );
+    assert!(flclash::direct_dns::validate(&offline).is_ok());
 }
 
 #[test]

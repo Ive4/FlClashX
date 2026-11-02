@@ -4,6 +4,8 @@ FlClash is a multi-platform proxy client built with Flutter and a Rust meow-rs 0
 
 ## Version Notes
 
+- Before changing the meow-rs pin, follow [meow-upgrade.md](meow-upgrade.md). It records the local compatibility
+  patches, pending gaps, regression checks and conditions for replacing a patch with an upstream implementation.
 - Flutter stays on the 3.47.x line. Release CI pins 3.47.6 and is the source
   of truth for release builds; `.fvmrc` and local SDKs may sit on another 3.47
   patch. The editor in `plugins/code_forge` came from `code_forge` 10.14.0, which

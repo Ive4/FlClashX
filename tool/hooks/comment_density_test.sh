@@ -123,6 +123,14 @@ expect_under 'vendored meow-common comments are skipped' \
   "$repo/core/rust/vendor/meow-common/src/lib.rs" "$(dense 20 4)"
 expect_under 'vendored meow-anytls comments are skipped' \
   "$repo/core/rust/vendor/meow-anytls/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-dns comments are skipped' \
+  "$repo/core/rust/vendor/meow-dns/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-config comments are skipped' \
+  "$repo/core/rust/vendor/meow-config/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-proxy comments are skipped' \
+  "$repo/core/rust/vendor/meow-proxy/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-api comments are skipped' \
+  "$repo/core/rust/vendor/meow-api/src/lib.rs" "$(dense 20 4)"
 expect_over 'first-party Rust Core comments are checked' \
   "$repo/core/rust/src/lib.rs" "$(dense 8 24)"
 expect_under 'a markdown file is skipped' "$repo/notes.md" "$(dense 20 4)"

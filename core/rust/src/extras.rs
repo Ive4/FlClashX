@@ -67,31 +67,36 @@ pub fn validate_proxy_message(value: &Value) -> String {
 }
 
 fn unsupported_proxy_option(value: &Value) -> Option<(String, Value)> {
+    unsupported_proxy_options(value).into_iter().next()
+}
+
+fn unsupported_proxy_options(value: &Value) -> Vec<(String, Value)> {
+    let mut options = Vec::new();
     if value["reality-opts"]["short-id"].is_number() {
-        return Some((
+        options.push((
             "reality-opts.short-id (quote its original literal)".into(),
             value["reality-opts"]["short-id"].clone(),
         ));
     }
     for key in ["tfo", "mptcp", "interface-name", "routing-mark"] {
         if value.get(key).is_some_and(|value| !inert(value)) {
-            return Some((key.into(), value[key].clone()));
+            options.push((key.into(), value[key].clone()));
         }
     }
     if value["type"] == "vmess" && value["alterId"].as_u64().unwrap_or(0) > 0 {
-        return Some(("alterId".into(), value["alterId"].clone()));
+        options.push(("alterId".into(), value["alterId"].clone()));
     }
     for block in ["smux", "mux"] {
         for key in ["statistic", "brutal-opts"] {
             if value[block].get(key).is_some_and(|value| !inert(value)) {
-                return Some((format!("{block}.{key}"), value[block][key].clone()));
+                options.push((format!("{block}.{key}"), value[block][key].clone()));
             }
         }
     }
     if value["type"] != "ss" && value.get("plugin").is_some_and(|value| !inert(value)) {
-        return Some(("plugin".into(), value["plugin"].clone()));
+        options.push(("plugin".into(), value["plugin"].clone()));
     }
-    None
+    options
 }
 
 pub fn validate_filter_message(value: &Value) -> String {
@@ -125,9 +130,40 @@ fn unsupported(path: &str, value: &Value) -> MethodError {
     .details(json!({"path":path,"value":value}))
 }
 
+#[derive(Default)]
+struct UnsupportedOptions {
+    first: Option<MethodError>,
+    paths: Vec<String>,
+    count: usize,
+}
+
+impl UnsupportedOptions {
+    fn record(&mut self, path: &str, value: &Value) {
+        if self.first.is_none() {
+            self.first = Some(unsupported(path, value));
+        }
+        self.count += 1;
+        if self.paths.len() < 128 {
+            self.paths.push(path.to_owned());
+        }
+    }
+
+    fn finish(self) -> protocol::Result<()> {
+        let Some(mut error) = self.first else {
+            return Ok(());
+        };
+        error.details["unsupported-paths"] = json!(self.paths);
+        error.details["unsupported-path-count"] = json!(self.count);
+        error.details["unsupported-paths-truncated"] = json!(self.count > 128);
+        Err(error)
+    }
+}
+
 pub fn validate(document: &Value) -> protocol::Result<()> {
     protocol::object(document)?;
     crate::socket_policy::validate(document)?;
+    crate::dns_http3::validate(document)?;
+    crate::direct_dns::validate(document)?;
     let effective = profile::runtime_document(
         document,
         false,
@@ -137,6 +173,7 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
         &serde_saphyr::to_string(&effective).map_err(anyhow::Error::from)?,
     )?;
     let schema = serde_json::to_value(raw::RawConfig::default()).map_err(anyhow::Error::from)?;
+    let mut unsupported_options = UnsupportedOptions::default();
     for (key, value) in document.as_object().unwrap() {
         if schema.get(key).is_some()
             || key.starts_with("x-")
@@ -163,14 +200,17 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
             _ => false,
         };
         if !accepted {
-            return Err(unsupported(key, value));
+            unsupported_options.record(key, value);
         }
     }
     if let Some(dns) = document["dns"].as_object() {
         let empty: raw::RawDns = serde_json::from_value(json!({})).map_err(anyhow::Error::from)?;
         let supported = serde_json::to_value(empty).map_err(anyhow::Error::from)?;
         for (key, value) in dns {
-            if supported.get(key).is_some() || inert(value) {
+            if supported.get(key).is_some()
+                || crate::direct_dns::supported_field(key)
+                || inert(value)
+            {
                 continue;
             }
             let equivalent = matches!(
@@ -179,9 +219,10 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
             ) || key == "cache-max-size" && value.as_u64() == Some(4096)
                 || key == "fake-ip-ttl" && value.as_u64() == Some(1)
                 || key == "ipv6-timeout" && value.as_u64() == Some(100)
+                || key == "prefer-h3"
                 || key == "ipv6";
             if !equivalent {
-                return Err(unsupported(&format!("dns.{key}"), value));
+                unsupported_options.record(&format!("dns.{key}"), value);
             }
         }
         if let Some(filter) = dns.get("fallback-filter").and_then(Value::as_object) {
@@ -189,31 +230,30 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
                 if !["geoip", "geoip-code", "ipcidr", "domain"].contains(&key.as_str())
                     && !inert(value)
                 {
-                    return Err(unsupported(&format!("dns.fallback-filter.{key}"), value));
+                    unsupported_options.record(&format!("dns.fallback-filter.{key}"), value);
                 }
             }
         }
     }
     if let Some(tun) = document["tun"].as_object() {
+        crate::tun_routes::validate(document)?;
         let schema = serde_json::to_value(raw::RawTun::default()).map_err(anyhow::Error::from)?;
         for (key, value) in tun {
             if schema.get(key).is_none() && !inert(value) {
-                return Err(unsupported(&format!("tun.{key}"), value));
+                unsupported_options.record(&format!("tun.{key}"), value);
             }
             if [
                 "strict-route",
                 "auto-redirect",
                 "endpoint-independent-nat",
                 "mtu-v6",
-                "route-address",
-                "route-exclude-address",
                 "include-uid",
                 "exclude-uid",
             ]
             .contains(&key.as_str())
                 && !inert(value)
             {
-                return Err(unsupported(&format!("tun.{key}"), value));
+                unsupported_options.record(&format!("tun.{key}"), value);
             }
         }
     }
@@ -222,17 +262,15 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
             .as_str()
             .is_some_and(|name| !name.is_empty())
     {
-        return Err(unsupported("interface-name", &document["interface-name"]));
+        unsupported_options.record("interface-name", &document["interface-name"]);
     }
     if let Some(providers) = document["proxy-providers"].as_object() {
         for (name, provider) in providers {
             if let Some(overrides) = provider["override"].as_object() {
                 for (key, value) in overrides {
                     if key != "dialer-proxy" && !value.is_null() {
-                        return Err(unsupported(
-                            &format!("proxy-providers.{name}.override.{key}"),
-                            value,
-                        ));
+                        unsupported_options
+                            .record(&format!("proxy-providers.{name}.override.{key}"), value);
                     }
                 }
             }
@@ -250,28 +288,31 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
                 "authentication",
             ] {
                 if let Some(value) = listener.get(key).filter(|value| !inert(value)) {
-                    return Err(unsupported(&format!("listeners[{index}].{key}"), value));
+                    unsupported_options.record(&format!("listeners[{index}].{key}"), value);
                 }
             }
             if !matches!(
                 listener["type"].as_str(),
                 Some("http" | "socks" | "socks5" | "mixed" | "tproxy" | "shadowsocks")
             ) {
-                return Err(unsupported(
-                    &format!("listeners[{index}].type"),
-                    &listener["type"],
-                ));
+                unsupported_options.record(&format!("listeners[{index}].type"), &listener["type"]);
             }
         }
     }
-    let mut names = HashSet::new();
     if let Some(proxies) = &raw.proxies {
         for proxy in proxies {
             let name = proxy.get("name").and_then(Value::as_str).unwrap_or("");
             let value = serde_json::to_value(proxy).map_err(anyhow::Error::from)?;
-            if let Some((path, value)) = unsupported_proxy_option(&value) {
-                return Err(unsupported(&format!("proxies.{name}.{path}"), &value));
+            for (path, value) in unsupported_proxy_options(&value) {
+                unsupported_options.record(&format!("proxies.{name}.{path}"), &value);
             }
+        }
+    }
+    unsupported_options.finish()?;
+    let mut names = HashSet::new();
+    if let Some(proxies) = &raw.proxies {
+        for proxy in proxies {
+            let name = proxy.get("name").and_then(Value::as_str).unwrap_or("");
             if !names.insert(name) {
                 return Err(MethodError::new(
                     "core_error",

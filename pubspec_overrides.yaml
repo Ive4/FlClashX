@@ -1,0 +1,9 @@
+dependency_overrides:
+  flutter_secure_storage_windows:
+    path: plugins/secure_storage_windows
+  material_ui:
+    path: .dart_tool/ohos-packages/material_ui
+  cupertino_ui:
+    path: .dart_tool/ohos-packages/cupertino_ui
+  sqlite3:
+    path: .dart_tool/ohos-packages/sqlite3

@@ -41,6 +41,7 @@ pub struct TunOptions {
     pub addresses: Vec<(IpAddr, u8)>,
     pub dns: Vec<IpAddr>,
     pub udp_timeout: Duration,
+    pub os_routes: Option<crate::tun_routes::OsRoutePlan>,
 }
 
 #[derive(Deserialize)]
@@ -60,11 +61,13 @@ fn default_timeout() -> u64 {
 
 impl TunOptions {
     pub fn parse(address: &str, dns: &str, options: &str) -> Result<Self> {
-        let raw: RawOptions = serde_json::from_str(if options.trim().is_empty() {
+        let value: serde_json::Value = serde_json::from_str(if options.trim().is_empty() {
             "{}"
         } else {
             options
         })?;
+        let raw: RawOptions = serde_json::from_value(value.clone())?;
+        let os_routes = crate::tun_routes::OsRoutePlan::parse(&value)?;
         if !(576..=65535).contains(&raw.mtu) {
             bail!("TUN MTU must be between 576 and 65535");
         }
@@ -86,6 +89,12 @@ impl TunOptions {
         if addresses.is_empty() {
             bail!("TUN has no addresses");
         }
+        if os_routes
+            .as_ref()
+            .is_some_and(|routes| routes.ipv6 != addresses.iter().any(|(ip, _)| ip.is_ipv6()))
+        {
+            bail!("OS route IPv6 metadata does not match the VPN addresses");
+        }
         let dns = dns
             .split(',')
             .map(str::trim)
@@ -97,6 +106,7 @@ impl TunOptions {
             addresses,
             dns,
             udp_timeout: Duration::from_secs(raw.udp_timeout),
+            os_routes,
         })
     }
 
@@ -536,6 +546,7 @@ mod fd {
     struct Running {
         cancel: CancellationToken,
         task: JoinHandle<Result<()>>,
+        os_routes: Option<crate::tun_routes::OsRoutePlan>,
     }
     static ACTIVE: Mutex<Option<Running>> = Mutex::const_new(None);
 
@@ -563,6 +574,7 @@ mod fd {
             return Err(io::Error::last_os_error().into());
         }
         let device = Arc::new(AsyncFd::new(owned)?);
+        let os_routes = options.os_routes.clone();
         let mut session = PacketSession::start(tunnel, options, owners)?;
         let cancel = CancellationToken::new();
         let token = cancel.clone();
@@ -603,7 +615,11 @@ mod fd {
             let stopped = session.stop().await;
             result.and(stopped)
         });
-        *active = Some(Running { cancel, task });
+        *active = Some(Running {
+            cancel,
+            task,
+            os_routes,
+        });
         Ok(())
     }
 
@@ -671,7 +687,18 @@ mod fd {
     pub async fn stop() -> Result<()> {
         stop_locked(&mut *ACTIVE.lock().await).await
     }
+
+    pub async fn validate_routes(document: &serde_json::Value) -> crate::protocol::Result<()> {
+        let active = ACTIVE.lock().await;
+        if let Some(running) = active
+            .as_ref()
+            .filter(|running| !running.task.is_finished())
+        {
+            crate::tun_routes::validate_mobile(document, running.os_routes.as_ref())?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(unix)]
-pub use fd::{start, stop};
+pub use fd::{start, stop, validate_routes};

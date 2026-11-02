@@ -230,6 +230,16 @@ pub struct TunListenerConfig {
     pub max_connections: usize,
 }
 
+impl TunListenerConfig {
+    pub fn default_routes(&self, fake_ip: Option<ipnet::IpNet>) -> Vec<ipnet::IpNet> {
+        match (self.auto_route, self.route_scope) {
+            (false, _) => Vec::new(),
+            (true, TunRouteScope::Global) => global_route_nets(self.inet6_address.is_some()),
+            (true, TunRouteScope::FakeIp) => fake_ip.into_iter().collect(),
+        }
+    }
+}
+
 /// Which routes `auto_route` installs (#375; see the module docs).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TunRouteScope {
@@ -353,6 +363,7 @@ pub struct TunListener {
     /// Global-scope binding installed by the caller before this listener
     /// was built (see [`Self::with_outbound_binding`]).
     outbound_binding: Option<OutboundBinding>,
+    route_plan: Option<Vec<ipnet::IpNet>>,
 }
 
 impl TunListener {
@@ -363,6 +374,7 @@ impl TunListener {
             name,
             ready: None,
             outbound_binding: None,
+            route_plan: None,
         }
     }
 
@@ -372,11 +384,51 @@ impl TunListener {
     /// (issue #695). The listener uses it instead of installing its own
     /// and owns it from here on: it is given up with the routes on
     /// teardown, or straight away if startup fails or the listener is
-    /// dropped without running. Ignored (and so given up) outside global
-    /// route scope.
+    /// dropped without running. Global scope and explicit route plans retain it.
     pub fn with_outbound_binding(mut self, binding: OutboundBinding) -> Self {
         self.outbound_binding = Some(binding);
         self
+    }
+
+    pub fn with_route_plan(mut self, routes: Vec<ipnet::IpNet>) -> io::Result<Self> {
+        if !self.cfg.auto_route {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "TUN route plan requires auto-route",
+            ));
+        }
+        if routes
+            .iter()
+            .any(|net| net.prefix_len() == 0 || net != &net.trunc())
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "TUN route plan requires canonical CIDRs and split default routes",
+            ));
+        }
+        if self.cfg.inet6_address.is_none() && routes.iter().any(|net| net.addr().is_ipv6()) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "TUN route plan contains IPv6 without an IPv6 device address",
+            ));
+        }
+        if cfg!(target_os = "macos") && routes.iter().any(|net| net.network().is_unspecified()) {
+            return Err(io::Error::new(io::ErrorKind::Unsupported, "TUN route plan would shadow the macOS physical default route; exclude 0.0.0.0/8 and ::/8"));
+        }
+        self.route_plan = Some(routes);
+        Ok(self)
+    }
+
+    pub fn route_nets(&self, policy_routed: bool) -> Vec<ipnet::IpNet> {
+        if let Some(routes) = &self.route_plan {
+            return routes.clone();
+        }
+        let fake_ip = self.tunnel.resolver().fake_ip_v4_net();
+        if self.cfg.auto_route && self.cfg.route_scope == TunRouteScope::Global && policy_routed {
+            fake_ip.into_iter().collect()
+        } else {
+            self.cfg.default_routes(fake_ip)
+        }
     }
 
     /// Attach a readiness signal. The sender will fire `TunReady::Ready`
@@ -586,7 +638,9 @@ impl TunListener {
         // reload before the reload's first dial; issue #695).
         // Fail closed — a global default route without working loop
         // avoidance would blackhole the host's connectivity.
-        let iface_guard = if cfg.auto_route && cfg.route_scope == TunRouteScope::Global {
+        let iface_guard = if cfg.auto_route
+            && (cfg.route_scope == TunRouteScope::Global || self.route_plan.is_some())
+        {
             Some(match preinstalled {
                 Some(binding) => binding,
                 None => OutboundBinding::install(cfg.outbound_interface.as_deref())?,
@@ -610,7 +664,10 @@ impl TunListener {
         // originates to (see `policy_route.rs`). Without policy routing
         // the split defaults below go in the main table instead.
         #[cfg(target_os = "linux")]
-        let policy_routes = if cfg.auto_route && cfg.route_scope == TunRouteScope::Global {
+        let policy_routes = if cfg.auto_route
+            && cfg.route_scope == TunRouteScope::Global
+            && self.route_plan.is_none()
+        {
             let (v4, v6) = (tun_net.v4, tun_net.v6);
             match tokio::task::spawn_blocking(move || {
                 policy_route::PolicyRoutes::setup(if_index, v4, v6)
@@ -643,46 +700,45 @@ impl TunListener {
 
         // auto-route: install the scope's routes in the main table (see
         // module docs).
-        let route_nets: Vec<ipnet::IpNet> = match (cfg.auto_route, cfg.route_scope) {
-            (false, _) => Vec::new(),
-            // The policy rules leave traffic the host forwards
-            // (containers, VMs, a gateway's LAN clients) to the main table,
-            // where the fake-IP range still catches its domain flows.
-            (true, TunRouteScope::Global) if policy_routed => fake_ip_net.into_iter().collect(),
-            // Split defaults: two /1s (macOS: eight routes that avoid the
-            // all-zero key) cover all IPv4 while staying more specific
-            // than the physical 0/0 default, so the original route
-            // survives untouched and restore-on-drop is trivial. The
-            // device's own /30 and the fake-IP range (if any) are inside
-            // the /1s already.
-            (true, TunRouteScope::Global) => global_route_nets(cfg.inet6_address.is_some()),
-            (true, TunRouteScope::FakeIp) => {
-                if fake_ip_net.is_none() {
-                    warn!(
-                        "tun '{}': 'auto-route: fake-ip' only routes the fake-IP range, but \
-                         DNS is not in fake-ip mode — no routes installed. Use \
-                         'auto-route: true', or add routes to '{dev_name}' manually.",
-                        self.name
-                    );
-                }
-                fake_ip_net.into_iter().collect()
-            }
-        };
+        if cfg.auto_route
+            && cfg.route_scope == TunRouteScope::FakeIp
+            && self.route_plan.is_none()
+            && fake_ip_net.is_none()
+        {
+            warn!(
+                "tun '{}': 'auto-route: fake-ip' has no fake-IP range; no routes installed",
+                self.name
+            );
+        }
+        let route_nets = self.route_nets(policy_routed);
+        let strict_routes = self.route_plan.is_some();
 
         // RouteManager::add() calls into OS routing APIs that may block
         // (PowerShell on Windows), so it runs on a blocking thread. The
         // outer TUN_STARTUP_TIMEOUT guards the overall startup.
-        let route_guard = if route_nets.is_empty() {
-            None
+        let device = TunDevice {
+            #[cfg(target_os = "linux")]
+            policy_routes,
+            route_guard: None,
+            iface_guard,
+            device,
+        };
+        let device = if route_nets.is_empty() {
+            Arc::new(device)
         } else {
             let t_route = Instant::now();
-            match tokio::task::spawn_blocking(move || RouteGuard::setup(if_index, &route_nets))
-                .await
+            // The blocking install can outlive a cancelled startup; it must retain the adapter and binding.
+            match tokio::task::spawn_blocking(move || -> io::Result<Arc<TunDevice>> {
+                let mut device = device;
+                device.route_guard = Some(RouteGuard::setup(if_index, &route_nets, strict_routes)?);
+                Ok(Arc::new(device))
+            })
+            .await
             {
                 Ok(Ok(g)) => {
                     let route_ms = t_route.elapsed().as_secs_f64() * 1000.0;
                     info!("auto-route installed in {route_ms:.0}ms");
-                    Some(g)
+                    g
                 }
                 Ok(Err(e)) => {
                     return Err(Box::new(io::Error::other(format!(
@@ -696,19 +752,6 @@ impl TunListener {
                 }
             }
         };
-
-        // Wrap the device and its route guard in a single `Arc` so they share
-        // one reference-counted lifetime. Field order guarantees `route_guard`
-        // is dropped (routes deleted) **before** `device` (adapter destroyed)
-        // when the last `Arc` clone goes away — ensuring route deletion always
-        // succeeds because the adapter is still alive.
-        let device = Arc::new(TunDevice {
-            #[cfg(target_os = "linux")]
-            policy_routes,
-            route_guard,
-            iface_guard,
-            device,
-        });
 
         // Windows: bind the loopback DNS sockets *before* DnsGuard repoints
         // the OS resolver at them. If port 53 is already taken (ICS, Docker,

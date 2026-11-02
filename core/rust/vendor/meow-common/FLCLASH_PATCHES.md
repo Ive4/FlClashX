@@ -30,3 +30,8 @@ session reaping, or other transport/session timers.
 
 The matching `meow-anytls` patch avoids replacing the pre-connect policy with
 that library's native 120/30 second defaults after the connection opens.
+
+`src/socket_protect.rs` also carries a task-scoped DNS-upstream bootstrap resolver. It belongs to a single DNS
+client dial and matches only that upstream's hostname. Direct adapters can resolve this transport target through
+the candidate's configured bootstrap roots without re-entering application/direct DNS or using libc. Remote
+proxy adapters still receive the hostname. The process-wide host/proxy resolver registry is unchanged.

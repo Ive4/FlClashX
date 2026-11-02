@@ -160,6 +160,44 @@ pub async fn dns_via_proxy_dial_scope<F: std::future::Future>(fut: F) -> F::Outp
     IN_DNS_VIA_PROXY_DIAL.scope((), fut).await
 }
 
+struct DnsUpstreamResolver {
+    host: Arc<str>,
+    resolver: Arc<dyn HostResolver>,
+}
+
+tokio::task_local! {
+    static DNS_UPSTREAM_RESOLVER: DnsUpstreamResolver;
+}
+
+pub async fn dns_upstream_resolver_scope<F: std::future::Future>(
+    host: Arc<str>,
+    resolver: Arc<dyn HostResolver>,
+    future: F,
+) -> F::Output {
+    DNS_UPSTREAM_RESOLVER
+        .scope(DnsUpstreamResolver { host, resolver }, future)
+        .await
+}
+
+pub fn has_dns_upstream_resolver(host: &str) -> bool {
+    DNS_UPSTREAM_RESOLVER
+        .try_with(|context| context.host.eq_ignore_ascii_case(host))
+        .unwrap_or(false)
+}
+
+pub async fn resolve_dns_upstream(host: &str) -> Option<io::Result<Vec<IpAddr>>> {
+    let resolver = DNS_UPSTREAM_RESOLVER
+        .try_with(|context| {
+            context
+                .host
+                .eq_ignore_ascii_case(host)
+                .then(|| Arc::clone(&context.resolver))
+        })
+        .ok()
+        .flatten()?;
+    Some(resolver.resolve_all(host).await)
+}
+
 // ─── System-resolver result cache (Android / iOS only) ─────────────────────
 //
 // Backstop for the path that still hits libc `getaddrinfo` (no `HostResolver`

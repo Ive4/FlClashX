@@ -62,6 +62,9 @@ ipnet = "2"
 maxminddb = "0.27"
 socket2 = { version = "0.5", features = ["all"] }
 subtle = "2"
+boring = "5"
+quiche = "=0.30.0"
+webpki-root-certs = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -79,11 +82,18 @@ jni = "0.21"
 [dev-dependencies]
 tempfile = "3"
 meow-anytls = "=0.28.0"
+rcgen = "0.13"
+hickory-proto = "0.26"
+tokio-boring = "5"
 
 [patch.crates-io]
 meow-common = { path = "vendor/meow-common" }
 meow-anytls = { path = "vendor/meow-anytls" }
 meow-listener = { path = "vendor/meow-listener" }
+meow-dns = { path = "vendor/meow-dns" }
+meow-config = { path = "vendor/meow-config" }
+meow-proxy = { path = "vendor/meow-proxy" }
+meow-api = { path = "vendor/meow-api" }
 
 [profile.release]
 lto = "thin"

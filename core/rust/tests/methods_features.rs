@@ -8,10 +8,8 @@ fn unsupported_effectful_options_are_not_silently_discarded() {
     assert_eq!(error.details["path"], "redir-port");
     let error = extras::validate(&json!({"dns":{"respect-rules":true}})).unwrap_err();
     assert_eq!(error.details["path"], "dns.respect-rules");
-    let error =
-        extras::validate(&json!({"tun":{"enable":true,"route-exclude-address":["10.0.0.0/8"]}}))
-            .unwrap_err();
-    assert_eq!(error.details["path"], "tun.route-exclude-address");
+    let error = extras::validate(&json!({"tun":{"enable":true,"strict-route":true}})).unwrap_err();
+    assert_eq!(error.details["path"], "tun.strict-route");
     for key in [
         "shadow-tls",
         "res-tls",

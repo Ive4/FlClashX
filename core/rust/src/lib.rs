@@ -3,6 +3,8 @@ pub const ENGINE_VERSION: &str = "0.28.0";
 
 pub mod backup;
 pub mod core;
+pub mod direct_dns;
+pub mod dns_http3;
 pub mod engine;
 pub mod events;
 pub mod extras;
@@ -17,6 +19,7 @@ pub mod profile;
 pub mod protocol;
 pub mod service_checks;
 pub mod socket_policy;
+pub mod tun_routes;
 
 use std::sync::{Arc, OnceLock};
 

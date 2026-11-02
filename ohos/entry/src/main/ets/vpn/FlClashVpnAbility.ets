@@ -109,14 +109,16 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     ];
     if (request.ipv6) addresses.push({ address: { address: 'fdfe:dcba:9876::1', family: 2 }, prefixLength: 126 });
     const routeAddresses = Array.from(new Set([
-      ...(request.routes.length > 0 ? request.routes : ['0.0.0.0/0', '::/0']),
+      ...request.routes,
       '172.19.0.2/32'
     ]));
     const routes: vpnExtension.RouteInfo[] = [];
+    const appliedRoutes: string[] = [];
     for (const cidr of routeAddresses) {
       const parts = cidr.split('/');
       const ipv6 = parts[0].includes(':');
       if (ipv6 && !request.ipv6) continue;
+      appliedRoutes.push(cidr);
       routes.push({
         interface: 'vpn-tun', destination: { address: { address: parts[0], family: ipv6 ? 2 : 1 }, prefixLength: Number(parts[1]) },
         gateway: { address: ipv6 ? '::' : '0.0.0.0', family: ipv6 ? 2 : 1 }, hasGateway: false,
@@ -139,7 +141,8 @@ export default class FlClashVpnAbility extends VpnExtensionAbility {
     await bridge.startTun(fd, JSON.stringify({
       stack: request.stack,
       address: request.ipv6 ? '172.19.0.1/30,fdfe:dcba:9876::1/126' : '172.19.0.1/30',
-      dns: request.dnsHijacking ? '0.0.0.0,::' : '172.19.0.2', mtu: request.mtu
+      dns: request.dnsHijacking ? '0.0.0.0,::' : '172.19.0.2', mtu: request.mtu,
+      routes: appliedRoutes, ipv6: request.ipv6
     }));
     if (this.destroyed) { await bridge.stopTun(); return; }
     writeVpnState(this.status, 'ready');

@@ -6,6 +6,10 @@ checksums; the corresponding upstream source revision is `80816302e7ad8f868fdf16
 `FLCLASH-PATCHES.md`: listener stop cancels and joins accepted clients and UDP relays before rebinding.
 `vendor/meow-common` and `vendor/meow-anytls` carry the documented TCP socket-policy hooks, including preservation
 of supplied keepalive idle/interval/disable values through the AnyTLS connection setup.
+`vendor/meow-dns` adds a scoped preferred DoH transport hook. With `dns.prefer-h3`, the wrapper attempts verified
+HTTP/3 through the selected upstream proxy, then falls back to the original verified TLS DoH transport on failure.
+An attempt is bounded to 1.2 seconds and failing endpoints back off for 30 seconds. UDP sockets retain platform
+protection and outbound binding; the saved DNS preference is preserved.
 The upstream notice is bundled at `assets/data/meow-rs-license.txt` and registered in Flutter's license registry.
 The old Go Core remains an inactive protocol reference. `services/desktop` remains the separate background owner.
 
@@ -25,6 +29,9 @@ Android socket protection and UID/package callbacks remain active through the Ru
 procfs fallback. HarmonyOS owner resolution uses a bounded broker and retains the original flow tuple.
 HarmonyOS may attach TUN before profile setup. Its initial Engine rejects all traffic and refuses DNS until the
 profile commits; setup keeps the same Engine/Tunnel, and a failed setup retains the rejecting policy and saved file.
+HarmonyOS route declarations are checked against the native VPN's installed CIDRs, including its mandatory DNS
+host route. A mismatch rejects configuration before commit. Desktop include/exclude lists produce an exact route
+plan with transactional installation and reverse teardown; the original scope behavior applies without a custom plan.
 
 TCP keepalive settings apply to new outbound TCP sockets. The wrapper sets and reads back the requested OS idle,
 probe interval and enable state; unsupported values fail before applying the profile. Reload rollback restores the
@@ -39,7 +46,7 @@ HarmonyOS cdylib, and `tool/build_ohos.ps1` includes it in the app build. Native
 CMake and NASM requirements are recorded in `.agents/project.md` and `.agents/commands.md`.
 
 ```text
-cargo test --locked --all-targets
+cargo test --locked --all-targets -- --test-threads=1
 cargo fmt --check
 flutter pub get
 flutter analyze --no-fatal-infos
@@ -50,6 +57,8 @@ flutter test test/core
 TCP/UDP/DNS packet tests, provider reload/rollback tests and authenticated lightweight reconnection tests.
 These tests never create a host TUN or change the system proxy. Starting the Flutter app on a developer host
 still requires `SAFE_MODE=true`.
+Independent Core fixtures run serially because each process owns one kernel home, resolver and socket policy.
+Concurrency within a test, including overlapping configuration and lifecycle requests, remains enabled.
 
 ## Compatibility limits
 

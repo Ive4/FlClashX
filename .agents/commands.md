@@ -244,11 +244,14 @@ What those suites own:
 The active Rust Core and native background host checks are:
 
 ```bash
-cargo test --locked --manifest-path core/rust/Cargo.toml
+cargo test --locked --manifest-path core/rust/Cargo.toml -- --test-threads=1
 cd services/desktop
 go test ./...
 go vet ./...
 ```
+
+Core fixtures share process-level home, DNS and socket-policy state, so run independent Core tests serially.
+Concurrency exercised inside each Tokio test remains enabled. Helper and `rust_api` use their own test commands.
 
 The Windows Helper's loopback/session protocol tests are host-independent by default. Windows CI additionally enables its
 service implementation:

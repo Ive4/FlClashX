@@ -248,6 +248,11 @@ The TUN fields start at mihomo's own defaults, and a saved zero MTU or empty con
 as those defaults, decodes to them. The outbound rows are plain settings written over every profile, and changing one
 re-applies the profile; keep-alive is forced off on Android, and only Linux honours `routing-mark`.
 
+The Rust Core applies `keep-alive-idle`, `keep-alive-interval` and `disable-keep-alive` to new TCP sockets through the
+vendored `meow-common` policy; AnyTLS retains that policy instead of replacing it. Profile application commits the
+socket policy with the engine update and restores the previous policy on failure. FlClash IPC owns configuration
+changes; the public controller rejects configuration writes that would bypass this transaction.
+
 ## Lifecycle Ownership And Convergence
 
 ### Shared Flutter Layer
