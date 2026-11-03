@@ -53,12 +53,20 @@ final class OhosCoreTransport implements DesktopCoreTransport {
     if (await _resume()) {
       return;
     }
+    if (_closeOperation != null) {
+      throw StateError('HarmonyOS Core transport is closed');
+    }
     final random = Random.secure();
     _token = List.generate(
       32,
       (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
     ).join();
-    _server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    if (_closeOperation != null) {
+      await server.close();
+      throw StateError('HarmonyOS Core transport is closed');
+    }
+    _server = server;
     _server!.listen((socket) {
       if (_socket != null ||
           _closeOperation != null ||
@@ -104,7 +112,8 @@ final class OhosCoreTransport implements DesktopCoreTransport {
     if (!await file.exists()) {
       return false;
     }
-    final record = jsonDecode(await file.readAsString()) as Map;
+    final snapshot = await file.readAsString();
+    final record = jsonDecode(snapshot) as Map;
     final endpoint = record['address'];
     final token = record['token'];
     final control = record['control'];
@@ -122,13 +131,32 @@ final class OhosCoreTransport implements DesktopCoreTransport {
         p.dirname(control) != p.dirname(address)) {
       throw const FormatException('Invalid HarmonyOS backend session');
     }
+    final Socket socket;
+    try {
+      socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        uri.port,
+        timeout: const Duration(seconds: 3),
+      );
+    } on SocketException catch (error) {
+      if (!const {61, 111, 1225, 10061}.contains(error.osError?.errorCode)) {
+        rethrow;
+      }
+      await OhosDiagnostics.record('transport_resume_refused');
+      if (_closeOperation != null) {
+        throw StateError('HarmonyOS Core transport is closed');
+      }
+      if (await file.exists() && await file.readAsString() != snapshot) {
+        throw StateError('HarmonyOS backend session changed during reconnect');
+      }
+      return false;
+    }
+    if (_closeOperation != null) {
+      socket.destroy();
+      throw StateError('HarmonyOS Core transport is closed');
+    }
     address = control;
     _token = token;
-    final socket = await Socket.connect(
-      InternetAddress.loopbackIPv4,
-      uri.port,
-      timeout: const Duration(seconds: 3),
-    );
     _candidates.add(socket);
     unawaited(
       socket.done.then<void>((_) {}, onError: (Object _, StackTrace _) {}),

@@ -560,7 +560,6 @@ impl Core {
         }
         crate::ownership::schedule(&home);
         self.refresh_route(&engine, true);
-        self.events.push("loaded", Value::Null);
         Ok(())
     }
 

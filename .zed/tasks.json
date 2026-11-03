@@ -2,7 +2,7 @@
   {
     "label": "flutter run (With Env)",
     "command": "flutter",
-    "args": ["run", "--dart-define-from-file", "env.json"],
+    "args": ["run", "--dart-define-from-file", "env.json", "--no-enable-impeller"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "use_new_terminal": true,
   },
@@ -14,6 +14,7 @@
       "--dart-define-from-file",
       "env.json",
       "--dart-define=SAFE_MODE=true",
+      "--no-enable-impeller",
     ],
     "cwd": "$ZED_WORKTREE_ROOT",
     "use_new_terminal": true,

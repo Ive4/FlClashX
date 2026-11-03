@@ -6,7 +6,7 @@
     "request": "launch",
     "program": "lib/main.dart",
     "cwd": "$ZED_WORKTREE_ROOT",
-    "toolArgs": ["--dart-define-from-file", "env.json"],
+    "toolArgs": ["--dart-define-from-file", "env.json", "--no-enable-impeller"],
   },
   {
     "label": "Flutter App (Safe Mode)",
@@ -19,6 +19,7 @@
       "--dart-define-from-file",
       "env.json",
       "--dart-define=SAFE_MODE=true",
+      "--no-enable-impeller",
     ],
   },
 ]

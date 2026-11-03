@@ -95,7 +95,7 @@ Use the default Flutter SDK directly:
 
 ```bash
 flutter pub get
-flutter run
+flutter run --no-enable-impeller
 flutter test
 ```
 
@@ -110,7 +110,7 @@ installed app. Safe mode keeps all of the host changes off and never opens the C
 controller, so it does not compete with the installed app for the mixed, DNS, RESTful API and other loopback ports:
 
 ```bash
-flutter run --dart-define-from-file=env.json --dart-define=SAFE_MODE=true
+flutter run --dart-define-from-file=env.json --dart-define=SAFE_MODE=true --no-enable-impeller
 ```
 
 `.run/main_safe_mode.run.xml` is the same launch for IntelliJ, and `Flutter App (Safe Mode)` in `.zed/debug.json` (debugger) or `flutter run (Safe Mode)` in `.zed/tasks.json`

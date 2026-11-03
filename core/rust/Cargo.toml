@@ -94,6 +94,7 @@ meow-dns = { path = "vendor/meow-dns" }
 meow-config = { path = "vendor/meow-config" }
 meow-proxy = { path = "vendor/meow-proxy" }
 meow-api = { path = "vendor/meow-api" }
+meow-transport = { path = "vendor/meow-transport" }
 
 [profile.release]
 lto = "thin"

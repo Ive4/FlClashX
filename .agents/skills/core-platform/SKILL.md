@@ -1,6 +1,6 @@
 ---
 name: core-platform
-description: Use when changing FlClash Core integration, lifecycle/process ownership, Go event delivery, Android services, desktop IPC, platform managers, build hooks, system proxy, tray, VPN/TUN, or the Windows or Linux Helper.
+description: Use when changing FlClash Core integration, lifecycle/process ownership, Core event delivery, Android services, desktop IPC, platform managers, build hooks, system proxy, tray, VPN/TUN, or the Windows or Linux Helper.
 ---
 
 # Core And Platform
@@ -45,7 +45,8 @@ callbacks, application exit, and crash/disconnect recovery all reach it. Always-
 Focused tests live at the narrowest layer, and the matching commands are in `.agents/commands.md`:
 
 - Desktop lifecycle/transport/RPC: `test/core/desktop/` plus `test/core/service_test.dart`.
-- Cross-language envelopes/events: `test/core/protocol_contract_test.dart` and `CGO_ENABLED=0 go test .`.
+- Cross-language envelopes/events: `test/core/protocol_contract_test.dart` and, from `core/rust`,
+  `cargo test --locked --all-targets -- --test-threads=1`. The retained Go Core is an inactive contract reference.
 - Provider/exit convergence: `test/providers/action_test.dart` and `test/providers/system_action_test.dart`.
 - Android Kotlin: compile each touched Gradle module with JDK 17.
 - Helper: `cargo fmt --check` and `cargo test`; the `windows-service` feature only builds on Windows.
@@ -61,5 +62,5 @@ on Linux, and Windows Service Control Manager behavior need their real platform 
   owns.
 - The Helper owns executable integrity: Core SHA256 validation and the protocol stay identical across Flutter build
   modes, so a debug build is not exempt.
-- `plugins/setup/` is a build harness, not a Dart API plugin, and its hooks can trigger Go or Rust compilation
-  indirectly through Flutter platform builds; a missing toolchain fails `flutter test`, not only `flutter build`.
+- `plugins/setup/` is a build harness, not a Dart API plugin. Its hooks compile the Rust Core/Helper and the separate
+  Go desktop background host; a missing toolchain fails `flutter test`, not only `flutter build`.

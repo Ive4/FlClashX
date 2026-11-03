@@ -9,6 +9,7 @@ pub mod engine;
 pub mod events;
 pub mod extras;
 pub mod ipc;
+mod legacy_defaults;
 pub mod links;
 pub mod mobile;
 pub mod mobile_tun;

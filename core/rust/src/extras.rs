@@ -179,6 +179,7 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
             || key.starts_with("x-")
             || key.ends_with("-anchor")
             || inert(value)
+            || crate::legacy_defaults::accepts(document, key, value)
         {
             continue;
         }
@@ -239,7 +240,10 @@ pub fn validate(document: &Value) -> protocol::Result<()> {
         crate::tun_routes::validate(document)?;
         let schema = serde_json::to_value(raw::RawTun::default()).map_err(anyhow::Error::from)?;
         for (key, value) in tun {
-            if schema.get(key).is_none() && !inert(value) {
+            if schema.get(key).is_none()
+                && !inert(value)
+                && !crate::legacy_defaults::accepts(document, &format!("tun.{key}"), value)
+            {
                 unsupported_options.record(&format!("tun.{key}"), value);
             }
             if [

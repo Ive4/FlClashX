@@ -24,6 +24,19 @@ void main() {
     socket.add(payload);
   }
 
+  Future<File> writeStaleSession(Directory directory) async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final port = server.port;
+    await server.close();
+    return File(p.join(directory.path, '.ohos-core-host.json')).writeAsString(
+      jsonEncode({
+        'address': '127.0.0.1:$port',
+        'token': 'a' * 64,
+        'control': p.join(directory.path, 'old.control'),
+      }),
+    );
+  }
+
   setUp(() {
     stops = 0;
     OhosCoreTransport.resumeState = null;
@@ -95,6 +108,130 @@ void main() {
       await resumed.close();
     },
   );
+
+  test('refused lightweight endpoint starts a fresh owned session', () async {
+    final directory = await Directory.systemTemp.createTemp('ohos_stale_');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = await writeStaleSession(directory);
+    final snapshot = await file.readAsString();
+    final control = p.join(directory.path, 'new.control');
+    transport = OhosCoreTransport(control);
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'diagnostic') return null;
+      calls.add(call);
+      if (call.method == 'startCore') {
+        final request =
+            jsonDecode((call.arguments as Map)['request'] as String) as Map;
+        final endpoint = jsonDecode(request['endpoint'] as String) as Map;
+        expect(request['control'], control);
+        expect(endpoint['control'], control);
+        expect(endpoint['token'], isNot('a' * 64));
+        final port = int.parse((endpoint['address'] as String).split(':').last);
+        final core = await Socket.connect(InternetAddress.loopbackIPv4, port);
+        sockets.add(core);
+        send(core, utf8.encode(endpoint['token'] as String));
+      }
+      return true;
+    });
+    await transport.open();
+    await transport.waitUntilConnected(const Duration(seconds: 2));
+    expect(transport.address, control);
+    expect(OhosCoreTransport.resumeState, isNull);
+    expect(calls.map((call) => call.method), ['startCore']);
+    expect(await file.readAsString(), snapshot);
+    await transport.close();
+    expect((calls.last.arguments as Map)['control'], control);
+  });
+
+  test('a successor session prevents stale endpoint replacement', () async {
+    final directory = await Directory.systemTemp.createTemp('ohos_successor_');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = await writeStaleSession(directory);
+    final successor = jsonDecode(await file.readAsString()) as Map;
+    successor['token'] = 'b' * 64;
+    successor['control'] = p.join(directory.path, 'successor.control');
+    final snapshot = jsonEncode(successor);
+    final control = p.join(directory.path, 'new.control');
+    transport = OhosCoreTransport(control);
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'diagnostic') {
+        if ((call.arguments as Map)['event'] == 'transport_resume_refused') {
+          await file.writeAsString(snapshot);
+        }
+        return null;
+      }
+      calls.add(call);
+      return true;
+    });
+    await expectLater(transport.open(), throwsStateError);
+    expect(calls, isEmpty);
+    expect(transport.address, control);
+    expect(await file.readAsString(), snapshot);
+    await transport.close();
+    expect((calls.single.arguments as Map)['control'], control);
+  });
+
+  test('close during refused resume cannot start a replacement', () async {
+    final directory = await Directory.systemTemp.createTemp('ohos_closed_');
+    addTearDown(() => directory.delete(recursive: true));
+    await writeStaleSession(directory);
+    transport = OhosCoreTransport(p.join(directory.path, 'new.control'));
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'diagnostic') {
+        if ((call.arguments as Map)['event'] == 'transport_resume_refused') {
+          await transport.close();
+        }
+        return null;
+      }
+      calls.add(call);
+      return true;
+    });
+    await expectLater(transport.open(), throwsStateError);
+    expect(calls.map((call) => call.method), ['stopCore']);
+    expect(transport.state, DesktopTransportState.closed);
+  });
+
+  test('close during open prevents the native launch', () async {
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method != 'diagnostic') calls.add(call);
+      return true;
+    });
+    final opening = transport.open();
+    final closed = transport.close();
+    await expectLater(opening, throwsStateError);
+    await closed;
+    expect(calls.map((call) => call.method), ['stopCore']);
+    expect(transport.state, DesktopTransportState.closed);
+  });
+
+  test('unresponsive lightweight owner does not launch another Core', () async {
+    final directory = await Directory.systemTemp.createTemp('ohos_busy_');
+    addTearDown(() => directory.delete(recursive: true));
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(server.close);
+    server.listen(sockets.add);
+    final file = File(p.join(directory.path, '.ohos-core-host.json'));
+    final snapshot = jsonEncode({
+      'address': '127.0.0.1:${server.port}',
+      'token': 'a' * 64,
+      'control': p.join(directory.path, 'old.control'),
+    });
+    await file.writeAsString(snapshot);
+    transport = OhosCoreTransport(p.join(directory.path, 'new.control'));
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method != 'diagnostic') calls.add(call);
+      return true;
+    });
+    await expectLater(transport.open(), throwsA(isA<TimeoutException>()));
+    expect(calls, isEmpty);
+    expect(await file.readAsString(), snapshot);
+    expect(OhosCoreTransport.resumeState, isNull);
+  });
 
   test('unauthenticated clients cannot take the Core connection', () async {
     messenger.setMockMethodCallHandler(channel, (call) async {

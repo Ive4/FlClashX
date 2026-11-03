@@ -10,6 +10,9 @@ of supplied keepalive idle/interval/disable values through the AnyTLS connection
 HTTP/3 through the selected upstream proxy, then falls back to the original verified TLS DoH transport on failure.
 An attempt is bounded to 1.2 seconds and failing endpoints back off for 30 seconds. UDP sockets retain platform
 protection and outbound binding; the saved DNS preference is preserved.
+`vendor/meow-transport` preserves Mihomo's REALITY client authentication version 1.8.2. Servers can enforce client
+version bounds; the upstream 1.8.1 payload failed against a deployed server that accepted the otherwise identical
+1.8.2 request. Certificate HMAC and TLS Finished verification remain enforced.
 The upstream notice is bundled at `assets/data/meow-rs-license.txt` and registered in Flutter's license registry.
 The old Go Core remains an inactive protocol reference. `services/desktop` remains the separate background owner.
 
@@ -67,6 +70,12 @@ not remove failed nodes or acknowledge an unsupported operation as successful. I
 protocols, custom aliases that meow-rs renames to built-in nodes, nondefault unsupported socket settings, legacy
 GEOIP `.dat`, NTP time changes and unsupported advanced DNS/TUN options fail explicitly. Unquoted numeric REALITY
 short IDs must be quoted to preserve their literal text. The saved source profile is retained on rejection.
+
+Serialized legacy defaults remain loadable without deleting their saved values: an unrestricted IPv4/IPv6 LAN
+allow-list, settings for a disabled controller/TUIC server, empty TLS/Android blocks, Darwin-only packet hints on
+other platforms, and the single-processor packet-pump default. ETag and QUIC-Go hints are accepted only when no
+corresponding HTTP-provider or QUIC operation is active. Enabling those unsupported operations, restrictive LAN
+filters or nondefault processor counts still fails explicitly. `tests/legacy_defaults.rs` covers both paths.
 
 Mobile VPN stack selections use the meow-rs lwIP implementation. They do not select the old Go gvisor/system/mips
 implementations. Supported default setting substitutions are logged by the wrapper.

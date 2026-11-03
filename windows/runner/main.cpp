@@ -46,11 +46,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
-  const bool use_impeller =
-      std::find(command_line_arguments.begin(), command_line_arguments.end(),
-                "--no-enable-impeller") == command_line_arguments.end();
-  project.set_impeller_switch(use_impeller ? flutter::ImpellerSwitch::Enabled
-                                         : flutter::ImpellerSwitch::Disabled);
+  project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 

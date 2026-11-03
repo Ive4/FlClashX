@@ -131,6 +131,8 @@ expect_under 'vendored meow-proxy comments are skipped' \
   "$repo/core/rust/vendor/meow-proxy/src/lib.rs" "$(dense 20 4)"
 expect_under 'vendored meow-api comments are skipped' \
   "$repo/core/rust/vendor/meow-api/src/lib.rs" "$(dense 20 4)"
+expect_under 'vendored meow-transport comments are skipped' \
+  "$repo/core/rust/vendor/meow-transport/src/lib.rs" "$(dense 20 4)"
 expect_over 'first-party Rust Core comments are checked' \
   "$repo/core/rust/src/lib.rs" "$(dense 8 24)"
 expect_under 'a markdown file is skipped' "$repo/notes.md" "$(dense 20 4)"

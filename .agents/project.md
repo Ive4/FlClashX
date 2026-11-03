@@ -10,8 +10,8 @@ FlClash is a multi-platform proxy client built with Flutter and a Rust meow-rs 0
   of truth for release builds; `.fvmrc` and local SDKs may sit on another 3.47
   patch. The editor in `plugins/code_forge` came from `code_forge` 10.14.0, which
   needs Dart 3.13.2, so the CI pin cannot go below Flutter 3.47.2.
-- Before moving the pin, walk `flutter-upgrade.md`: it lists the workarounds tied to
-  the current SDK, such as Impeller disabled on the Intel macOS release build.
+- Before moving the pin, walk `flutter-upgrade.md`: it records the global Skia policy and workarounds tied to
+  the current SDK.
 - The Dart SDK lower bound in `pubspec.yaml` sets the package language
   version. `flutter analyze` excludes `lib/**/generated/**`, so a raise is
   proven by `flutter test`, which parses the generated code, not by analyze.

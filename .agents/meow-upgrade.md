@@ -10,12 +10,26 @@ the same upgrade change.
 - Recorded: 2026-11-02. No later upstream release has been evaluated by this ledger.
 - Exact versions, active local overrides and resolved checksums live in
   [Cargo.toml](../core/rust/Cargo.toml) and [Cargo.lock](../core/rust/Cargo.lock).
-- Seven vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
+- Eight vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
   and its bootstrap hooks passed final merged host verification. Device acceptance remains separate.
-- Final merged host verification: 93 tests across 16 test binaries, zero failed/ignored, with serial independent
-  fixtures. The route recording-backend harness previously passed eight cases. The last installed HarmonyOS package
-  exposed `dns.direct-nameserver`; rebuilding and phone validation of the completed fix are pending. End-to-end phone
-  traffic has not passed. Compilation and portable tests do not close the device validation requirement.
+- Earlier merged host verification: 94 tests across 16 test binaries, zero failed/ignored, with serial independent
+  fixtures. The route recording-backend harness previously passed eight cases. The final packaged Windows Core also
+  passed actual authenticated HTTP forwarding, independent direct DNS and the provider-event contract.
+- Device packages exposed `dns.direct-nameserver`, stale lightweight-session recovery and a spurious null `loaded`
+  event. Their fixes are included in the final signed HarmonyOS package and upgrade-installed with data preserved.
+  The preceding package initialized Core and carried bidirectional native TUN packets; final-package launch was
+  blocked by the phone lock screen. Original-profile and fresh browser traffic acceptance remain open. Compilation,
+  portable tests and packet counters do not close those device requirements.
+- The later Windows user-configuration replay exposed nine serialized-default rejections and REALITY version
+  interoperability. Their regressions pass in 97 tests across 18 root test binaries and 23 transport REALITY tests.
+  The rebuilt Windows Release Core passes 17 real-profile checks: original-document roundtrip, verified HTTPS through
+  the configured node and DIRECT, original rules, HTTP/SOCKS TCP, real proxied UDP DNS, DNS fake-IP/AAAA, process rules,
+  reload rollback, concurrency, listener restart and reporting. The Core hash matches its staged executable,
+  manifest and Helper's embedded hash. The coupled Flutter suite passes 484 tests and setup hooks pass 49 tests.
+  Source configuration, system proxy/routes and the user's running old Core/backend remain unchanged. Actual Windows
+  TUN activation and privileged Helper upgrade remain unverified while that old instance is running; the isolated
+  profile uses loopback listeners, disables TUN and binds outbound traffic to the physical interface. Earlier
+  Windows/HarmonyOS artifacts predate these fixes. Global Flutter analysis retains 28 existing findings.
 
 These are compatibility requirements of the FlClash integration. Some require upstream lifecycle or resolver hooks;
 FlClash-specific IPC, platform ownership and configuration transactions remain integration responsibilities.
@@ -87,7 +101,7 @@ mandatory DNS host route, before applying the profile.
 
 ### V5: Preferred HTTP/3 DoH With Verified TLS Fallback
 
-Status: host verified in the final 93-test merge, including DIRECT/bootstrap, protocol-fidelity and preference-only
+Status: host verified in the final 94-test merge, including DIRECT/bootstrap, protocol-fidelity and preference-only
 hot reload. Phone acceptance is pending.
 
 `dns.prefer-h3` now drives a real bounded HTTP/3 attempt. A scoped `meow-dns` hook retains the selected proxy,
@@ -109,7 +123,7 @@ Rejected configuration restores the previous preference without clearing a succe
 
 ### V6: Direct Resolver Configuration And DIRECT Dial Semantics
 
-Status: host verified in the final 93-test merge, including actual H3/DIRECT/bootstrap exchanges, protocol fidelity
+Status: host verified in the final 94-test merge, including actual H3/DIRECT/bootstrap exchanges, protocol fidelity
 and rollback. Phone acceptance is pending.
 
 The previously installed phone package rejects `dns.direct-nameserver`; its resolver addresses are intentionally
@@ -147,7 +161,7 @@ resolver that participates in configuration commit and rollback.
 
 ### V7: Direct Resolver References Follow The Current Proxy Generation
 
-Status: host verified in the final 93-test merge; phone acceptance is pending.
+Status: host verified in the final 94-test merge; phone acceptance is pending.
 
 The `meow-api` runtime-reference scan must include direct-resolver lists. Reloading proxy objects while retaining
 the same direct resolver URL must rebind to the new generation rather than retain obsolete objects.
@@ -159,11 +173,50 @@ the same direct resolver URL must rebind to the new generation rather than retai
 - Upstream replacement condition: all resolver reference lists must track the current generation on successful
   reload and retain the old generation on rejected reload. Keep the FlClash public controller mutation guard.
 
+### V8: REALITY Client Authentication Version
+
+Status: implemented; independent ClientHello authentication-payload regression passes. A private Windows diagnostic
+against the same deployed server rejected version 1.8.1 and authenticated version 1.8.2 with no other change.
+
+The upstream transport hardcodes 1.8.1 and incorrectly states that servers do not validate client versions. The local
+transport advertises 1.8.2, matching Mihomo. Server minimum/maximum client-version checks occur before accepting the
+REALITY session. Keep the existing key, short ID, timestamp, certificate HMAC and TLS Finished checks.
+
+- Patch: [meow-transport/FLCLASH-PATCHES.md](../core/rust/vendor/meow-transport/FLCLASH-PATCHES.md).
+- Regression: [reality_contract.rs](../core/rust/tests/reality_contract.rs) captures a real transport ClientHello and
+  independently derives/decrypts its authentication payload with BoringSSL and AES-GCM. The original dependency
+  failed the explicit `[1, 8, 2, 0]` assertion. The vendored payload-decryption test checks the same wire contract.
+- Upstream replacement condition: a candidate must retain deployed-server compatibility and authenticated failure
+  behavior. Re-run the actual configured REALITY node and HTTP/SOCKS traffic; a locally consistent mock alone can
+  miss a server's version policy. Do not weaken certificate authentication to accept a fallback website certificate.
+
 ## Integration Regressions To Retain
+
+- A configuration exported by Mihomo can contain nonempty defaults for disabled or platform-specific facilities.
+  Preserve the raw document and accept only inactive/equivalent cases in
+  [legacy_defaults.rs](../core/rust/src/legacy_defaults.rs): unrestricted LAN ranges; disabled controller CORS/TUIC;
+  empty TLS/Android blocks; inactive ETag/QUIC-Go settings; Darwin syscall hints off Darwin; and one packet processor.
+  [tests/legacy_defaults.rs](../core/rust/tests/legacy_defaults.rs) checks preservation and rejects active/different
+  configurations. HTTP-provider ETag behavior, active CORS, QUIC experiments and custom processor counts must not
+  become silently accepted when carrying or replacing these rules. Retain complete user-profile roundtrip testing.
 
 - HarmonyOS can attach TUN before profile setup. Its bootstrap policy must reject traffic/refuse DNS, preserve the
   saved profile and reuse the same Engine/Tunnel when real setup commits. Keep
   [mobile_contract.rs](../core/rust/tests/mobile_contract.rs) coverage if upstream construction APIs change.
+- A persisted lightweight session can outlive its loopback endpoint after upgrade or process exit. The installed
+  package exposed a failure before Core/config initialization when resume returns connection refused. The transport
+  owner now permits fresh launch only for explicit refused codes (61/111/1225/10061), compares the complete session
+  snapshot, retains metadata and preserves close/successor ownership. Nine focused tests pass in
+  [transport_test.dart](../test/core/ohos/transport_test.dart), and the coupled 361-test Flutter suite passes. Phone
+  initialization passed on the upgraded phone. Profile and traffic acceptance remain separate. Live unresponsive or
+  unauthenticated endpoints must not cause a second Core to start.
+- The `loaded` event names an actual loaded provider; applying a plain configuration must not invent a provider
+  notification. The phone consumer caught an extra null event after applying the original profile. The adapter now
+  removes that spurious event while retaining the existing provider notifications. The regression
+  `loaded_events_name_real_providers_not_plain_config_application` in
+  [methods_probe.rs](../core/rust/tests/methods_probe.rs) first reproduced the fault and now passes plain update,
+  provider setup and side-load cases in the final 94-test host suite. Rebuilt phone acceptance remains pending;
+  absence of a dispatch error alone does not prove traffic.
 - FlClash owns configuration transactions and rollback. Public controller configuration writes must not bypass the
   socket, DNS or route transaction. Keep [engine_flow.rs](../core/rust/tests/engine_flow.rs) controller coverage.
 - Unsupported effectful options must remain explicit failures. A path-only aggregate diagnostic is implemented to

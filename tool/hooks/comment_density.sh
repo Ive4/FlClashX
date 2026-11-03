@@ -24,7 +24,8 @@ is_checkable() {
       */core/rust/vendor/meow-dns/* | \
       */core/rust/vendor/meow-config/* | \
       */core/rust/vendor/meow-proxy/* | \
-      */core/rust/vendor/meow-api/*) return 1 ;;
+      */core/rust/vendor/meow-api/* | \
+      */core/rust/vendor/meow-transport/*) return 1 ;;
     *.g.dart | *.freezed.dart | */frb_generated*.dart | */frb_generated.rs | */open_container.dart) return 1 ;;
   esac
   return 0

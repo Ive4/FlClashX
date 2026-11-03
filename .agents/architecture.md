@@ -734,7 +734,7 @@ over it, as iOS's does, and lets go 0.2 s after the change, as LiquidGlassKit's 
   instead adds 27 to 61 ms to the same frames. A software renderer weighs passes and texture reads unlike a
   phone's GPU, so the figures rank the captures rather than price them; no phone has measured them. A still screen
   draws no frames.
-- Rendered under `flutter test --enable-impeller` at density 3, against a capture with a sigma over three pixels, one
+- In earlier Impeller regression measurements at density 3, against a capture with a sigma over three pixels, one
   pixel blurs text under the dark dock into blocks that set 16% of its pixels apart side by side (CIEDE2000 above 2),
   and two sets 0.5% apart. Reading a coarse capture through a bicubic filter barely helps: the blocks are in the
   capture.
@@ -748,10 +748,11 @@ over it, as iOS's does, and lets go 0.2 s after the change, as LiquidGlassKit's 
 - A pane is a rounded rectangle, each corner with its own radius, unless a `clipper` gives it a path, as the start
   button's cookie does. The shader reads that path as its reach from the pane's center in 64 directions, so it must
   meet every ray from the center once.
-- Without Impeller's shader filters (Skia on the Intel macOS build, `flutter test`) a pane frosts from its capture:
+- All supported platforms now use Skia under the policy in `flutter-upgrade.md`. Without Impeller's shader filters,
+  a pane frosts from its capture:
   blur, saturation, brightness, tint, and a rim, with no refraction; the tint is not thickened there, as it is where a
-  pane has no capture, since the capture holds the blur. `flutter test --enable-impeller` runs the shader, so `toImage`
-  shows the real glass.
+  pane has no capture, since the capture holds the blur. The retained shader implementation and earlier Impeller
+  measurements describe the prior backend, not an enabled runtime path.
 - A popup grows out of its anchor on a platter (`CommonPopupRoute`). On glass the platter is a `LiquidGlassPane`
   easing from the button's `regular` glass to the thicker `menu` glass, and the menu's cards stand `bare` while it
   shows, opening and returning, so one pane bends the backdrop at a time. The platter takes the `menu` glass's frost

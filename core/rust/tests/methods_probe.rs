@@ -46,6 +46,61 @@ async fn configured(document: Value) -> Arc<Core> {
 }
 
 #[tokio::test]
+async fn loaded_events_name_real_providers_not_plain_config_application() {
+    fn loaded_events(core: &Core) -> Vec<Value> {
+        let mut names = Vec::new();
+        while let Some(batch) = core.events.batch() {
+            let batch: Value = serde_json::from_slice(&batch).unwrap();
+            names.extend(
+                batch["arguments"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|event| event["type"] == "loaded")
+                    .map(|event| event["data"].clone()),
+            );
+        }
+        names
+    }
+
+    let core = configured(json!({"dns":{"enable":false},"rules":["MATCH,DIRECT"]})).await;
+    core.events
+        .enabled
+        .store(true, std::sync::atomic::Ordering::Release);
+    let result = invoke(&core, "updateConfig", json!({"mode":"direct"})).await;
+    assert_eq!(result["result"], "", "{result}");
+    assert!(loaded_events(&core).is_empty());
+
+    let provider = home().join("loaded-events-provider.yaml");
+    std::fs::write(
+        &provider,
+        "proxies:\n - {name: first, type: socks5, server: 127.0.0.1, port: 1080}\n",
+    )
+    .unwrap();
+    let document = json!({"dns":{"enable":false},"proxy-providers":{"feed":{"type":"file","path":provider}},"proxy-groups":[{"name":"group","type":"select","use":["feed"]}],"rules":["MATCH,group"]});
+    let profile = home().join("loaded-events-profile.yaml");
+    let yaml = serde_saphyr::to_string(&document).unwrap();
+    std::fs::write(&profile, &yaml).unwrap();
+    let result = invoke(
+        &core,
+        "setupConfig",
+        json!({"base":{"path":profile,"overlay":yaml}}),
+    )
+    .await;
+    assert_eq!(result["result"], "", "{result}");
+    assert_eq!(loaded_events(&core), vec![json!("feed")]);
+    let result = invoke(
+        &core,
+        "sideLoadExternalProvider",
+        json!({"providerName":"feed","data":"proxies:\n - {name: second, type: socks5, server: 127.0.0.1, port: 1081}\n"}),
+    )
+    .await;
+    assert_eq!(result["result"], "", "{result}");
+    assert_eq!(loaded_events(&core), vec![json!("feed")]);
+    core.shutdown().await;
+}
+
+#[tokio::test]
 async fn real_http_probe_follows_redirects_caps_body_and_preserves_route_hits() {
     let socket = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = socket.local_addr().unwrap();
