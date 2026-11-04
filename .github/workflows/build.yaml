@@ -194,6 +194,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Test Windows desktop host
+        if: matrix.platform == 'windows'
+        working-directory: services/desktop
+        run: go test -count=1 ./...
+
       # Compiles the desktop runners and the native plugin code that only the
       # tagged release matrix built before; the bundle itself is discarded.
       - name: Build debug bundle
@@ -274,6 +279,14 @@ jobs:
         env:
           PACKAGE_ARCH: ${{ matrix.arch }}
         run: |
+          app=build/macos/Build/Products/Release/FlClashX.app
+          arch="$PACKAGE_ARCH"
+          if [[ "$arch" == amd64 ]]; then arch=x86_64; fi
+          for binary in FlClashX FlClashCore FlClashDesktop; do
+            file "$app/Contents/MacOS/$binary"
+            lipo -verify_arch "$arch" "$app/Contents/MacOS/$binary"
+          done
+          test "$(/usr/libexec/PlistBuddy -c 'Print :FLTEnableImpeller' "$app/Contents/Info.plist")" = false
           ls "dist/FlClashX-"*"-macos-$PACKAGE_ARCH.dmg"
           cd dist
           shasum -a 256 ./*.dmg > SHA256SUMS
