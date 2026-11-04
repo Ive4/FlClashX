@@ -66,6 +66,7 @@ void main() {
                 linker: compiler.resolve('ld.lld'),
               ),
         android: os == OS.android ? AndroidCodeConfig(targetNdkApi: 23) : null,
+        macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 12) : null,
       ).setupBuildInput(builder);
     }
     return builder.build();
@@ -127,14 +128,11 @@ void main() {
         ),
         isNull,
       );
-      expect(
-        builder
-            .requestFor(
-              buildInput(os: OS.macOS, architecture: Architecture.arm64),
-            )!
-            .target,
-        Target.macosArm64,
+      final request = builder.requestFor(
+        buildInput(os: OS.macOS, architecture: Architecture.arm64),
       );
+      expect(request!.target, Target.macosArm64);
+      expect(request.environment['MACOSX_DEPLOYMENT_TARGET'], '12.0');
     });
 
     test('leaves Android to the :core Gradle module', () {

@@ -26,7 +26,7 @@ ApplicationIdentity? applicationRuleIdentity(
       : null;
   if (rule.ruleAction == RuleAction.AND &&
       (match == null ||
-          !const ['DIRECT', 'PASS-RULE'].contains(rule.ruleTarget))) {
+          !const ['DIRECT', 'PASS', 'PASS-RULE'].contains(rule.ruleTarget))) {
     return null;
   }
   final identity = ApplicationIdentity(
@@ -67,12 +67,20 @@ Map<String, ApplicationProxyPolicy> applicationProxyPoliciesOf(
   return policies;
 }
 
+String applicationProxyRuntimeRule(Rule rule, {required bool windows}) {
+  if (rule.ruleAction == RuleAction.AND &&
+      rule.ruleTarget == 'PASS-RULE' &&
+      applicationRuleIdentity(rule, windows: windows) != null) {
+    return rule.copyWith(ruleTarget: 'PASS').rawValue;
+  }
+  return rule.rawValue;
+}
+
 String applicationProxyDefaultRule(List<Rule> rules, {required bool windows}) {
   final exceptions = applicationProxyPoliciesOf(rules, windows: windows).values
       .where((policy) => policy.mode == ApplicationProxyMode.follow)
       .map(
-        (policy) =>
-            '(NOT,(${_applicationProcessCondition(policy.identity)}))',
+        (policy) => '(NOT,(${_applicationProcessCondition(policy.identity)}))',
       );
   return exceptions.isEmpty
       ? 'IN-TYPE,TUN,DIRECT'
@@ -86,9 +94,9 @@ String _applicationProcessCondition(ApplicationIdentity identity) {
   final action = identity.action == RuleAction.PROCESS_NAME
       ? RuleAction.PROCESS_NAME_REGEX
       : RuleAction.PROCESS_PATH_REGEX;
-  final escaped = RegExp.escape(identity.content)
-      .replaceAll(r'\(', r'\x28')
-      .replaceAll(r'\)', r'\x29');
+  final escaped = RegExp.escape(
+    identity.content,
+  ).replaceAll(r'\(', r'\x28').replaceAll(r'\)', r'\x29');
   return '(${action.value},^$escaped\$)';
 }
 
@@ -130,14 +138,13 @@ class ApplicationIdentity {
       : this;
 
   bool get canRoute =>
-      (action == RuleAction.PROCESS_PATH || action == RuleAction.PROCESS_NAME) &&
+      (action == RuleAction.PROCESS_PATH ||
+          action == RuleAction.PROCESS_NAME) &&
       content.trim().isNotEmpty &&
       !_invalidProcessRuleContent.hasMatch(content);
 
   String _normalize(String value) => windows
-      ? (action == RuleAction.PROCESS_PATH
-                ? p.windows.normalize(value)
-                : value)
+      ? (action == RuleAction.PROCESS_PATH ? p.windows.normalize(value) : value)
             .toLowerCase()
       : value;
 
@@ -326,17 +333,24 @@ ApplicationProxySnapshot aggregateApplicationProxies(
       downloadSpeed = old.downloadSpeed;
     } else if (elapsed != null && elapsed > 0 && elapsed <= 10) {
       final sameConnection = old?.start == connection.start;
-      final newlyObserved = old == null &&
-          !connection.start.isBefore(previousTime!);
+      final newlyObserved =
+          old == null && !connection.start.isBefore(previousTime!);
       if (sameConnection || newlyObserved) {
-        uploadSpeed = (math.max(
-          0,
-          connection.upload - (sameConnection ? old!.upload : 0),
-        ) / elapsed).round();
-        downloadSpeed = (math.max(
-          0,
-          connection.download - (sameConnection ? old!.download : 0),
-        ) / elapsed).round();
+        uploadSpeed =
+            (math.max(
+                      0,
+                      connection.upload - (sameConnection ? old!.upload : 0),
+                    ) /
+                    elapsed)
+                .round();
+        downloadSpeed =
+            (math.max(
+                      0,
+                      connection.download -
+                          (sameConnection ? old!.download : 0),
+                    ) /
+                    elapsed)
+                .round();
       }
     }
     application.uploadSpeed += uploadSpeed;

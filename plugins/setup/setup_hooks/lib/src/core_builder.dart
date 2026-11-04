@@ -135,6 +135,9 @@ final class CoreBuilder implements Builder {
     final native = <String, String>{
       if (input.config.code.targetOS == OS.windows && compiler != null)
         'FLCLASH_MSVC_COMPILER': p.fromUri(compiler),
+      if (input.config.code.targetOS == OS.macOS)
+        'MACOSX_DEPLOYMENT_TARGET':
+            '${input.config.code.macOS.targetVersion}.0',
     };
     final values = input.userDefines['environment'];
     if (values == null) return native;

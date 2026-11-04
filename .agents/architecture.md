@@ -255,6 +255,11 @@ changes; the public controller rejects configuration writes that would bypass th
 
 ## Lifecycle Ownership And Convergence
 
+Windows TUN DNS belongs to the Core's owned virtual adapter. `meow-listener` uses IP Helper to assign its peer as DNS
+and prioritise that adapter, while physical WLAN/Ethernet DNS stays unchanged. DNS over UDP and TCP is answered inside
+TUN. The desktop background owner requests Core shutdown before termination and flushes the Windows resolver cache
+after confirmed exit; safe mode skips the host cache operation. No global DNS-reset pass belongs in Flutter or Helper.
+
 ### Shared Flutter Layer
 
 `CoreController.start()`, `restart()`, `stop()`, and `close()` are the only shared lifecycle facade. `close()` is terminal;

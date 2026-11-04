@@ -17,6 +17,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func flushDNSCache() error { return nil }
+
 func listenCore(_ string) (net.Listener, string, error) {
 	number, err := rand.Int(rand.Reader, big.NewInt(1<<62))
 	if err != nil {

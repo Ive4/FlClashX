@@ -66,8 +66,7 @@
 
 mod device;
 mod dns;
-#[cfg(target_os = "windows")]
-mod local_dns;
+mod dns_tcp;
 mod outbound_binding;
 #[cfg(target_os = "linux")]
 mod policy_route;
@@ -712,6 +711,19 @@ impl TunListener {
         }
         let route_nets = self.route_nets(policy_routed);
         let strict_routes = self.route_plan.is_some();
+        #[cfg(target_os = "windows")]
+        let (route_nets, strict_routes) = {
+            let mut nets = route_nets;
+            let mut strict = strict_routes;
+            if cfg.auto_route && cfg.dns_hijack {
+                let server = dns::GuardAddrs::new(used_addr, used_addr).dns;
+                if !nets.iter().any(|net| net.contains(&server)) {
+                    nets.push(ipnet::IpNet::new(server, 32).map_err(io::Error::other)?);
+                    strict = true;
+                }
+            }
+            (nets, strict)
+        };
 
         // RouteManager::add() calls into OS routing APIs that may block
         // (PowerShell on Windows), so it runs on a blocking thread. The
@@ -753,34 +765,15 @@ impl TunListener {
             }
         };
 
-        // Windows: bind the loopback DNS sockets *before* DnsGuard repoints
-        // the OS resolver at them. If port 53 is already taken (ICS, Docker,
-        // another resolver), this fails startup loudly instead of silently
-        // leaving the whole machine with DNS aimed at a dead address.
-        #[cfg(target_os = "windows")]
-        let local_dns_sockets = if cfg.dns_hijack
-            && cfg.auto_route
-            && self.tunnel.resolver().fake_ip_v4_gateway().is_some()
-        {
-            Some(local_dns::bind().await.map_err(|e| {
-                io::Error::other(format!("loopback DNS server startup failed: {e}"))
-            })?)
-        } else {
-            None
-        };
-
-        // When dns-hijack is on and we're in fake-IP mode, point the OS
-        // resolver at the loopback DNS server.  The backup + set calls into
-        // PowerShell (Get-DnsClientServerAddress / Set-DnsClientServerAddress)
-        // which can take tens of seconds on Windows, so run them on a
-        // blocking thread. The outer TUN_STARTUP_TIMEOUT guards the overall
-        // startup.
         let _dns_guard = if cfg.dns_hijack && cfg.auto_route {
             let t_dns = Instant::now();
-            let guard = match fake_ip_gateway {
-                Some(gateway) => {
-                    let addrs = dns::GuardAddrs::new(gateway, used_addr);
-                    let g = tokio::task::spawn_blocking(move || dns::DnsGuard::setup(addrs))
+            #[cfg(target_os = "windows")]
+            let addrs = Some(dns::GuardAddrs::new(used_addr, used_addr));
+            #[cfg(not(target_os = "windows"))]
+            let addrs = fake_ip_gateway.map(|gateway| dns::GuardAddrs::new(gateway, used_addr));
+            let guard = match addrs {
+                Some(addrs) => {
+                    let g = tokio::task::spawn_blocking(move || dns::DnsGuard::setup(addrs, if_index))
                         .await
                         .map_err(|join_err| {
                             Box::new(io::Error::other(format!(
@@ -789,6 +782,10 @@ impl TunListener {
                         })?;
                     let dns_ms = t_dns.elapsed().as_secs_f64() * 1000.0;
                     let dns_active = g.is_some();
+                    #[cfg(target_os = "windows")]
+                    if !dns_active {
+                        return Err(Box::new(io::Error::other("TUN adapter DNS setup failed")));
+                    }
                     info!("dns-guard setup took {dns_ms:.0}ms (active: {dns_active})");
                     g
                 }
@@ -853,17 +850,6 @@ impl TunListener {
 
         let mut tasks = TaskGroup::new();
 
-        // Windows: start the local DNS server on the sockets bound earlier
-        // (before DnsGuard repointed system DNS at 127.0.0.1 / ::1). The
-        // server answers queries using the same DnsServer::handle_query
-        // pipeline as the TUN dns-hijack path, returning fake IPs.
-        #[cfg(target_os = "windows")]
-        if let Some(sockets) = local_dns_sockets {
-            let resolver = self.tunnel.resolver_slot();
-            tasks.spawn(async move {
-                local_dns::run(sockets, resolver).await;
-            });
-        }
 
         // Nothing past here fails: the listener is up, and its binding is
         // the running one.
@@ -924,11 +910,24 @@ impl TunListener {
             None
         };
         let warned_saturated = Arc::new(AtomicBool::new(false));
+        let dns_tcp_limit = Arc::new(Semaphore::new(64));
 
         let result = loop {
             tokio::select! {
                 accepted = tcp_listener.next() => match accepted {
                     Some((stream, src, dst)) => {
+                        if cfg.dns_hijack && dst.port() == 53 {
+                            if let Ok(permit) = Arc::clone(&dns_tcp_limit).try_acquire_owned() {
+                                let resolver = self.tunnel.resolver_slot();
+                                tasks.spawn(async move {
+                                    let _permit = permit;
+                                    if let Err(error) = dns_tcp::serve(stream, resolver).await {
+                                        debug!("TUN TCP DNS failed: {error}");
+                                    }
+                                });
+                            }
+                            continue;
+                        }
                         // Same loop guard as the UDP path: a dial to the
                         // TUN's own subnet routes back into the device.
                         if udp::is_looping_dst(dst.ip(), tun_net) {

@@ -327,6 +327,8 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
       };
     }
   }
+  String runtimeRule(Rule rule) =>
+      applicationProxyRuntimeRule(rule, windows: Platform.isWindows);
   List<String> rules = [];
   if (data.rules.isEmpty) {
     if (rawConfig['rules'] != null) {
@@ -352,27 +354,27 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
           final parsed = addedRules[i];
           if (parsed.ruleTarget?.toUpperCase() == 'MATCH') {
             finalAddedRules.add(
-              parsed.copyWith(ruleTarget: replacementTarget).rawValue,
+              runtimeRule(parsed.copyWith(ruleTarget: replacementTarget)),
             );
           } else {
-            finalAddedRules.add(addedRules[i].rawValue);
+            finalAddedRules.add(runtimeRule(addedRules[i]));
           }
         }
       } else {
-        finalAddedRules = addedRules.map((e) => e.rawValue).toList();
+        finalAddedRules = addedRules.map(runtimeRule).toList();
       }
       rules = [...finalAddedRules, ...rules];
     }
   } else {
-    rules = data.rules.map((item) => item.rawValue).toList();
+    rules = data.rules.map(runtimeRule).toList();
   }
   if (data.applicationProxyMode == ApplicationProxyMode.httpSocks) {
     rules.insert(
       0,
-      applicationProxyDefaultRule(
-        [...data.rules, ...data.addedRules],
-        windows: Platform.isWindows,
-      ),
+      applicationProxyDefaultRule([
+        ...data.rules,
+        ...data.addedRules,
+      ], windows: Platform.isWindows),
     );
   }
   if (data.proxyGroups.isNotEmpty) {

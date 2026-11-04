@@ -38,6 +38,10 @@ func (h *host) handleTrayResponse(frame []byte) bool {
 }
 
 func (h *host) trayInvoke(method string, arguments any) (json.RawMessage, error) {
+	return h.coreInvoke(method, arguments, 5*time.Second)
+}
+
+func (h *host) coreInvoke(method string, arguments any, timeout time.Duration) (json.RawMessage, error) {
 	id := "tray-" + randomID()
 	pending := make(chan trayResponse, 1)
 	h.pendingMu.Lock()
@@ -71,7 +75,7 @@ func (h *host) trayInvoke(method string, arguments any) (json.RawMessage, error)
 			return nil, errors.New("unexpected spilled tray response")
 		}
 		return response.Result, nil
-	case <-time.After(5 * time.Second):
+	case <-time.After(timeout):
 		return nil, errors.New("tray request timed out")
 	}
 }

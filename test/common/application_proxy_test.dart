@@ -39,6 +39,34 @@ ApplicationProxySnapshot _snapshot(
 ));
 
 void main() {
+  test('only app follow markers become top-level PASS rules for the core', () {
+    final marker = Rule.parse(
+      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE',
+    );
+    expect(
+      applicationProxyRuntimeRule(marker, windows: true),
+      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS',
+    );
+    expect(marker.ruleTarget, 'PASS-RULE');
+    final exported = Rule.parse(
+      applicationProxyRuntimeRule(marker, windows: true),
+    );
+    final policy = applicationProxyPoliciesOf([
+      exported,
+    ], windows: true).values.single;
+    expect(policy.mode, ApplicationProxyMode.follow);
+    expect(policy.target, isNull);
+    for (final rule in [
+      Rule.parse(
+        'AND,((PROCESS-NAME,browser.exe),(DOMAIN,manual.test)),PASS-RULE',
+      ),
+      marker.copyWith(src: true),
+      marker.copyWith(ruleTarget: 'DIRECT'),
+    ]) {
+      expect(applicationProxyRuntimeRule(rule, windows: true), rule.rawValue);
+    }
+  });
+
   test(
     'HTTP and SOCKS mode survives rule export without a forced proxy policy',
     () {
@@ -101,12 +129,17 @@ void main() {
     },
   );
 
-  test('default mode safely exempts process names containing logic delimiters', () {
-    expect(applicationProxyDefaultRule([
-      Rule.parse('PROCESS-NAME,odd(app.exe,Proxy'),
-    ], windows: true),
-      r'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME-REGEX,^odd\x28app\.exe$)))),DIRECT');
-  });
+  test(
+    'default mode safely exempts process names containing logic delimiters',
+    () {
+      expect(
+        applicationProxyDefaultRule([
+          Rule.parse('PROCESS-NAME,odd(app.exe,Proxy'),
+        ], windows: true),
+        r'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME-REGEX,^odd\x28app\.exe$)))),DIRECT',
+      );
+    },
+  );
 
   test('unrelated logical and source rules are not editable app modes', () {
     for (final rule in [
@@ -207,25 +240,30 @@ void main() {
     },
   );
 
-  test('configured apps stay visible while idle and source rules are excluded', () {
-    final snapshot = _snapshot([], rules: [
-      const Rule(
-        ruleAction: RuleAction.PROCESS_PATH,
-        content: '/apps/browser',
-        ruleTarget: 'DIRECT',
-      ),
-      const Rule(
-        ruleAction: RuleAction.PROCESS_NAME,
-        content: 'ignored',
-        ruleTarget: 'DIRECT',
-        src: true,
-      ),
-      const Rule(
-        ruleAction: RuleAction.DOMAIN,
-        content: 'example.test',
-        ruleTarget: 'Proxy',
-      ),
-    ]);
+  test(
+    'configured apps stay visible while idle and source rules are excluded',
+    () {
+      final snapshot = _snapshot(
+        [],
+        rules: [
+          const Rule(
+            ruleAction: RuleAction.PROCESS_PATH,
+            content: '/apps/browser',
+            ruleTarget: 'DIRECT',
+          ),
+          const Rule(
+            ruleAction: RuleAction.PROCESS_NAME,
+            content: 'ignored',
+            ruleTarget: 'DIRECT',
+            src: true,
+          ),
+          const Rule(
+            ruleAction: RuleAction.DOMAIN,
+            content: 'example.test',
+            ruleTarget: 'Proxy',
+          ),
+        ],
+      );
 
       final row = snapshot.applications.single;
       expect(row.identity!.content, 'browser');
@@ -251,7 +289,9 @@ void main() {
       [byName, byPath],
       [byPath, byName],
     ]) {
-      final row = _snapshot([connection], rules: rules).applications.singleWhere((row) => row.connections > 0);
+      final row = _snapshot([
+        connection,
+      ], rules: rules).applications.singleWhere((row) => row.connections > 0);
       expect(row.target, rules.first.ruleTarget);
       expect(row.identity!.action, RuleAction.PROCESS_NAME);
       expect(row.policyIdentity!.action, rules.first.ruleAction);
@@ -340,39 +380,46 @@ void main() {
     },
   );
 
-  test('merged installs show the first matching policy regardless of connection order', () {
-    final rules = [
-      Rule.parse('PROCESS-PATH,/offline/browser,REJECT'),
-      Rule.parse('PROCESS-PATH,/v1/browser,DIRECT'),
-      Rule.parse('PROCESS-PATH,/v2/browser,Proxy'),
-    ];
-    final connections = [
-      _connection('1', path: '/v1/browser'),
-      _connection('2', path: '/v2/browser'),
-      _connection('3', path: '/v3/browser'),
-    ];
-    expect(_snapshot([], rules: rules).applications.single.target, 'REJECT');
-    for (final ordered in [connections, connections.reversed.toList()]) {
-      final row = _snapshot(ordered, rules: rules).applications.single;
-      expect(row.connections, 3);
-      expect(row.target, 'DIRECT');
-      expect(row.policyIdentity!.content, '/v1/browser');
-    }
-  });
+  test(
+    'merged installs show the first matching policy regardless of connection order',
+    () {
+      final rules = [
+        Rule.parse('PROCESS-PATH,/offline/browser,REJECT'),
+        Rule.parse('PROCESS-PATH,/v1/browser,DIRECT'),
+        Rule.parse('PROCESS-PATH,/v2/browser,Proxy'),
+      ];
+      final connections = [
+        _connection('1', path: '/v1/browser'),
+        _connection('2', path: '/v2/browser'),
+        _connection('3', path: '/v3/browser'),
+      ];
+      expect(_snapshot([], rules: rules).applications.single.target, 'REJECT');
+      for (final ordered in [connections, connections.reversed.toList()]) {
+        final row = _snapshot(ordered, rules: rules).applications.single;
+        expect(row.connections, 3);
+        expect(row.target, 'DIRECT');
+        expect(row.policyIdentity!.content, '/v1/browser');
+      }
+    },
+  );
 
   test('speeds use counter deltas and the elapsed sample time', () {
     final first = _snapshot([_connection('1', upload: 100, download: 200)]);
     expect(first.applications.single.downloadSpeed, 0);
-    final next = _snapshot([
-      _connection('1', upload: 400, download: 800),
-      _connection(
-        '2',
-        upload: 40,
-        download: 80,
-        start: _time.add(const Duration(seconds: 1)),
-      ),
-      _connection('3', upload: 10000, download: 20000),
-    ], at: _time.add(const Duration(seconds: 2)), previous: first);
+    final next = _snapshot(
+      [
+        _connection('1', upload: 400, download: 800),
+        _connection(
+          '2',
+          upload: 40,
+          download: 80,
+          start: _time.add(const Duration(seconds: 1)),
+        ),
+        _connection('3', upload: 10000, download: 20000),
+      ],
+      at: _time.add(const Duration(seconds: 2)),
+      previous: first,
+    );
 
     final row = next.applications.single;
     expect(row.uploadSpeed, 170);
@@ -429,9 +476,6 @@ void main() {
       previous: first,
     );
     expect(reused.applications.single.downloadSpeed, 0);
-    expect(
-      _snapshot([], at: _time, previous: first).samples,
-      isEmpty,
-    );
+    expect(_snapshot([], at: _time, previous: first).samples, isEmpty);
   });
 }

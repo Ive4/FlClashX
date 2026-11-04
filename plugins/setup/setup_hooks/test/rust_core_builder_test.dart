@@ -13,6 +13,7 @@ void main() {
   late File source;
   late Map<String, String> environment;
   late List<List<String>> invocations;
+  late List<Map<String, String>> compileEnvironments;
   var failCompile = false;
 
   setUp(() {
@@ -28,6 +29,7 @@ void main() {
     ).writeAsStringSync('version = 4\n');
     environment = {'LIBCLANG_PATH': '/clang-a'};
     invocations = [];
+    compileEnvironments = [];
     failCompile = false;
   });
 
@@ -40,11 +42,17 @@ void main() {
     notice: BuildNotice(),
     environment: environment,
     command: (executable, arguments, {workingDirectory, environment}) =>
-        ProcessResult(0, 0, '$executable 1.99.1', ''),
+        ProcessResult(
+          0,
+          0,
+          executable == 'xcrun' ? '/Xcode/MacOSX.sdk' : '$executable 1.99.1',
+          '',
+        ),
     compile: (executable, arguments, {workingDirectory, environment}) async {
       expect(executable, 'cargo');
       expect(workingDirectory, p.join(root.path, 'core', 'rust'));
       invocations.add(arguments);
+      compileEnvironments.add({...?environment});
       if (failCompile) throw BuildException('native compile failed');
       final target = arguments[arguments.indexOf('--target') + 1];
       final targetDir = arguments[arguments.indexOf('--target-dir') + 1];
@@ -103,6 +111,20 @@ void main() {
       );
       expect((await builder().build(Target.windowsAmd64)).rebuilt, isTrue);
       expect(invocations, hasLength(5));
+    },
+  );
+
+  test(
+    'macOS resolves its SDK and fingerprints explicit SDK overrides',
+    () async {
+      environment['MACOSX_DEPLOYMENT_TARGET'] = '12.0';
+      await builder().build(Target.macosArm64);
+      expect(compileEnvironments.last['SDKROOT'], '/Xcode/MacOSX.sdk');
+      expect(compileEnvironments.last['MACOSX_DEPLOYMENT_TARGET'], '12.0');
+      expect((await builder().build(Target.macosArm64)).rebuilt, isFalse);
+      environment['SDKROOT'] = '/another/MacOSX.sdk';
+      expect((await builder().build(Target.macosArm64)).rebuilt, isTrue);
+      expect(compileEnvironments.last['SDKROOT'], '/another/MacOSX.sdk');
     },
   );
 

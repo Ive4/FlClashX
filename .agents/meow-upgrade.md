@@ -10,7 +10,7 @@ the same upgrade change.
 - Recorded: 2026-11-02. No later upstream release has been evaluated by this ledger.
 - Exact versions, active local overrides and resolved checksums live in
   [Cargo.toml](../core/rust/Cargo.toml) and [Cargo.lock](../core/rust/Cargo.lock).
-- Eight vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
+- Nine vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
   and its bootstrap hooks passed final merged host verification. Device acceptance remains separate.
 - Earlier merged host verification: 94 tests across 16 test binaries, zero failed/ignored, with serial independent
   fixtures. The route recording-backend harness previously passed eight cases. The final packaged Windows Core also
@@ -190,7 +190,45 @@ REALITY session. Keep the existing key, short ID, timestamp, certificate HMAC an
   behavior. Re-run the actual configured REALITY node and HTTP/SOCKS traffic; a locally consistent mock alone can
   miss a server's version policy. Do not weaken certificate authentication to accept a fallback website certificate.
 
+### V9: TUN Inbound Rules For Application Proxy Modes
+
+Status: implemented; recorded 2026-11-03 after reproducing Windows application-rule apply failure.
+
+FlClash's per-application HTTP/SOCKS mode, default TUN bypass and follow-rule exceptions generate `IN-TYPE,TUN`,
+including nested AND/NOT conditions. Saved follow markers use PASS-RULE targets. Upstream 0.28.0 rejects TUN as an
+unknown inbound type despite desktop and mobile TUN already producing `ConnType::Tun`. Strict config reload therefore
+rejects the rule.
+
+- Patch: [meow-rules/FLCLASH-PATCHES.md](../core/rust/vendor/meow-rules/FLCLASH-PATCHES.md).
+- Regression: [application_proxy_rules.rs](../core/rust/tests/application_proxy_rules.rs) fails against the original
+  parser. It checks exact inbound classification, application defaults/exceptions, compiled route decisions, saved
+  document preservation and rejected-reload rollback. HTTP/SOCKS and internal Tunnel must not match TUN rules.
+- Application follow markers remain `PASS-RULE` in saved rules, but profile generation emits `PASS` for this exact
+  marker. Top-level `PASS-RULE` is not a continuation target in either backend; its skip behavior belongs to sub-rule
+  blocks. Preserve this adaptation in [application_proxy.dart](../lib/common/application_proxy.dart) and its
+  `task_test.dart`/`application_proxy_test.dart` regressions independently of the upstream TUN parser patch.
+- Upstream replacement condition: a candidate must accept TUN in standalone and nested rules and match only actual
+  TUN metadata. Repeat application mode changes against the real Windows profile, HTTP/SOCKS forwarding and available
+  device TUN traffic before dropping the override. Do not remove the condition or rewrite it to a different inbound.
+- Host validation on 2026-11-03: 99 Rust tests, 258 focused Flutter cases, seven application-rule reloads and 17
+  actual-profile network checks passed against the packaged Windows Core. Existing Windows path-fixture and analyzer
+  failures remain separate. Production TUN/Helper adoption and device traffic have not been exercised for this patch.
+
 ## Integration Regressions To Retain
+
+### Windows TUN DNS ownership
+
+Recorded 2026-11-05. Upstream 0.28.0 rewrites DNS on every adapter to loopback, then relies on a drop-time restore.
+Windows process termination can skip the guard, leaving physical DNS pointed at a dead listener. Its global DHCP
+reset also overwrites unrelated static settings. FlClash instead configures only the TUN adapter, through native IP
+Helper APIs, and never changes WLAN/Ethernet DNS. The adapter receives its peer as resolver and a low IPv4 metric;
+mandatory peer routing and UDP/TCP DNS stay inside TUN. The native desktop owner requests shutdown before killing
+Core and clears the resolver cache after confirmed exit, including crash cleanup. Safe mode skips that host action.
+
+Keep [windows_dns.rs](../core/rust/tests/windows_dns.rs) and the isolated `FlClashDNS-Test-*` adapter check when upgrading
+meow-rs. The adapter check must preserve all other DNS settings and default routes. Removal requires upstream to
+provide equivalent virtual-adapter ownership, rollback, UDP/TCP framing and live resolver replacement; a successful
+config parse or a normal-exit-only restore is insufficient. Actual production TUN traffic remains a separate gate.
 
 - A configuration exported by Mihomo can contain nonempty defaults for disabled or platform-specific facilities.
   Preserve the raw document and accept only inactive/equivalent cases in

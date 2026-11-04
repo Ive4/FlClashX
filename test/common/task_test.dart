@@ -10,6 +10,50 @@ import 'package:yaml/yaml.dart';
 
 void main() {
   test(
+    'app follow markers continue the profile rules for every profile path',
+    () async {
+      final marker = Rule.parse(
+        'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE',
+      );
+      for (final custom in [false, true]) {
+        for (final mode in ApplicationProxyMode.values) {
+          for (final matchTarget in <String?>[null, 'DIRECT']) {
+            final state = MakeRealProfileState(
+              profilesPath: '/profiles',
+              profileId: 7,
+              rawConfig: const {
+                'rules': ['MATCH,DIRECT'],
+              },
+              realPatchConfig: const PatchClashConfig(),
+              appendSystemDns: false,
+              proxyGroups: const [],
+              rules: custom ? [marker] : const [],
+              addedRules: custom ? const [] : [marker],
+              defaultUA: 'test',
+              matchTarget: matchTarget,
+              applicationProxyMode: mode,
+            );
+            final config =
+                loadYaml((await makeRealProfileTask(state)).yaml) as YamlMap;
+            expect(
+              config['rules'],
+              contains('AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS'),
+            );
+            expect(config['rules'], isNot(contains(marker.rawValue)));
+            if (mode == ApplicationProxyMode.httpSocks) {
+              expect(
+                config['rules'].first,
+                'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser.exe)))),DIRECT',
+              );
+            }
+            expect(marker.ruleTarget, 'PASS-RULE');
+          }
+        }
+      }
+    },
+  );
+
+  test(
     'default app mode routes new TUN connections direct before website rules',
     () async {
       const state = MakeRealProfileState(

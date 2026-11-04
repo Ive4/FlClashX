@@ -61,6 +61,14 @@ func prepareCommand(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 }
 
+func flushDNSCache() error {
+	result, _, err := windows.NewLazySystemDLL("dnsapi.dll").NewProc("DnsFlushResolverCache").Call()
+	if result == 0 {
+		return fmt.Errorf("DNS cache flush failed: %v", err)
+	}
+	return nil
+}
+
 func processAlive(pid int) bool {
 	if pid <= 0 {
 		return false

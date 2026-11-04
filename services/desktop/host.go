@@ -449,6 +449,9 @@ func (h *host) closeFrontend() {
 
 func (h *host) stopCore() error {
 	if h.corePID != 0 {
+		if h.core != nil && processAlive(h.corePID) {
+			_, _ = h.coreInvoke("shutdown", nil, 30*time.Second)
+		}
 		if h.helperURL != "" {
 			var response struct {
 				SessionID string  `json:"sessionId"`
@@ -472,6 +475,11 @@ func (h *host) stopCore() error {
 			case <-time.After(10 * time.Second):
 				return errors.New("core exit is not confirmed")
 			}
+		}
+	}
+	if !h.config.SafeMode && h.corePID != 0 {
+		if err := flushDNSCache(); err != nil {
+			return err
 		}
 	}
 	if h.core != nil {

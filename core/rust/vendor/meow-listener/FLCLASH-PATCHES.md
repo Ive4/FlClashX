@@ -20,3 +20,10 @@ the physical default. The original physical defaults are never replaced.
 Keep both changes isolated when updating the pinned backend. Lifecycle regressions are in
 core/rust/tests/engine_flow.rs; route subtraction and listener handoff are in core/rust/tests/tun_routes.rs, and
 transactional install/rollback tests use a recording route backend in src/tun/route.rs without changing host routes.
+
+Windows TUN DNS is scoped to the owned virtual adapter through IP Helper. Physical adapters retain automatic or
+manual DNS unchanged. The virtual adapter gets its peer as DNS server and a low IPv4 interface metric; its previous
+values restore on normal teardown. There is no machine-wide backup/reset, loopback DNS listener or PowerShell DNS
+worker. The peer's host route is mandatory when the route plan does not already include it. UDP and bounded TCP DNS
+use the current resolver; TCP framing and reloads are covered in `core/rust/tests/windows_dns.rs`. That suite also
+checks scoped rollback and offers an explicit isolated-adapter test without changing physical DNS or default routes.

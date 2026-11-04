@@ -13,6 +13,8 @@ protection and outbound binding; the saved DNS preference is preserved.
 `vendor/meow-transport` preserves Mihomo's REALITY client authentication version 1.8.2. Servers can enforce client
 version bounds; the upstream 1.8.1 payload failed against a deployed server that accepted the otherwise identical
 1.8.2 request. Certificate HMAC and TLS Finished verification remain enforced.
+`vendor/meow-rules` accepts `IN-TYPE,TUN` for application HTTP/SOCKS mode and its follow-rule exceptions. It matches
+only real TUN metadata; HTTP, SOCKS, TProxy and internal tunnel connections retain their existing classification.
 The upstream notice is bundled at `assets/data/meow-rs-license.txt` and registered in Flutter's license registry.
 The old Go Core remains an inactive protocol reference. `services/desktop` remains the separate background owner.
 
