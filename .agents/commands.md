@@ -218,6 +218,7 @@ On `Ive4/FlClashX`, branch pushes and manual runs also build the `macos-package`
 check jobs. It packages unsigned DMGs through `dart setup.dart macos --env stable --targets dmg`, with Intel on
 `macos-15-intel` and Apple Silicon on `macos-latest`. Download `macos-amd64` or `macos-arm64` from the run's artifacts;
 each includes `SHA256SUMS` and expires after 14 days. This does not create a GitHub Release.
+The package jobs select Xcode 26.3 (26.2 fallback), which provides the `NSGlassEffectView` API used by the window plugin.
 The Rust Core hook resolves its macOS SDK with `xcrun` and forwards Flutter's deployment target to native dependencies.
 
 Root `flutter test` only discovers the root package's `test/` directory by default. Include bundled plugin Dart tests by passing paths explicitly, or run `flutter test` from that plugin package directory, or run `bash tool/check_plugins.sh` to analyze and test every plugin package the way CI does. Native plugin tests under platform folders are not run by `flutter test`.

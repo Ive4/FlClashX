@@ -242,6 +242,11 @@ jobs:
             core/rust
             plugins/rust_api/rust
 
+      - name: Setup Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app || sudo xcode-select -s /Applications/Xcode_26.2.app
+          xcodebuild -version
+
       - name: Install native dependencies
         run: |
           brew install cmake llvm nasm
