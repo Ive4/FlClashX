@@ -199,6 +199,95 @@ jobs:
       - name: Build debug bundle
         run: flutter build ${{ matrix.platform }} --debug
 
+  macos-package:
+    name: macOS package (${{ matrix.arch }})
+    if: github.repository == 'Ive4/FlClashX' && !startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            arch: amd64
+          - os: macos-latest
+            arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: services/desktop/go.sum
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-package-${{ matrix.arch }}
+          workspaces: |
+            core/rust
+            plugins/rust_api/rust
+
+      - name: Install native dependencies
+        run: |
+          brew install cmake llvm nasm
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> "$GITHUB_ENV"
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-path
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch Dart CA certificates
+        env:
+          CA_BUNDLE: cacert-2026-09-25.pem
+          CA_BUNDLE_SHA256: a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+        run: |
+          bundle=assets/data/ca-certificates.crt
+          curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
+          echo "$CA_BUNDLE_SHA256  $bundle" | shasum -a 256 -c -
+
+      - name: Build DMG
+        env:
+          FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
+          FLCLASHX_GITEE_OAUTH_URL: ${{ vars.FLCLASHX_GITEE_OAUTH_URL }}
+          FLCLASHX_UPDATE_REPOSITORY: ${{ github.repository }}
+        run: dart setup.dart macos --env stable --targets dmg -v
+
+      - name: Check package and write checksums
+        env:
+          PACKAGE_ARCH: ${{ matrix.arch }}
+        run: |
+          ls "dist/FlClashX-"*"-macos-$PACKAGE_ARCH.dmg"
+          cd dist
+          shasum -a 256 ./*.dmg > SHA256SUMS
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            dist/*.dmg
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
   go:
     name: Native desktop host
     if: *checks
