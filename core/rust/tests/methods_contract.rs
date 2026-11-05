@@ -184,6 +184,23 @@ fn runtime_masks_network_listeners_without_mutating_the_saved_document() {
 }
 
 #[test]
+fn runtime_adapts_tun_names_without_rewriting_shared_settings() {
+    for device in ["FlClash", "FlClashX", "", "utun7"] {
+        let document = json!({"tun":{"enable":true,"device":device}});
+        let original = document.clone();
+        let runtime = profile::runtime_document(&document, true, false).unwrap();
+        let automatic = device.is_empty()
+            || (cfg!(target_os = "macos") && matches!(device, "FlClash" | "FlClashX"));
+        assert_eq!(
+            runtime["tun"].get("device").and_then(Value::as_str),
+            (!automatic).then_some(device)
+        );
+        assert_eq!(runtime["tun"]["enable"], true);
+        assert_eq!(document, original);
+    }
+}
+
+#[test]
 fn response_has_no_double_encoded_result_or_empty_optional_fields() {
     let bytes = protocol::encode(protocol::Response {
         id: Some("1".into()),

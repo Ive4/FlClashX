@@ -286,11 +286,21 @@ pub fn runtime_document(config: &Value, listening: bool, mobile: bool) -> Result
             .remove("external-controller");
     }
     if let Some(tun) = config["tun"].as_object_mut() {
-        if tun.get("device").and_then(Value::as_str) == Some("") {
-            tun.remove("device");
-        }
+        normalize_tun_device(tun, cfg!(target_os = "macos"));
     }
     Ok(config)
+}
+
+fn normalize_tun_device(tun: &mut serde_json::Map<String, Value>, macos: bool) {
+    let Some(device) = tun.get("device").and_then(Value::as_str) else {
+        return;
+    };
+    let valid_macos_name = device
+        .strip_prefix("utun")
+        .is_some_and(|index| index.parse::<u32>().is_ok());
+    if device.is_empty() || (macos && !valid_macos_name) {
+        tun.remove("device");
+    }
 }
 
 fn ensure_object<'a>(value: &'a mut Value, key: &str) -> &'a mut Value {
@@ -305,5 +315,33 @@ pub fn array(value: &Value, key: &str) -> Result<Vec<Value>> {
         None | Some(Value::Null) => Ok(Vec::new()),
         Some(Value::Array(array)) => Ok(array.clone()),
         _ => bail!("{key} must be a list"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tun_device_names_use_platform_defaults_only_when_required() {
+        for (macos, device, expected) in [
+            (true, "FlClash", None),
+            (true, "FlClashX", None),
+            (true, "custom-tun", None),
+            (true, "", None),
+            (true, "utun", None),
+            (true, "utun7-1", None),
+            (true, "utun0", Some("utun0")),
+            (true, "utun7", Some("utun7")),
+            (false, "FlClashX", Some("FlClashX")),
+            (false, "custom-tun", Some("custom-tun")),
+            (false, "", None),
+        ] {
+            let mut tun = json!({"enable":true,"device":device,"auto-route":true});
+            normalize_tun_device(tun.as_object_mut().unwrap(), macos);
+            assert_eq!(tun.get("device").and_then(Value::as_str), expected);
+            assert_eq!(tun["enable"], true);
+            assert_eq!(tun["auto-route"], true);
+        }
     }
 }
