@@ -214,8 +214,10 @@ Native plugin code under `plugins/*/{linux,macos,windows}` is compiled by the CI
 `flutter build <platform> --debug` on every branch push, and by the release matrix on a tag; `tool/check_plugins.sh`
 only analyzes and tests the Dart side.
 
-On `Ive4/FlClashX`, branch pushes and manual runs also build the `macos-package` matrix independently of the
-check jobs. It packages unsigned DMGs through `dart setup.dart macos --env stable --targets dmg`, with Intel on
+On `Ive4/FlClashX`, branch pushes and manual runs also build `windows-package` and the `macos-package` matrix
+independently of the check jobs. Windows x64 produces an installer and portable ZIP through
+`dart setup.dart windows --env stable --targets exe,zip` on `windows-2022`, uploaded as `windows-amd64`.
+macOS packages unsigned DMGs through `dart setup.dart macos --env stable --targets dmg`, with Intel on
 `macos-15-intel` and Apple Silicon on `macos-latest`. Download `macos-amd64` or `macos-arm64` from the run's artifacts;
 each includes `SHA256SUMS` and expires after 14 days. This does not create a GitHub Release.
 The package jobs select Xcode 26.3 (26.2 fallback), which provides the `NSGlassEffectView` API used by the window plugin.
