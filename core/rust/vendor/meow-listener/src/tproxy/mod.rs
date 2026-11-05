@@ -604,7 +604,7 @@ async fn handle_tproxy_flow(
         rule_name,
         rule_payload,
         route,
-    }) = inner.resolve_proxy(&metadata).await
+    }) = inner.resolve_proxy_lazy(&mut metadata).await
     else {
         return Err("no matching rule".into());
     };

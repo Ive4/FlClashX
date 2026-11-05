@@ -2546,8 +2546,6 @@ checksum = "e13e8f6a8c0d093dba123f90729e4fe71aec7c437e47c527e5b65a08367521c6"
 [[package]]
 name = "meow-tunnel"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b12becc8f988cf8ddb935240857934c0b5c776fed7836b82d06fe2bdd9aca55"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -3958,7 +3956,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

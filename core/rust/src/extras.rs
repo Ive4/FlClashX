@@ -341,9 +341,6 @@ pub fn runtime_options(document: &mut Value) -> Result<()> {
     if document["tun"].get("stack").is_some() {
         tracing::warn!("meow-rs uses the lwIP TUN stack; the saved Mihomo stack name does not select a different implementation");
     }
-    if document.get("find-process-mode").is_some() {
-        tracing::warn!("meow-rs resolves process metadata on rule demand; the saved Mihomo process lookup policy is retained");
-    }
     if let Some(name) = document["interface-name"]
         .as_str()
         .filter(|name| !name.is_empty())

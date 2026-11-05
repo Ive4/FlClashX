@@ -271,6 +271,11 @@ jobs:
           curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
           echo "$CA_BUNDLE_SHA256  $bundle" | sha256sum -c -
 
+      - name: Test application process routing
+        env:
+          CARGO_BUILD_JOBS: '2'
+        run: cargo test --locked --manifest-path core/rust/Cargo.toml --test application_process --test application_proxy_rules --test engine_flow -- --test-threads=1
+
       - name: Build installer and portable archive
         env:
           FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
@@ -364,6 +369,11 @@ jobs:
           bundle=assets/data/ca-certificates.crt
           curl -fsSL --retry 3 -o "$bundle" "https://curl.se/ca/$CA_BUNDLE"
           echo "$CA_BUNDLE_SHA256  $bundle" | shasum -a 256 -c -
+
+      - name: Test application process routing
+        env:
+          CARGO_BUILD_JOBS: '2'
+        run: cargo test --locked --manifest-path core/rust/Cargo.toml --test application_process --test application_proxy_rules --test engine_flow -- --test-threads=1
 
       - name: Build DMG
         env:

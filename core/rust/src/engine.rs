@@ -17,7 +17,7 @@ use meow_config::{ListenerSpec, NamedListener};
 use meow_listener::{ListenerTasks, ShadowsocksListener, SnifferRuntime, SsObfsMode};
 #[cfg(not(any(target_os = "android", target_env = "ohos")))]
 use meow_listener::{TunListener, TunReady};
-use meow_tunnel::Tunnel;
+use meow_tunnel::{ProcessLookupMode, Tunnel};
 use parking_lot::RwLock;
 use serde_json::{json, Value};
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -62,12 +62,22 @@ impl Drop for Tasks {
     }
 }
 
+fn process_lookup_mode(document: &Value) -> Result<ProcessLookupMode> {
+    match document.get("find-process-mode").and_then(Value::as_str) {
+        None | Some("strict") => Ok(ProcessLookupMode::Strict),
+        Some("off") => Ok(ProcessLookupMode::Off),
+        Some("always") => Ok(ProcessLookupMode::Always),
+        Some(value) => bail!("Invalid find-process-mode: {value}"),
+    }
+}
+
 impl Engine {
     pub async fn create(
         document: &Value,
         home: &Path,
         logs: broadcast::Sender<LogMessage>,
     ) -> Result<Arc<Self>> {
+        let process_lookup = process_lookup_mode(document)?;
         crate::direct_dns::validate(document)?;
         meow_common::home_dir::set_home_dir(home.to_owned());
         meow_config::set_external_plugins_allowed(false);
@@ -81,6 +91,7 @@ impl Engine {
         tunnel.set_dialer_registry(config.provider_dialer_registry.clone());
         tunnel.set_mode(config.general.mode);
         tunnel.set_connection_notes(config.general.connection_notes);
+        tunnel.set_process_lookup_mode(process_lookup);
         tunnel.update_routing(config.proxies, config.rules, config.dialer_registry);
         tunnel.spawn_background_tasks();
         if config.dns.enabled || cfg!(any(target_os = "android", target_env = "ohos")) {
@@ -172,6 +183,7 @@ impl Engine {
 
     pub async fn reload(&self, document: &Value) -> Result<()> {
         use base64::Engine as _;
+        let process_lookup = process_lookup_mode(document)?;
         crate::direct_dns::validate(document)?;
         let socket_policy = crate::socket_policy::install(document)?;
         let dns_http3 = crate::dns_http3::install(document)?;
@@ -185,6 +197,7 @@ impl Engine {
             json!({"payload": base64::engine::general_purpose::STANDARD.encode(yaml)}),
         )
         .await?;
+        self.state.tunnel.set_process_lookup_mode(process_lookup);
         if let Some(home) = meow_common::meow_home_dir() {
             crate::ownership::schedule(&home);
         }

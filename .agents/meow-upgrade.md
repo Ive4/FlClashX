@@ -10,7 +10,7 @@ the same upgrade change.
 - Recorded: 2026-11-02. No later upstream release has been evaluated by this ledger.
 - Exact versions, active local overrides and resolved checksums live in
   [Cargo.toml](../core/rust/Cargo.toml) and [Cargo.lock](../core/rust/Cargo.lock).
-- Nine vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
+- Ten vendor crates are tracked below. The direct-resolver work in `meow-config`, `meow-proxy` and `meow-api`
   and its bootstrap hooks passed final merged host verification. Device acceptance remains separate.
 - Earlier merged host verification: 94 tests across 16 test binaries, zero failed/ignored, with serial independent
   fixtures. The route recording-backend harness previously passed eight cases. The final packaged Windows Core also
@@ -213,6 +213,26 @@ rejects the rule.
 - Host validation on 2026-11-03: 99 Rust tests, 258 focused Flutter cases, seven application-rule reloads and 17
   actual-profile network checks passed against the packaged Windows Core. Existing Windows path-fixture and analyzer
   failures remain separate. Production TUN/Helper adoption and device traffic have not been exercised for this patch.
+
+### V10: Application Process Discovery And Tracking
+
+Status: implemented; native regression and device acceptance results are recorded with the change.
+
+Upstream 0.28.0 resolves processes only on rule demand and discards the enriched copy after matching. With only
+domain/MATCH rules, the application page cannot identify processes to create its first application rule; even a
+process-rule match does not populate connection statistics. FlClash's saved `find-process-mode` must select actual
+`off`, `strict` or `always` behavior and preserve resolved identity in the tracked metadata.
+
+- Patch: [meow-tunnel/FLCLASH_PATCHES.md](../core/rust/vendor/meow-tunnel/FLCLASH_PATCHES.md). Existing listener
+  overrides use mutable routing metadata after their normal UDP destination resolution. The engine adapter applies
+  the lookup policy on creation and successful reload; rejected reloads retain the previous policy.
+- Regression: [application_process.rs](../core/rust/tests/application_process.rs) checks real local TCP/UDP socket
+  ownership, direct/global modes, lazy rule demand, off mode, inbound-supplied identity and reload rollback. A real
+  HTTP proxy connection must expose its process/path through `/connections` before any application rule exists.
+  Keep the application rule-generation Flutter tests and `application_proxy_rules.rs` route tests alongside it.
+- Upstream replacement condition: equivalent per-tunnel policy and persistent process metadata on every inbound.
+  Do not replace this with injected process rules, a display-only process lookup, or synchronous OS scans on Tokio
+  workers. Actual Mac application flows remain a separate acceptance check from the isolated socket tests.
 
 ## Integration Regressions To Retain
 

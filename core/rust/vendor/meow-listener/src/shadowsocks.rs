@@ -1133,7 +1133,7 @@ async fn run_ss_udp_flow<S>(
     ) {
         return;
     }
-    // UDP keeps the eager pre_resolve (no lazy enrichment): the writer
+    // UDP keeps eager destination resolution: the writer
     // needs a resolved dst_ip regardless of what the rules demand.
     inner.pre_resolve(&mut metadata).await;
     if metadata.dst_ip.is_none() && !metadata.host.is_empty() {
@@ -1162,7 +1162,7 @@ async fn run_ss_udp_flow<S>(
             rule_name,
             rule_payload,
             route: _route,
-        }) = inner.resolve_proxy(&metadata).await
+        }) = inner.resolve_proxy_lazy(&mut metadata).await
         else {
             debug!(
                 "ss udp flow: no matching rule for {}",

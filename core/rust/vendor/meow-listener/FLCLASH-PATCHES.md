@@ -3,6 +3,10 @@
 Based on the crates.io meow-listener 0.28.0 package, corresponding to upstream revision
 80816302e7ad8f868fdf1619a11bf3c8121696dd, under the included MIT license.
 
+UDP flows and the TProxy TCP path route through the tunnel's mutable metadata
+entry so resolved application identity reaches connection statistics. Eager
+UDP destination resolution still precedes routing and NAT key construction.
+
 FlClash owns each listener generation separately from the process. Upstream's process-lifetime detached TCP and
 UDP tasks can survive a listener stop, keep a UDP port bound and admit a new handshake using obsolete credentials.
 The local patch adds an optional tracked task scope: FlClash cancels it and awaits its tasks after stopping accept

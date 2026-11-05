@@ -115,7 +115,7 @@ pub(super) mod flow {
         ) {
             return Err("unmapped fake-ip destination".into());
         }
-        // UDP keeps the eager pre_resolve (no lazy enrichment): the outbound
+        // UDP keeps eager destination resolution: the outbound
         // packet API needs a resolved dst_ip regardless of what the rules
         // demand — including after a fake-IP was rewritten back to a hostname.
         inner.pre_resolve(&mut metadata).await;
@@ -142,7 +142,7 @@ pub(super) mod flow {
             rule_name,
             rule_payload,
             route: _route,
-        }) = inner.resolve_proxy(&metadata).await
+        }) = inner.resolve_proxy_lazy(&mut metadata).await
         else {
             return Err(format!(
                 "no matching rule for {}",

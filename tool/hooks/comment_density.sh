@@ -26,7 +26,8 @@ is_checkable() {
       */core/rust/vendor/meow-proxy/* | \
       */core/rust/vendor/meow-api/* | \
       */core/rust/vendor/meow-transport/* | \
-      */core/rust/vendor/meow-rules/*) return 1 ;;
+      */core/rust/vendor/meow-rules/* | \
+      */core/rust/vendor/meow-tunnel/*) return 1 ;;
     *.g.dart | *.freezed.dart | */frb_generated*.dart | */frb_generated.rs | */open_container.dart) return 1 ;;
   esac
   return 0

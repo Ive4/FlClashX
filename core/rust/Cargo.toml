@@ -87,6 +87,7 @@ hickory-proto = "0.26"
 tokio-boring = "5"
 
 [patch.crates-io]
+meow-tunnel = { path = "vendor/meow-tunnel" }
 meow-rules = { path = "vendor/meow-rules" }
 meow-common = { path = "vendor/meow-common" }
 meow-anytls = { path = "vendor/meow-anytls" }

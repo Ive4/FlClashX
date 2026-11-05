@@ -341,7 +341,7 @@ async fn relay_flow(tunnel: &Tunnel, spec: FlowSpec) -> Result<(), String> {
     ) {
         return Err("unmapped fake-ip destination".into());
     }
-    // UDP keeps the eager pre_resolve (no lazy enrichment): the outbound
+    // UDP keeps eager destination resolution: the outbound
     // packet API below needs a resolved dst_ip regardless of what the rules
     // demand — including after a fake-IP was rewritten back to a hostname.
     inner.pre_resolve(&mut metadata).await;
@@ -362,7 +362,7 @@ async fn relay_flow(tunnel: &Tunnel, spec: FlowSpec) -> Result<(), String> {
         rule_name,
         rule_payload,
         route: _route,
-    }) = inner.resolve_proxy(&metadata).await
+    }) = inner.resolve_proxy_lazy(&mut metadata).await
     else {
         return Err(format!(
             "no matching rule for {}",
