@@ -290,6 +290,13 @@ jobs:
           for binary in FlClashX FlClashCore FlClashDesktop; do
             file "$app/Contents/MacOS/$binary"
             lipo "$app/Contents/MacOS/$binary" -verify_arch "$arch"
+            dependencies="$(otool -L "$app/Contents/MacOS/$binary")"
+            while IFS= read -r dependency; do
+              case "$dependency" in
+                /System/Library/*|/usr/lib/*|@*) ;;
+                *) echo "error: $binary links an unbundled library: $dependency"; exit 1 ;;
+              esac
+            done < <(printf '%s\n' "$dependencies" | tail -n +2 | sed -E 's/^[[:space:]]*//; s/ \(compatibility version.*$//')
           done
           test "$(/usr/libexec/PlistBuddy -c 'Print :FLTEnableImpeller' "$app/Contents/Info.plist")" = false
           ls "dist/FlClashX-"*"-macos-$PACKAGE_ARCH.dmg"
