@@ -10,6 +10,58 @@ import 'package:yaml/yaml.dart';
 
 void main() {
   test(
+    'application routing is opt-in and suspends only its own rules',
+    () async {
+      const managed = Rule(
+        ruleAction: RuleAction.PROCESS_NAME,
+        content: 'managed-app',
+        ruleTarget: 'Proxy',
+        applicationProxyRule: true,
+      );
+      final manual = Rule.parse('PROCESS-NAME,manual-app,DIRECT');
+      for (final custom in [false, true]) {
+        final rules = [managed, manual, Rule.parse('MATCH,DIRECT')];
+        final state = MakeRealProfileState(
+          profilesPath: '/profiles',
+          profileId: 7,
+          rawConfig: const {
+            'rules': ['MATCH,DIRECT'],
+          },
+          realPatchConfig: const PatchClashConfig(),
+          appendSystemDns: false,
+          proxyGroups: const [],
+          rules: custom ? rules : const [],
+          addedRules: custom ? const [] : rules,
+          defaultUA: 'test',
+          applicationProxyMode: ApplicationProxyMode.httpSocks,
+        );
+        expect(state.applicationProxyEnabled, isFalse);
+        for (final enabled in [false, true, false, true]) {
+          final output =
+              loadYaml(
+                    (await makeRealProfileTask(
+                      state.copyWith(applicationProxyEnabled: enabled),
+                    )).yaml,
+                  )
+                  as YamlMap;
+          final generated = output['rules'] as YamlList;
+          expect(generated, contains(manual.rawValue));
+          expect(generated.contains(managed.rawValue), enabled);
+          expect(output['find-process-mode'], enabled ? 'always' : 'off');
+          expect(
+            generated.any((rule) => rule.toString().contains('IN-TYPE,TUN')),
+            enabled,
+          );
+          expect(
+            state.rules.contains(managed) || state.addedRules.contains(managed),
+            isTrue,
+          );
+        }
+      }
+    },
+  );
+
+  test(
     'app follow markers continue the profile rules for every profile path',
     () async {
       final marker = Rule.parse(
@@ -31,6 +83,7 @@ void main() {
               addedRules: custom ? const [] : [marker],
               defaultUA: 'test',
               matchTarget: matchTarget,
+              applicationProxyEnabled: true,
               applicationProxyMode: mode,
             );
             final config =
@@ -68,6 +121,7 @@ void main() {
         rules: [],
         addedRules: [],
         defaultUA: 'test',
+        applicationProxyEnabled: true,
         applicationProxyMode: ApplicationProxyMode.httpSocks,
       );
       final config =
@@ -100,6 +154,7 @@ void main() {
           loadYaml(
                 (await makeRealProfileTask(
                   state.copyWith(
+                    applicationProxyEnabled: true,
                     applicationProxyMode: ApplicationProxyMode.follow,
                   ),
                 )).yaml,

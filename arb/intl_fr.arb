@@ -1,4 +1,7 @@
 {
+  "applicationProxyFeature": "Proxy par application",
+  "applicationProxyFeatureDesc": "Définissez une politique proxy par application. La désactivation conserve les politiques enregistrées.",
+  "applicationProxyDisabled": "Activez d’abord le proxy par application dans Outils.",
   "applicationProxyMode": "Mode proxy",
   "applicationProxyModeFollow": "Suivre FlClash",
   "applicationProxyModeHttpSocks": "HTTP & SOCKS",

@@ -29,6 +29,9 @@ class Rules extends Table {
 
   BoolColumn get src => boolean().withDefault(const Constant(false))();
 
+  BoolColumn get applicationProxyRule =>
+      boolean().withDefault(const Constant(false))();
+
   TextColumn get order => text().nullable()();
 
   @override
@@ -309,6 +312,7 @@ extension RawRuleExt on RawRule {
       subRule: subRule,
       noResolve: noResolve,
       src: src,
+      applicationProxyRule: applicationProxyRule,
       order: order,
     );
   }
@@ -326,6 +330,7 @@ extension RulesCompanionExt on Rule {
       subRule: Value(subRule),
       noResolve: Value(noResolve),
       src: Value(src),
+      applicationProxyRule: Value(applicationProxyRule),
       order: Value(order),
     );
   }

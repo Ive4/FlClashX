@@ -55,6 +55,36 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
+  /// `Application proxy`
+  String get applicationProxyFeature {
+    return Intl.message(
+      'Application proxy',
+      name: 'applicationProxyFeature',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Set proxy policies per app. Turning this off keeps saved app policies.`
+  String get applicationProxyFeatureDesc {
+    return Intl.message(
+      'Set proxy policies per app. Turning this off keeps saved app policies.',
+      name: 'applicationProxyFeatureDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enable application proxy in Tools first.`
+  String get applicationProxyDisabled {
+    return Intl.message(
+      'Enable application proxy in Tools first.',
+      name: 'applicationProxyDisabled',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Proxy mode`
   String get applicationProxyMode {
     return Intl.message(

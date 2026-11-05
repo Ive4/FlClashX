@@ -1794,6 +1794,7 @@ abstract class Rule with _$Rule {
     String? subRule,
     @Default(false) bool noResolve,
     @Default(false) bool src,
+    @Default(false) bool applicationProxyRule,
     String? order,
   }) = _Rule;
 
@@ -2194,6 +2195,9 @@ abstract class PatchClashConfig with _$PatchClashConfig {
 }
 
 extension PatchClashConfigExt on PatchClashConfig {
+  PatchClashConfig withApplicationProxy(bool enabled) =>
+      enabled ? copyWith(findProcessMode: FindProcessMode.always) : this;
+
   T? _picked<T>(GeneralOverrideKey key, T value) =>
       generalOverrideKeys.contains(key) ? value : null;
 

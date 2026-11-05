@@ -214,6 +214,7 @@ abstract class ComputeGroupsState with _$ComputeGroupsState {
 @freezed
 abstract class MakeRealProfileState with _$MakeRealProfileState {
   const factory MakeRealProfileState({
+    @Default(false) bool applicationProxyEnabled,
     @Default(ApplicationProxyMode.follow)
     ApplicationProxyMode applicationProxyMode,
     required String profilesPath,

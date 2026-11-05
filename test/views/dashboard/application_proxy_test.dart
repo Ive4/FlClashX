@@ -88,7 +88,7 @@ void main() {
               const PatchClashConfig(findProcessMode: FindProcessMode.always),
         ),
         networkSettingProvider.overrideWithBuild(
-          (_, _) => const NetworkProps(),
+          (_, _) => const NetworkProps(applicationProxyEnabled: true),
         ),
         setupActionProvider.overrideWith(() => action),
         applicationProxyAggregatorProvider.overrideWithValue(
@@ -133,13 +133,15 @@ void main() {
             body: DashboardDensityScope(
               density: DashboardDensity.standard,
               scale: 1,
-              child: child ?? ApplicationProxyPanel(
-                connections: connections ?? [_connection('1')],
-                sampledAt: _time,
-                stale: stale,
-                rowHeight: 44,
-                isWindows: false,
-              ),
+              child:
+                  child ??
+                  ApplicationProxyPanel(
+                    connections: connections ?? [_connection('1')],
+                    sampledAt: _time,
+                    stale: stale,
+                    rowHeight: 44,
+                    isWindows: false,
+                  ),
             ),
           ),
         ),
@@ -162,9 +164,11 @@ void main() {
     await waitForApply(tester);
   }
 
-  testWidgets('the desktop menu opens the application proxy page', (tester) async {
+  testWidgets('the desktop menu opens the application proxy page', (
+    tester,
+  ) async {
     container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    final items = Navigation().getItems();
+    final items = Navigation().getItems(applicationProxyEnabled: true);
     final item = items.singleWhere(
       (item) => item.label == PageLabel.applicationProxy,
     );
@@ -295,32 +299,59 @@ void main() {
     }
   });
 
-  testWidgets('HTTP and SOCKS apply failure keeps the saved mode and unlocks controls', (tester) async {
-    action.pending = Completer<bool>();
-    await pumpPanel(tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Follow · HTTP & SOCKS'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('HTTP & SOCKS'));
-    await waitForApply(tester);
-    await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    action.pending!.completeError(StateError('apply failed'));
-    await tester.pumpAndSettle();
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'HTTP & SOCKS')).onPressed, isNotNull);
-    expect(tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Follow rules')).onPressed, isNull);
-    expect(find.text('The rule was saved, but could not be applied. Apply the current profile to retry.'),
-      findsOneWidget);
-    expect((await database.rulesDao.queryApplicationRules(1).get()).single.rawValue,
-      'AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT');
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'HTTP and SOCKS apply failure keeps the saved mode and unlocks controls',
+    (tester) async {
+      action.pending = Completer<bool>();
+      await pumpPanel(tester);
+      await tester.tap(
+        find.widgetWithText(TextButton, 'Follow · HTTP & SOCKS'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('HTTP & SOCKS'));
+      await waitForApply(tester);
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      action.pending!.completeError(StateError('apply failed'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'HTTP & SOCKS'))
+            .onPressed,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        find.text(
+          'The rule was saved, but could not be applied. Apply the current profile to retry.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        (await database.rulesDao.queryApplicationRules(1).get())
+            .single
+            .rawValue,
+        'AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('history restores an offline app mode with its policy disabled', (tester) async {
+  testWidgets('history restores an offline app mode with its policy disabled', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
-      await applicationHistory.record(applicationConnectionsOf([_connection('1')]), false, _time);
+      await applicationHistory.record(
+        applicationConnectionsOf([_connection('1')]),
+        false,
+        _time,
+      );
       await applicationHistory.select(true);
       await database.rulesDao.putRule(
         Rule.parse('AND,((PROCESS-NAME,browser),(IN-TYPE,TUN)),DIRECT', id: 1),
@@ -330,8 +361,12 @@ void main() {
     await pumpPanel(tester, connections: [], width: 320);
     expect(find.text('browser'), findsOneWidget);
     expect(find.widgetWithText(TextButton, 'HTTP & SOCKS'), findsOneWidget);
-    expect(tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Follow rules')).onPressed, isNull);
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+          .onPressed,
+      isNull,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -364,7 +399,9 @@ void main() {
     },
   );
 
-  testWidgets('search stays in a popup and can be cleared after dismissal', (tester) async {
+  testWidgets('search stays in a popup and can be cleared after dismissal', (
+    tester,
+  ) async {
     await pumpPanel(tester, width: 390);
     expect(find.byType(TextField), findsNothing);
     await tester.tap(find.byTooltip('Search'));
@@ -421,92 +458,123 @@ void main() {
     },
   );
 
-  testWidgets('actual mixed routing and an idle configured policy stay separate', (tester) async {
-    await database.rulesDao.putRule(
-      const Rule(
-        id: 1,
-        ruleAction: RuleAction.PROCESS_PATH,
-        content: '/apps/idle',
-        ruleTarget: 'DIRECT',
-      ),
-      profileId: 1,
-    );
-    await pumpPanel(tester, connections: [
-      _connection('1'),
-      _connection('2', outbound: 'DIRECT'),
-    ]);
+  testWidgets(
+    'actual mixed routing and an idle configured policy stay separate',
+    (tester) async {
+      await database.rulesDao.putRule(
+        const Rule(
+          id: 1,
+          ruleAction: RuleAction.PROCESS_PATH,
+          content: '/apps/idle',
+          ruleTarget: 'DIRECT',
+        ),
+        profileId: 1,
+      );
+      await pumpPanel(
+        tester,
+        connections: [
+          _connection('1'),
+          _connection('2', outbound: 'DIRECT'),
+        ],
+      );
 
-    expect(find.text('browser'), findsOneWidget);
-    expect(find.text('Mixed'), findsOneWidget);
-    expect(find.text('Follow rules'), findsOneWidget);
-    expect(find.text('idle'), findsNothing);
-    expect(find.text('No active connections'), findsNothing);
-    expect(find.text('Direct'), findsNothing);
-  });
+      expect(find.text('browser'), findsOneWidget);
+      expect(find.text('Mixed'), findsOneWidget);
+      expect(find.text('Follow rules'), findsOneWidget);
+      expect(find.text('idle'), findsNothing);
+      expect(find.text('No active connections'), findsNothing);
+      expect(find.text('Direct'), findsNothing);
+    },
+  );
 
-  testWidgets('a failed apply releases the control and can return to following rules', (tester) async {
-    action.pending = Completer<bool>();
-    await pumpPanel(tester);
-    await chooseDirect(tester);
+  testWidgets(
+    'a failed apply releases the control and can return to following rules',
+    (tester) async {
+      action.pending = Completer<bool>();
+      await pumpPanel(tester);
+      await chooseDirect(tester);
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    action.pending!.completeError(StateError('apply failed'));
-    await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      action.pending!.completeError(StateError('apply failed'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(
-      find.text('The rule was saved, but could not be applied. Apply the current profile to retry.'),
-      findsOneWidget,
-    );
-    expect(find.text('Proxies'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Direct'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(
+        find.text(
+          'The rule was saved, but could not be applied. Apply the current profile to retry.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Proxies'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Direct'), findsOneWidget);
 
-    action.pending = null;
-    await tester.tap(find.widgetWithText(TextButton, 'Direct'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Follow rules'));
-    await tester.pumpAndSettle();
+      action.pending = null;
+      await tester.tap(find.widgetWithText(TextButton, 'Direct'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Follow rules'));
+      await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
-    expect(await database.rulesDao.queryApplicationRules(1).get(), isEmpty);
-  });
+      expect(find.widgetWithText(TextButton, 'Follow rules'), findsOneWidget);
+      expect(await database.rulesDao.queryApplicationRules(1).get(), isEmpty);
+    },
+  );
 
-  testWidgets('a save completing after disposal does not update the removed panel', (tester) async {
-    action.pending = Completer<bool>();
-    await pumpPanel(tester);
-    await chooseDirect(tester);
-    await tester.pumpWidget(const SizedBox.shrink());
+  testWidgets(
+    'a save completing after disposal does not update the removed panel',
+    (tester) async {
+      action.pending = Completer<bool>();
+      await pumpPanel(tester);
+      await chooseDirect(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
 
-    action.pending!.complete(true);
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-  });
+      action.pending!.complete(true);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('script extensions show traffic while policy editing is disabled', (tester) async {
-    container.read(profilesProvider.notifier).updateProfile(
-      1,
-      (profile) => profile.copyWith(extendType: ExtendType.script),
-    );
-    await pumpPanel(tester);
+  testWidgets(
+    'script extensions show traffic while policy editing is disabled',
+    (tester) async {
+      container
+          .read(profilesProvider.notifier)
+          .updateProfile(
+            1,
+            (profile) => profile.copyWith(extendType: ExtendType.script),
+          );
+      await pumpPanel(tester);
 
-    expect(find.text('browser'), findsOneWidget);
-    expect(find.textContaining('Script extensions are read-only here.'), findsOneWidget);
-    expect(
-      tester.widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules')).onPressed,
-      isNull,
-    );
-  });
+      expect(find.text('browser'), findsOneWidget);
+      expect(
+        find.textContaining('Script extensions are read-only here.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Follow rules'))
+            .onPressed,
+        isNull,
+      );
+    },
+  );
 
-  testWidgets('a narrow panel shows both speeds and marks a failed refresh', (tester) async {
+  testWidgets('a narrow panel shows both speeds and marks a failed refresh', (
+    tester,
+  ) async {
     await pumpPanel(tester, width: 400, stale: true);
 
     expect(find.text('↓ —'), findsOneWidget);
     expect(find.text('↑ —'), findsOneWidget);
-    expect(find.text('Refresh failed. Showing the last received connections.'), findsOneWidget);
+    expect(
+      find.text('Refresh failed. Showing the last received connections.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('configured apps beyond the preview limit remain reachable', (tester) async {
+  testWidgets('configured apps beyond the preview limit remain reachable', (
+    tester,
+  ) async {
     for (var index = 0; index < 120; index++) {
       await database.rulesDao.putRule(
         Rule(
@@ -530,9 +598,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('dashboard feeds exclude apps in table and summary layouts', (tester) async {
+  testWidgets('dashboard feeds exclude apps in table and summary layouts', (
+    tester,
+  ) async {
     container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    for (final child in [const ConnectionStatsCard(), const ConnectionsTableCard()]) {
+    for (final child in [
+      const ConnectionStatsCard(),
+      const ConnectionsTableCard(),
+    ]) {
       await pumpPanel(tester, child: child);
       expect(find.text('Apps'), findsNothing);
       expect(find.text('DNS queries'), findsOneWidget);

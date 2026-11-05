@@ -259,6 +259,8 @@ Map<String, dynamic> _$AuthenticationPropsToJson(
 
 _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
     _NetworkProps(
+      applicationProxyEnabled:
+          json['applicationProxyEnabled'] as bool? ?? false,
       applicationProxyMode:
           $enumDecodeNullable(
             _$ApplicationProxyModeEnumMap,
@@ -283,6 +285,7 @@ _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$NetworkPropsToJson(_NetworkProps instance) =>
     <String, dynamic>{
+      'applicationProxyEnabled': instance.applicationProxyEnabled,
       'applicationProxyMode':
           _$ApplicationProxyModeEnumMap[instance.applicationProxyMode]!,
       'systemProxy': instance.systemProxy,

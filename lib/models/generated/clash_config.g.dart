@@ -771,6 +771,7 @@ _Rule _$RuleFromJson(Map<String, dynamic> json) => _Rule(
   subRule: json['subRule'] as String?,
   noResolve: json['noResolve'] as bool? ?? false,
   src: json['src'] as bool? ?? false,
+  applicationProxyRule: json['applicationProxyRule'] as bool? ?? false,
   order: json['order'] as String?,
 );
 
@@ -783,6 +784,7 @@ Map<String, dynamic> _$RuleToJson(_Rule instance) => <String, dynamic>{
   'subRule': instance.subRule,
   'noResolve': instance.noResolve,
   'src': instance.src,
+  'applicationProxyRule': instance.applicationProxyRule,
   'order': instance.order,
 };
 

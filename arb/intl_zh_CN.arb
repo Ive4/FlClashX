@@ -1,4 +1,7 @@
 {
+  "applicationProxyFeature": "应用代理",
+  "applicationProxyFeatureDesc": "按应用设置代理策略，关闭后保留已保存的应用策略。",
+  "applicationProxyDisabled": "请先在工具中开启应用代理。",
   "applicationProxyMode": "代理模式",
   "applicationProxyModeFollow": "跟随 FlClash",
   "applicationProxyModeHttpSocks": "HTTP & SOCKS",

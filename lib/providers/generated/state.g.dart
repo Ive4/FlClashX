@@ -58,18 +58,21 @@ final class SetupPatchProvider
         $FunctionalProvider<
           ({
             bool appendSystemDns,
+            bool applicationProxyEnabled,
             ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
+            bool applicationProxyEnabled,
             ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
+            bool applicationProxyEnabled,
             ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
@@ -79,6 +82,7 @@ final class SetupPatchProvider
         $Provider<
           ({
             bool appendSystemDns,
+            bool applicationProxyEnabled,
             ApplicationProxyMode applicationProxyMode,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
@@ -103,6 +107,7 @@ final class SetupPatchProvider
   $ProviderElement<
     ({
       bool appendSystemDns,
+      bool applicationProxyEnabled,
       ApplicationProxyMode applicationProxyMode,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
@@ -113,6 +118,7 @@ final class SetupPatchProvider
   @override
   ({
     bool appendSystemDns,
+    bool applicationProxyEnabled,
     ApplicationProxyMode applicationProxyMode,
     bool bypassPrivateRoute,
     PatchClashConfig patchConfig,
@@ -125,6 +131,7 @@ final class SetupPatchProvider
   Override overrideWithValue(
     ({
       bool appendSystemDns,
+      bool applicationProxyEnabled,
       ApplicationProxyMode applicationProxyMode,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
@@ -137,6 +144,7 @@ final class SetupPatchProvider
           $SyncValueProvider<
             ({
               bool appendSystemDns,
+              bool applicationProxyEnabled,
               ApplicationProxyMode applicationProxyMode,
               bool bypassPrivateRoute,
               PatchClashConfig patchConfig,
@@ -146,7 +154,7 @@ final class SetupPatchProvider
   }
 }
 
-String _$setupPatchHash() => r'2eadf3ea822cbcad424103369edeb662765e70b2';
+String _$setupPatchHash() => r'acc23a5a4a6d98cf2f9397510b1123f7cd7d4b34';
 
 @ProviderFor(trayState)
 final trayStateProvider = TrayStateProvider._();
@@ -2877,7 +2885,7 @@ final class NavigationItemsStateProvider
 }
 
 String _$navigationItemsStateHash() =>
-    r'3c633d4f3e5f2e80b7cfd166a46397f9a207bb1e';
+    r'396a254270a04ef820072b3c0401df01569ed6e1';
 
 @ProviderFor(currentNavigationItemsState)
 final currentNavigationItemsStateProvider =

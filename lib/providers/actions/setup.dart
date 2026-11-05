@@ -414,6 +414,9 @@ class SetupAction extends _$SetupAction {
     required String? target,
     ApplicationProxyMode mode = ApplicationProxyMode.follow,
   }) async {
+    if (!ref.read(networkSettingProvider).applicationProxyEnabled) {
+      throw MessageException(currentAppLocalizations.applicationProxyDisabled);
+    }
     final profile = ref.read(profileProvider(profileId));
     if (ref.read(currentProfileIdProvider) != profileId || profile == null) {
       throw MessageException(currentAppLocalizations.applicationProxyNoProfile);
@@ -454,6 +457,7 @@ class SetupAction extends _$SetupAction {
           .queryApplicationRules(profileId)
           .get();
       final matches = rules.where((rule) {
+        if (!rule.applicationProxyRule) return false;
         final identity = applicationRuleIdentity(
           rule,
           windows: application.windows,
@@ -484,6 +488,7 @@ class SetupAction extends _$SetupAction {
               ? 'PASS-RULE'
               : policyTarget ?? 'DIRECT',
           order: indexing.generateKeyBetween(null, firstOrder),
+          applicationProxyRule: true,
         ),
         profileId: profileId,
       );
@@ -491,15 +496,6 @@ class SetupAction extends _$SetupAction {
     });
     ref.invalidate(setupStateProvider(profileId));
     if (ref.read(currentProfileIdProvider) != profileId) return true;
-    if (policyTarget != null ||
-        mode == ApplicationProxyMode.httpSocks ||
-        keepFollowOverride) {
-      ref
-          .read(patchClashConfigProvider.notifier)
-          .update(
-            (state) => state.copyWith(findProcessMode: FindProcessMode.always),
-          );
-    }
     if (ref.read(coreStatusProvider) != CoreStatus.connected) return true;
     try {
       return await applyProfile(silence: true);
@@ -648,6 +644,7 @@ class SetupAction extends _$SetupAction {
         (state) => (
           appendSystemDns: state.appendSystemDns,
           applicationProxyMode: state.applicationProxyMode,
+          applicationProxyEnabled: state.applicationProxyEnabled,
           bypassPrivateRoute: state.bypassPrivateRoute,
           authentication: state.authentication,
         ),
@@ -697,6 +694,7 @@ class SetupAction extends _$SetupAction {
         bypassPrivateRoute: networkSetting.bypassPrivateRoute,
         keepEmptyDnsOverrides: setupState.profileType != ProfileType.custom,
         appendSystemDns: appendSystemDns,
+        applicationProxyEnabled: networkSetting.applicationProxyEnabled,
         applicationProxyMode:
             isCustom || setupState.extendType == ExtendType.standard
             ? networkSetting.applicationProxyMode
@@ -797,22 +795,23 @@ class SetupAction extends _$SetupAction {
   }
 
   PatchClashConfig _effectivePatchConfig(PatchClashConfig patchConfig) {
+    final config = patchConfig.withApplicationProxy(
+      ref.read(networkSettingProvider).applicationProxyEnabled,
+    );
     if (ref.read(safeModeProvider)) {
-      return patchConfig.copyWith(
-        tun: patchConfig.tun.copyWith(enable: false),
+      return config.copyWith(
+        tun: config.tun.copyWith(enable: false),
         externalController: ExternalControllerStatus.close,
       );
     }
     final authorized =
         ref.read(authorizedTunEnableProvider) ==
         TunAuthorizationState.authorized;
-    return patchConfig.copyWith(
-      tun: patchConfig.tun.copyWith(
-        enable: patchConfig.tun.enable && authorized,
-      ),
-      externalController: patchConfig.secret.isEmpty
+    return config.copyWith(
+      tun: config.tun.copyWith(enable: config.tun.enable && authorized),
+      externalController: config.secret.isEmpty
           ? ExternalControllerStatus.close
-          : patchConfig.externalController,
+          : config.externalController,
     );
   }
 

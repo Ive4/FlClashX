@@ -370,8 +370,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "Для приложений без отдельной настройки режима. Существующие правила приложений сохраняют свой режим.",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "Сначала включите прокси для приложений в разделе «Инструменты».",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "Включите определение процессов для распознавания приложений.",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage(
+      "Прокси для приложений",
+    ),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "Настройка прокси для каждого приложения. При отключении сохранённые политики сохраняются.",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage(
       "По правилам",

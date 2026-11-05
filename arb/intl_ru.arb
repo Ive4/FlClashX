@@ -1,4 +1,7 @@
 {
+  "applicationProxyFeature": "Прокси для приложений",
+  "applicationProxyFeatureDesc": "Настройка прокси для каждого приложения. При отключении сохранённые политики сохраняются.",
+  "applicationProxyDisabled": "Сначала включите прокси для приложений в разделе «Инструменты».",
   "applicationProxyMode": "Режим прокси",
   "applicationProxyModeFollow": "Как в FlClash",
   "applicationProxyModeHttpSocks": "HTTP & SOCKS",

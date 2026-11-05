@@ -23,10 +23,14 @@ UpdateParams updateParams(Ref ref) {
   PatchClashConfig patchConfig,
   bool appendSystemDns,
   bool bypassPrivateRoute,
+  bool applicationProxyEnabled,
   ApplicationProxyMode applicationProxyMode,
 })
 setupPatch(Ref ref) {
   return (
+    applicationProxyEnabled: ref.watch(
+      networkSettingProvider.select((state) => state.applicationProxyEnabled),
+    ),
     applicationProxyMode: ref.watch(
       networkSettingProvider.select((state) => state.applicationProxyMode),
     ),

@@ -1,4 +1,7 @@
 {
+  "applicationProxyFeature": "Application proxy",
+  "applicationProxyFeatureDesc": "Set proxy policies per app. Turning this off keeps saved app policies.",
+  "applicationProxyDisabled": "Enable application proxy in Tools first.",
   "applicationProxyMode": "Proxy mode",
   "applicationProxyModeFollow": "Follow FlClash",
   "applicationProxyModeHttpSocks": "HTTP & SOCKS",

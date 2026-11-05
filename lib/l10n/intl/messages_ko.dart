@@ -311,8 +311,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "개별 모드가 없는 앱에 적용됩니다. 기존 앱 규칙은 해당 모드를 유지합니다.",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "먼저 도구에서 앱별 프록시를 켜세요.",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "앱을 식별하려면 프로세스 감지를 활성화하세요.",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage("앱별 프록시"),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "앱별 프록시 정책을 설정합니다. 꺼도 저장된 정책은 유지됩니다.",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage(
       "규칙 따르기",

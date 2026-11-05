@@ -1,4 +1,7 @@
 {
+  "applicationProxyFeature": "アプリ別プロキシ",
+  "applicationProxyFeatureDesc": "アプリごとにプロキシポリシーを設定します。オフにしても保存済みのポリシーは保持されます。",
+  "applicationProxyDisabled": "まず「ツール」でアプリ別プロキシを有効にしてください。",
   "applicationProxyMode": "プロキシモード",
   "applicationProxyModeFollow": "FlClash に従う",
   "applicationProxyModeHttpSocks": "HTTP & SOCKS",

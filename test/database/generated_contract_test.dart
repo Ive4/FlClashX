@@ -153,11 +153,12 @@ void main() {
       subRule: 'sub',
       noResolve: true,
       src: true,
+      applicationProxyRule: true,
       order: 'a0',
     );
 
-    expect(rule.toColumns(true), hasLength(10));
-    expect(rule.toCompanion(true).toColumns(true), hasLength(10));
+    expect(rule.toColumns(true), hasLength(11));
+    expect(rule.toCompanion(true).toColumns(true), hasLength(11));
     expect(RawRule.fromJson(rule.toJson()), rule);
     expect(rule.copyWith(content: const Value(null)).content, null);
     expect(
@@ -179,9 +180,10 @@ void main() {
       ruleAction: RuleAction.MATCH,
       noResolve: false,
       src: false,
+      applicationProxyRule: false,
     );
-    expect(emptyRule.toColumns(true), hasLength(4));
-    expect(emptyRule.toColumns(false), hasLength(10));
+    expect(emptyRule.toColumns(true), hasLength(5));
+    expect(emptyRule.toColumns(false), hasLength(11));
 
     final ruleCompanion =
         RulesCompanion.insert(ruleAction: RuleAction.DOMAIN_SUFFIX).copyWith(

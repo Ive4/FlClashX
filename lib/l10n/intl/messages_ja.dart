@@ -314,8 +314,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "個別のモード設定がないアプリに適用します。既存のアプリルールのモードは維持されます。",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "まず「ツール」でアプリ別プロキシを有効にしてください。",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "アプリを識別するにはプロセス検出を有効にしてください。",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage("アプリ別プロキシ"),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "アプリごとにプロキシポリシーを設定します。オフにしても保存済みのポリシーは保持されます。",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage(
       "ルールに従う",

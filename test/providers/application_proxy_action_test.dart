@@ -64,6 +64,9 @@ void main() {
     container = ProviderContainer(
       overrides: [
         profilesProvider.overrideWith(() => TestProfiles(profiles)),
+        networkSettingProvider.overrideWithBuild(
+          (_, _) => const NetworkProps(applicationProxyEnabled: true),
+        ),
         currentProfileIdProvider.overrideWithBuild((_, _) => 1),
         setupActionProvider.overrideWith(() => action),
         coreStatusProvider.overrideWithBuild((_, _) => CoreStatus.connected),
@@ -88,41 +91,109 @@ void main() {
     await database.close();
   });
 
-  test('the app rule precedes catch-all and global rules in the current profile', () async {
-    await database.rulesDao.putRule(
-      const Rule(id: 10, ruleAction: RuleAction.MATCH, ruleTarget: 'Proxy', order: 'a0'),
-      profileId: 1,
-    );
-    await database.rulesDao.putRule(
-      const Rule(id: 20, content: 'global.test', ruleTarget: 'Proxy', order: 'a0'),
-    );
+  test(
+    'the app rule precedes catch-all and global rules in the current profile',
+    () async {
+      await database.rulesDao.putRule(
+        const Rule(
+          id: 10,
+          ruleAction: RuleAction.MATCH,
+          ruleTarget: 'Proxy',
+          order: 'a0',
+        ),
+        profileId: 1,
+      );
+      await database.rulesDao.putRule(
+        const Rule(
+          id: 20,
+          content: 'global.test',
+          ruleTarget: 'Proxy',
+          order: 'a0',
+        ),
+      );
 
-    expect(await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: 'DIRECT',
-    ), isTrue);
+      expect(
+        await action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'DIRECT',
+        ),
+        isTrue,
+      );
 
-    final rules = await database.rulesDao.queryAddedRules(1).get();
-    expect(rules.first.ruleAction, RuleAction.PROCESS_NAME);
-    expect(rules.first.content, 'browser.exe');
-    expect(rules.first.ruleTarget, 'DIRECT');
-    expect(rules.skip(1).map((rule) => rule.id), [10, 20]);
-    expect(await database.rulesDao.queryProfileRules(2).get(), isEmpty);
-    expect(
-      container.read(patchClashConfigProvider).findProcessMode,
-      FindProcessMode.always,
-    );
-    expect(action.applyCalls, 1);
-  });
+      final rules = await database.rulesDao.queryAddedRules(1).get();
+      expect(rules.first.ruleAction, RuleAction.PROCESS_NAME);
+      expect(rules.first.content, 'browser.exe');
+      expect(rules.first.ruleTarget, 'DIRECT');
+      expect(rules.first.applicationProxyRule, isTrue);
+      expect(rules.skip(1).map((rule) => rule.id), [10, 20]);
+      expect(await database.rulesDao.queryProfileRules(2).get(), isEmpty);
+      expect(
+        container.read(patchClashConfigProvider).findProcessMode,
+        FindProcessMode.off,
+      );
+      expect(action.applyCalls, 1);
+    },
+  );
 
   test(
-    'upgrading merges old paths and names only in the selected profile',
+    'disabled application routing rejects writes and keeps saved rules',
+    () async {
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: 'Proxy',
+      );
+      final saved = await database.rulesDao.queryProfileRules(1).get();
+      container
+          .read(networkSettingProvider.notifier)
+          .update((state) => state.copyWith(applicationProxyEnabled: false));
+      await expectLater(
+        action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'DIRECT',
+        ),
+        throwsA(isA<MessageException>()),
+      );
+      expect(await database.rulesDao.queryProfileRules(1).get(), saved);
+      expect(action.applyCalls, 1);
+    },
+  );
+
+  test(
+    'editing an app policy preserves a matching manual process rule',
+    () async {
+      final manual = Rule.parse('PROCESS-NAME,browser.exe,DIRECT', id: 80);
+      await database.rulesDao.putRule(manual, profileId: 1);
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: 'Proxy',
+      );
+      final saved = await database.rulesDao.queryProfileRules(1).get();
+      expect(saved, hasLength(2));
+      expect(saved.first.applicationProxyRule, isTrue);
+      expect(saved.last, manual.copyWith(profileId: 1));
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: null,
+      );
+      expect(await database.rulesDao.queryProfileRules(1).get(), [
+        manual.copyWith(profileId: 1),
+      ]);
+    },
+  );
+
+  test(
+    'managed app rules merge saved paths and names only in the selected profile',
     () async {
       const rule = Rule(
         id: 1,
         ruleAction: RuleAction.PROCESS_PATH,
         content: 'c:/apps/browser.exe',
+        applicationProxyRule: true,
         ruleTarget: 'DIRECT',
         order: 'a0',
       );
@@ -191,193 +262,275 @@ void main() {
     },
   );
 
-  test('switching modes removes the old policy and keeps other rules intact', () async {
-    final unrelated = Rule.parse(
-      'AND,((PROCESS-NAME,browser.exe),(DOMAIN,manual.test)),DIRECT', id: 90,
-    );
-    await database.rulesDao.putRule(unrelated, profileId: 1);
-    await action.setApplicationProxy(
-      profileId: 1, application: _application, target: 'DIRECT',
-    );
-    await action.setApplicationProxy(
-      profileId: 1, application: _application, target: 'DIRECT',
-      mode: ApplicationProxyMode.httpSocks,
-    );
-    final rules = await database.rulesDao.queryProfileRules(1).get();
-    expect(rules, hasLength(2));
-    expect(rules.first.rawValue,
-      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT');
-    expect(rules.last.id, unrelated.id);
-    final policy = applicationProxyPoliciesOf(rules, windows: true).values.single;
-    expect(policy.mode, ApplicationProxyMode.httpSocks);
-    expect(policy.target, isNull);
-    await action.setApplicationProxy(
-      profileId: 1, application: _application, target: 'Proxy',
-    );
-    expect((await database.rulesDao.queryProfileRules(1).get()).first.rawValue,
-      'PROCESS-NAME,browser.exe,Proxy');
-  });
-
-  test('HTTP and SOCKS mode persists with no policy and enables process detection', () async {
-    await action.setApplicationProxy(
-      profileId: 1, application: _application, target: null,
-      mode: ApplicationProxyMode.httpSocks,
-    );
-    expect((await database.rulesDao.queryApplicationRules(1).get()).single.rawValue,
-      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT');
-    expect(container.read(patchClashConfigProvider).findProcessMode,
-      FindProcessMode.always);
-    expect(action.applyCalls, 1);
-  });
-
-  test('an individual follow mode overrides the HTTP and SOCKS default', () async {
-    container.listen(networkSettingProvider, (_, _) {});
-    container.read(networkSettingProvider.notifier).update(
-      (state) => state.copyWith(applicationProxyMode: ApplicationProxyMode.httpSocks),
-    );
-    await action.setApplicationProxy(
-      profileId: 1, application: _application, target: null,
-    );
-    final rules = await database.rulesDao.queryApplicationRules(1).get();
-    expect(rules.single.rawValue,
-      'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE');
-    final policy = applicationProxyPoliciesOf(rules, windows: true).values.single;
-    expect(policy.mode, ApplicationProxyMode.follow);
-    expect(policy.target, isNull);
-    expect(applicationProxyDefaultRule(rules, windows: true),
-      'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser.exe)))),DIRECT');
-  });
-
-  test('custom profiles accept application rules without a standard extension', () async {
-    container.read(profilesProvider.notifier).updateProfile(
-      1,
-      (profile) => profile.copyWith(
-        type: ProfileType.custom,
-        extendType: ExtendType.script,
-      ),
-    );
-
-    expect(await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: 'Proxy',
-    ), isTrue);
-    expect(
-      (await database.rulesDao.queryProfileRules(1).get()).single.ruleTarget,
-      'Proxy',
-    );
-  });
-
-  test('a stopped core saves the rule and process detection without applying', () async {
-    container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: 'DIRECT',
-    );
-
-    expect(await database.rulesDao.queryApplicationRules(1).get(), hasLength(1));
-    expect(action.applyCalls, 0);
-    expect(
-      container.read(patchClashConfigProvider).findProcessMode,
-      FindProcessMode.always,
-    );
-  });
-
-  test('apply failures keep the saved rule and report a retryable result', () async {
-    action.applied = false;
-    expect(await action.setApplicationProxy(
-      profileId: 1,
-      application: _application,
-      target: 'DIRECT',
-    ), isFalse);
-    expect(await database.rulesDao.queryApplicationRules(1).get(), hasLength(1));
-
-    action.applyError = StateError('core failed');
-    await expectLater(
-      action.setApplicationProxy(
+  test(
+    'switching modes removes the old policy and keeps other rules intact',
+    () async {
+      final unrelated = Rule.parse(
+        'AND,((PROCESS-NAME,browser.exe),(DOMAIN,manual.test)),DIRECT',
+        id: 90,
+      );
+      await database.rulesDao.putRule(unrelated, profileId: 1);
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: 'DIRECT',
+      );
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: 'DIRECT',
+        mode: ApplicationProxyMode.httpSocks,
+      );
+      final rules = await database.rulesDao.queryProfileRules(1).get();
+      expect(rules, hasLength(2));
+      expect(
+        rules.first.rawValue,
+        'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT',
+      );
+      expect(rules.last.id, unrelated.id);
+      final policy = applicationProxyPoliciesOf(
+        rules,
+        windows: true,
+      ).values.single;
+      expect(policy.mode, ApplicationProxyMode.httpSocks);
+      expect(policy.target, isNull);
+      await action.setApplicationProxy(
         profileId: 1,
         application: _application,
         target: 'Proxy',
-      ),
-      throwsA(isA<MessageException>().having(
-        (error) => error.message,
-        'message',
-        AppLocalizations.current.applicationProxyApplyFailed,
-      )),
-    );
-    expect(
-      (await database.rulesDao.queryApplicationRules(1).get()).single.ruleTarget,
-      'Proxy',
-    );
-  });
+      );
+      expect(
+        (await database.rulesDao.queryProfileRules(1).get()).first.rawValue,
+        'PROCESS-NAME,browser.exe,Proxy',
+      );
+    },
+  );
 
-  test('stale profiles, script extensions and invalid processes cannot write', () async {
-    await expectLater(
-      action.setApplicationProxy(
-        profileId: 2,
+  test(
+    'HTTP and SOCKS mode persists with no policy and enables process detection',
+    () async {
+      await action.setApplicationProxy(
+        profileId: 1,
         application: _application,
-        target: 'DIRECT',
-      ),
-      throwsA(isA<MessageException>()),
-    );
-    container.read(profilesProvider.notifier).updateProfile(
-      1,
-      (profile) => profile.copyWith(extendType: ExtendType.script),
-    );
-    await expectLater(
-      action.setApplicationProxy(
+        target: null,
+        mode: ApplicationProxyMode.httpSocks,
+      );
+      expect(
+        (await database.rulesDao.queryApplicationRules(1).get())
+            .single
+            .rawValue,
+        'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),DIRECT',
+      );
+      expect(
+        container.read(patchClashConfigProvider).findProcessMode,
+        FindProcessMode.off,
+      );
+      expect(action.applyCalls, 1);
+    },
+  );
+
+  test(
+    'an individual follow mode overrides the HTTP and SOCKS default',
+    () async {
+      container.listen(networkSettingProvider, (_, _) {});
+      container
+          .read(networkSettingProvider.notifier)
+          .update(
+            (state) => state.copyWith(
+              applicationProxyMode: ApplicationProxyMode.httpSocks,
+            ),
+          );
+      await action.setApplicationProxy(
+        profileId: 1,
+        application: _application,
+        target: null,
+      );
+      final rules = await database.rulesDao.queryApplicationRules(1).get();
+      expect(
+        rules.single.rawValue,
+        'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE',
+      );
+      final policy = applicationProxyPoliciesOf(
+        rules,
+        windows: true,
+      ).values.single;
+      expect(policy.mode, ApplicationProxyMode.follow);
+      expect(policy.target, isNull);
+      expect(
+        applicationProxyDefaultRule(rules, windows: true),
+        'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser.exe)))),DIRECT',
+      );
+    },
+  );
+
+  test(
+    'custom profiles accept application rules without a standard extension',
+    () async {
+      container
+          .read(profilesProvider.notifier)
+          .updateProfile(
+            1,
+            (profile) => profile.copyWith(
+              type: ProfileType.custom,
+              extendType: ExtendType.script,
+            ),
+          );
+
+      expect(
+        await action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'Proxy',
+        ),
+        isTrue,
+      );
+      expect(
+        (await database.rulesDao.queryProfileRules(1).get()).single.ruleTarget,
+        'Proxy',
+      );
+    },
+  );
+
+  test(
+    'a stopped core saves the rule and process detection without applying',
+    () async {
+      container.read(coreStatusProvider.notifier).value =
+          CoreStatus.disconnected;
+      await action.setApplicationProxy(
         profileId: 1,
         application: _application,
         target: 'DIRECT',
-      ),
-      throwsA(isA<MessageException>()),
-    );
-    container.read(profilesProvider.notifier).updateProfile(
-      1,
-      (profile) => profile.copyWith(extendType: ExtendType.standard),
-    );
-    for (final target in ['missing', 'Proxy,DIRECT']) {
+      );
+
+      expect(
+        await database.rulesDao.queryApplicationRules(1).get(),
+        hasLength(1),
+      );
+      expect(action.applyCalls, 0);
+      expect(
+        container.read(patchClashConfigProvider).findProcessMode,
+        FindProcessMode.off,
+      );
+    },
+  );
+
+  test(
+    'apply failures keep the saved rule and report a retryable result',
+    () async {
+      action.applied = false;
+      expect(
+        await action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'DIRECT',
+        ),
+        isFalse,
+      );
+      expect(
+        await database.rulesDao.queryApplicationRules(1).get(),
+        hasLength(1),
+      );
+
+      action.applyError = StateError('core failed');
       await expectLater(
         action.setApplicationProxy(
           profileId: 1,
           application: _application,
-          target: target,
+          target: 'Proxy',
+        ),
+        throwsA(
+          isA<MessageException>().having(
+            (error) => error.message,
+            'message',
+            AppLocalizations.current.applicationProxyApplyFailed,
+          ),
+        ),
+      );
+      expect(
+        (await database.rulesDao.queryApplicationRules(1).get())
+            .single
+            .ruleTarget,
+        'Proxy',
+      );
+    },
+  );
+
+  test(
+    'stale profiles, script extensions and invalid processes cannot write',
+    () async {
+      await expectLater(
+        action.setApplicationProxy(
+          profileId: 2,
+          application: _application,
+          target: 'DIRECT',
         ),
         throwsA(isA<MessageException>()),
       );
-    }
-    await expectLater(
-      action.setApplicationProxy(
-        profileId: 1,
-        application: const ApplicationIdentity(
-          action: RuleAction.PROCESS_NAME,
-          content: 'bad,process',
-          windows: false,
+      container
+          .read(profilesProvider.notifier)
+          .updateProfile(
+            1,
+            (profile) => profile.copyWith(extendType: ExtendType.script),
+          );
+      await expectLater(
+        action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'DIRECT',
         ),
-        target: 'DIRECT',
-      ),
-      throwsA(isA<MessageException>()),
-    );
-    expect(await database.rulesDao.queryProfileRules(1).get(), isEmpty);
-    expect(action.applyCalls, 0);
-  });
+        throwsA(isA<MessageException>()),
+      );
+      container
+          .read(profilesProvider.notifier)
+          .updateProfile(
+            1,
+            (profile) => profile.copyWith(extendType: ExtendType.standard),
+          );
+      for (final target in ['missing', 'Proxy,DIRECT']) {
+        await expectLater(
+          action.setApplicationProxy(
+            profileId: 1,
+            application: _application,
+            target: target,
+          ),
+          throwsA(isA<MessageException>()),
+        );
+      }
+      await expectLater(
+        action.setApplicationProxy(
+          profileId: 1,
+          application: const ApplicationIdentity(
+            action: RuleAction.PROCESS_NAME,
+            content: 'bad,process',
+            windows: false,
+          ),
+          target: 'DIRECT',
+        ),
+        throwsA(isA<MessageException>()),
+      );
+      expect(await database.rulesDao.queryProfileRules(1).get(), isEmpty);
+      expect(action.applyCalls, 0);
+    },
+  );
 
-  test('database write errors leave process detection and the core unchanged', () async {
-    await database.customStatement('DROP TABLE rules');
+  test(
+    'database write errors leave process detection and the core unchanged',
+    () async {
+      await database.customStatement('DROP TABLE rules');
 
-    await expectLater(
-      action.setApplicationProxy(
-        profileId: 1,
-        application: _application,
-        target: 'DIRECT',
-      ),
-      throwsA(isA<Exception>()),
-    );
-    expect(action.applyCalls, 0);
-    expect(
-      container.read(patchClashConfigProvider).findProcessMode,
-      FindProcessMode.off,
-    );
-  });
+      await expectLater(
+        action.setApplicationProxy(
+          profileId: 1,
+          application: _application,
+          target: 'DIRECT',
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect(action.applyCalls, 0);
+      expect(
+        container.read(patchClashConfigProvider).findProcessMode,
+        FindProcessMode.off,
+      );
+    },
+  );
 }

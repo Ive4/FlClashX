@@ -383,6 +383,7 @@ extension AuthenticationPropsExt on AuthenticationProps {
 @freezed
 abstract class NetworkProps with _$NetworkProps {
   const factory NetworkProps({
+    @Default(false) bool applicationProxyEnabled,
     @Default(ApplicationProxyMode.follow)
     ApplicationProxyMode applicationProxyMode,
     @Default(true) bool systemProxy,

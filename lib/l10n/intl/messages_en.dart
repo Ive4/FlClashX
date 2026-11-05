@@ -360,8 +360,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "Used by apps without an individual mode. Existing app rules keep their mode.",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "Enable application proxy in Tools first.",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "Enable process detection to identify apps.",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage(
+      "Application proxy",
+    ),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "Set proxy policies per app. Turning this off keeps saved app policies.",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage(
       "Follow rules",

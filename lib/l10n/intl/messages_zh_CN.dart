@@ -303,8 +303,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "用于尚未单独设置模式的应用，已有应用规则保留原来的模式。",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "请先在工具中开启应用代理。",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "开启进程识别后，可识别发起连接的应用。",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage("应用代理"),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "按应用设置代理策略，关闭后保留已保存的应用策略。",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage("跟随规则"),
     "applicationProxyInvalidProcess": MessageLookupByLibrary.simpleMessage(

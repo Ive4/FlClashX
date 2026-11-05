@@ -1452,6 +1452,20 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, RawRule> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _applicationProxyRuleMeta =
+      const VerificationMeta('applicationProxyRule');
+  @override
+  late final GeneratedColumn<bool> applicationProxyRule = GeneratedColumn<bool>(
+    'application_proxy_rule',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("application_proxy_rule" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _orderMeta = const VerificationMeta('order');
   @override
   late final GeneratedColumn<String> order = GeneratedColumn<String>(
@@ -1472,6 +1486,7 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, RawRule> {
     subRule,
     noResolve,
     src,
+    applicationProxyRule,
     order,
   ];
   @override
@@ -1534,6 +1549,15 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, RawRule> {
         src.isAcceptableOrUnknown(data['src']!, _srcMeta),
       );
     }
+    if (data.containsKey('application_proxy_rule')) {
+      context.handle(
+        _applicationProxyRuleMeta,
+        applicationProxyRule.isAcceptableOrUnknown(
+          data['application_proxy_rule']!,
+          _applicationProxyRuleMeta,
+        ),
+      );
+    }
     if (data.containsKey('order')) {
       context.handle(
         _orderMeta,
@@ -1587,6 +1611,10 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, RawRule> {
         DriftSqlType.bool,
         data['${effectivePrefix}src'],
       )!,
+      applicationProxyRule: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}application_proxy_rule'],
+      )!,
       order: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}order'],
@@ -1613,6 +1641,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
   final String? subRule;
   final bool noResolve;
   final bool src;
+  final bool applicationProxyRule;
   final String? order;
   const RawRule({
     required this.id,
@@ -1624,6 +1653,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
     this.subRule,
     required this.noResolve,
     required this.src,
+    required this.applicationProxyRule,
     this.order,
   });
   @override
@@ -1652,6 +1682,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
     }
     map['no_resolve'] = Variable<bool>(noResolve);
     map['src'] = Variable<bool>(src);
+    map['application_proxy_rule'] = Variable<bool>(applicationProxyRule);
     if (!nullToAbsent || order != null) {
       map['order'] = Variable<String>(order);
     }
@@ -1679,6 +1710,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
           : Value(subRule),
       noResolve: Value(noResolve),
       src: Value(src),
+      applicationProxyRule: Value(applicationProxyRule),
       order: order == null && nullToAbsent
           ? const Value.absent()
           : Value(order),
@@ -1702,6 +1734,9 @@ class RawRule extends DataClass implements Insertable<RawRule> {
       subRule: serializer.fromJson<String?>(json['subRule']),
       noResolve: serializer.fromJson<bool>(json['noResolve']),
       src: serializer.fromJson<bool>(json['src']),
+      applicationProxyRule: serializer.fromJson<bool>(
+        json['applicationProxyRule'],
+      ),
       order: serializer.fromJson<String?>(json['order']),
     );
   }
@@ -1720,6 +1755,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
       'subRule': serializer.toJson<String?>(subRule),
       'noResolve': serializer.toJson<bool>(noResolve),
       'src': serializer.toJson<bool>(src),
+      'applicationProxyRule': serializer.toJson<bool>(applicationProxyRule),
       'order': serializer.toJson<String?>(order),
     };
   }
@@ -1734,6 +1770,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
     Value<String?> subRule = const Value.absent(),
     bool? noResolve,
     bool? src,
+    bool? applicationProxyRule,
     Value<String?> order = const Value.absent(),
   }) => RawRule(
     id: id ?? this.id,
@@ -1745,6 +1782,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
     subRule: subRule.present ? subRule.value : this.subRule,
     noResolve: noResolve ?? this.noResolve,
     src: src ?? this.src,
+    applicationProxyRule: applicationProxyRule ?? this.applicationProxyRule,
     order: order.present ? order.value : this.order,
   );
   RawRule copyWithCompanion(RulesCompanion data) {
@@ -1764,6 +1802,9 @@ class RawRule extends DataClass implements Insertable<RawRule> {
       subRule: data.subRule.present ? data.subRule.value : this.subRule,
       noResolve: data.noResolve.present ? data.noResolve.value : this.noResolve,
       src: data.src.present ? data.src.value : this.src,
+      applicationProxyRule: data.applicationProxyRule.present
+          ? data.applicationProxyRule.value
+          : this.applicationProxyRule,
       order: data.order.present ? data.order.value : this.order,
     );
   }
@@ -1780,6 +1821,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
           ..write('subRule: $subRule, ')
           ..write('noResolve: $noResolve, ')
           ..write('src: $src, ')
+          ..write('applicationProxyRule: $applicationProxyRule, ')
           ..write('order: $order')
           ..write(')'))
         .toString();
@@ -1796,6 +1838,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
     subRule,
     noResolve,
     src,
+    applicationProxyRule,
     order,
   );
   @override
@@ -1811,6 +1854,7 @@ class RawRule extends DataClass implements Insertable<RawRule> {
           other.subRule == this.subRule &&
           other.noResolve == this.noResolve &&
           other.src == this.src &&
+          other.applicationProxyRule == this.applicationProxyRule &&
           other.order == this.order);
 }
 
@@ -1824,6 +1868,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
   final Value<String?> subRule;
   final Value<bool> noResolve;
   final Value<bool> src;
+  final Value<bool> applicationProxyRule;
   final Value<String?> order;
   const RulesCompanion({
     this.id = const Value.absent(),
@@ -1835,6 +1880,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
     this.subRule = const Value.absent(),
     this.noResolve = const Value.absent(),
     this.src = const Value.absent(),
+    this.applicationProxyRule = const Value.absent(),
     this.order = const Value.absent(),
   });
   RulesCompanion.insert({
@@ -1847,6 +1893,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
     this.subRule = const Value.absent(),
     this.noResolve = const Value.absent(),
     this.src = const Value.absent(),
+    this.applicationProxyRule = const Value.absent(),
     this.order = const Value.absent(),
   }) : ruleAction = Value(ruleAction);
   static Insertable<RawRule> custom({
@@ -1859,6 +1906,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
     Expression<String>? subRule,
     Expression<bool>? noResolve,
     Expression<bool>? src,
+    Expression<bool>? applicationProxyRule,
     Expression<String>? order,
   }) {
     return RawValuesInsertable({
@@ -1871,6 +1919,8 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
       if (subRule != null) 'sub_rule': subRule,
       if (noResolve != null) 'no_resolve': noResolve,
       if (src != null) 'src': src,
+      if (applicationProxyRule != null)
+        'application_proxy_rule': applicationProxyRule,
       if (order != null) 'order': order,
     });
   }
@@ -1885,6 +1935,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
     Value<String?>? subRule,
     Value<bool>? noResolve,
     Value<bool>? src,
+    Value<bool>? applicationProxyRule,
     Value<String?>? order,
   }) {
     return RulesCompanion(
@@ -1897,6 +1948,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
       subRule: subRule ?? this.subRule,
       noResolve: noResolve ?? this.noResolve,
       src: src ?? this.src,
+      applicationProxyRule: applicationProxyRule ?? this.applicationProxyRule,
       order: order ?? this.order,
     );
   }
@@ -1933,6 +1985,11 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
     if (src.present) {
       map['src'] = Variable<bool>(src.value);
     }
+    if (applicationProxyRule.present) {
+      map['application_proxy_rule'] = Variable<bool>(
+        applicationProxyRule.value,
+      );
+    }
     if (order.present) {
       map['order'] = Variable<String>(order.value);
     }
@@ -1951,6 +2008,7 @@ class RulesCompanion extends UpdateCompanion<RawRule> {
           ..write('subRule: $subRule, ')
           ..write('noResolve: $noResolve, ')
           ..write('src: $src, ')
+          ..write('applicationProxyRule: $applicationProxyRule, ')
           ..write('order: $order')
           ..write(')'))
         .toString();
@@ -5763,6 +5821,7 @@ typedef $$RulesTableCreateCompanionBuilder =
       Value<String?> subRule,
       Value<bool> noResolve,
       Value<bool> src,
+      Value<bool> applicationProxyRule,
       Value<String?> order,
     });
 typedef $$RulesTableUpdateCompanionBuilder =
@@ -5776,6 +5835,7 @@ typedef $$RulesTableUpdateCompanionBuilder =
       Value<String?> subRule,
       Value<bool> noResolve,
       Value<bool> src,
+      Value<bool> applicationProxyRule,
       Value<String?> order,
     });
 
@@ -5865,6 +5925,11 @@ class $$RulesTableFilterComposer extends Composer<_$Database, $RulesTable> {
 
   ColumnFilters<bool> get src => $composableBuilder(
     column: $table.src,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get applicationProxyRule => $composableBuilder(
+    column: $table.applicationProxyRule,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5970,6 +6035,11 @@ class $$RulesTableOrderingComposer extends Composer<_$Database, $RulesTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get applicationProxyRule => $composableBuilder(
+    column: $table.applicationProxyRule,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get order => $composableBuilder(
     column: $table.order,
     builder: (column) => ColumnOrderings(column),
@@ -6037,6 +6107,11 @@ class $$RulesTableAnnotationComposer extends Composer<_$Database, $RulesTable> {
 
   GeneratedColumn<bool> get src =>
       $composableBuilder(column: $table.src, builder: (column) => column);
+
+  GeneratedColumn<bool> get applicationProxyRule => $composableBuilder(
+    column: $table.applicationProxyRule,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get order =>
       $composableBuilder(column: $table.order, builder: (column) => column);
@@ -6127,6 +6202,7 @@ class $$RulesTableTableManager
                 Value<String?> subRule = const Value.absent(),
                 Value<bool> noResolve = const Value.absent(),
                 Value<bool> src = const Value.absent(),
+                Value<bool> applicationProxyRule = const Value.absent(),
                 Value<String?> order = const Value.absent(),
               }) => RulesCompanion(
                 id: id,
@@ -6138,6 +6214,7 @@ class $$RulesTableTableManager
                 subRule: subRule,
                 noResolve: noResolve,
                 src: src,
+                applicationProxyRule: applicationProxyRule,
                 order: order,
               ),
           createCompanionCallback:
@@ -6151,6 +6228,7 @@ class $$RulesTableTableManager
                 Value<String?> subRule = const Value.absent(),
                 Value<bool> noResolve = const Value.absent(),
                 Value<bool> src = const Value.absent(),
+                Value<bool> applicationProxyRule = const Value.absent(),
                 Value<String?> order = const Value.absent(),
               }) => RulesCompanion.insert(
                 id: id,
@@ -6162,6 +6240,7 @@ class $$RulesTableTableManager
                 subRule: subRule,
                 noResolve: noResolve,
                 src: src,
+                applicationProxyRule: applicationProxyRule,
                 order: order,
               ),
           withReferenceMapper: (p0) => p0

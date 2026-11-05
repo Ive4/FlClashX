@@ -54,6 +54,9 @@ rebuilds the profile YAML and hands it to Go's `applyConfig` through `setupConfi
 - `PatchClashConfig.setupOnly`: the config with every field that update carries reset to its default.
 - `NetworkProps.appendSystemDns`.
 - `NetworkProps.applicationProxyMode`, which adds the default TUN bypass while keeping individual app modes.
+- `NetworkProps.applicationProxyEnabled`, default false. Enabling it exposes the application page and forces process
+  lookup only in the effective Core config. Disabling it suspends rules marked `applicationProxyRule` and the default
+  TUN bypass while retaining saved policies, manual rules and the user's process-lookup preference.
 - `NetworkProps.bypassPrivateRoute` on desktop, where the task adds the private ranges to the TUN's final
   `route-exclude-address`.
 

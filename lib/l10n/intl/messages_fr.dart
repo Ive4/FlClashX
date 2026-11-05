@@ -380,8 +380,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "applicationProxyDefaultModeHint": MessageLookupByLibrary.simpleMessage(
       "Pour les applications sans mode individuel. Les règles existantes des applications conservent leur mode.",
     ),
+    "applicationProxyDisabled": MessageLookupByLibrary.simpleMessage(
+      "Activez d’abord le proxy par application dans Outils.",
+    ),
     "applicationProxyEnableProcess": MessageLookupByLibrary.simpleMessage(
       "Activez la détection des processus pour identifier les applications.",
+    ),
+    "applicationProxyFeature": MessageLookupByLibrary.simpleMessage(
+      "Proxy par application",
+    ),
+    "applicationProxyFeatureDesc": MessageLookupByLibrary.simpleMessage(
+      "Définissez une politique proxy par application. La désactivation conserve les politiques enregistrées.",
     ),
     "applicationProxyFollowRules": MessageLookupByLibrary.simpleMessage(
       "Suivre les règles",

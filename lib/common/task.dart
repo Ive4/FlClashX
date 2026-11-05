@@ -116,11 +116,17 @@ Future<RealProfile> makeRealProfileTask(MakeRealProfileState data) async {
 
 Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
   final rawConfig = Map.from(data.rawConfig);
-  final realPatchConfig = data.realPatchConfig;
+  final realPatchConfig = data.realPatchConfig.withApplicationProxy(
+    data.applicationProxyEnabled,
+  );
   final profilesPath = data.profilesPath;
   final profileId = data.profileId;
   final overrides = data.overrides;
-  final addedRules = data.addedRules;
+  final addedRules = data.addedRules
+      .where(
+        (rule) => data.applicationProxyEnabled || !rule.applicationProxyRule,
+      )
+      .toList();
   final appendSystemDns = data.appendSystemDns;
   final defaultUA = data.defaultUA;
   String getProvidersFilePathInner(String type, String key) {
@@ -366,9 +372,15 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
       rules = [...finalAddedRules, ...rules];
     }
   } else {
-    rules = data.rules.map(runtimeRule).toList();
+    rules = data.rules
+        .where(
+          (rule) => data.applicationProxyEnabled || !rule.applicationProxyRule,
+        )
+        .map(runtimeRule)
+        .toList();
   }
-  if (data.applicationProxyMode == ApplicationProxyMode.httpSocks) {
+  if (data.applicationProxyEnabled &&
+      data.applicationProxyMode == ApplicationProxyMode.httpSocks) {
     rules.insert(
       0,
       applicationProxyDefaultRule([

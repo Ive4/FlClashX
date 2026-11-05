@@ -17,7 +17,8 @@ class _ApplicationProxyViewState extends ConsumerState<ApplicationProxyView>
         RouteMotionHoldMixin<ApplicationProxyView>,
         ConnectionsPolling<ApplicationProxyView> {
   @override
-  bool get pollsConnections => true;
+  bool get pollsConnections =>
+      ref.read(networkSettingProvider).applicationProxyEnabled;
 
   @override
   bool get sortsConnections => false;
@@ -108,7 +109,9 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
           );
       // ignore: avoid_print
       print('>>> _change returned applied=$applied');
-      if (!applied && mounted && ref.read(currentProfileIdProvider) == profileId) {
+      if (!applied &&
+          mounted &&
+          ref.read(currentProfileIdProvider) == profileId) {
         setState(() => _error = l.applicationProxyApplyFailed);
       }
     } catch (error) {
@@ -219,7 +222,9 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           minimumSize: const Size(0, 32),
           foregroundColor: context.colorScheme.onSurface,
-          disabledForegroundColor: context.colorScheme.onSurface.withValues(alpha: 0.38),
+          disabledForegroundColor: context.colorScheme.onSurface.withValues(
+            alpha: 0.38,
+          ),
           textStyle: AppTextStyle.footnote.of(context),
         ),
         child: saving
@@ -238,8 +243,7 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (enabled)
-                    const GlyphIcon(AppGlyphs.chevronDown, size: 12),
+                  if (enabled) const GlyphIcon(AppGlyphs.chevronDown, size: 12),
                 ],
               ),
       ),
@@ -254,7 +258,12 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     print('>>> panel build saving=$_saving');
     final profile = ref.watch(currentProfileProvider);
     final profileId = profile?.id;
-    final editable = profile != null &&
+    final featureEnabled = ref.watch(
+      networkSettingProvider.select((state) => state.applicationProxyEnabled),
+    );
+    final editable =
+        featureEnabled &&
+        profile != null &&
         (profile.type == ProfileType.custom ||
             profile.extendType == ExtendType.standard);
     final rulesState = profileId == null || !editable
@@ -274,7 +283,9 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
     String? action;
     VoidCallback? onAction;
     String? notice;
-    if (widget.stale) {
+    if (!featureEnabled) {
+      notice = l.applicationProxyDisabled;
+    } else if (widget.stale) {
       notice = l.applicationProxyRefreshFailed;
     } else if (profile == null) {
       notice = l.applicationProxyNoProfile;
@@ -285,12 +296,6 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
       action = l.rule;
       onAction = () =>
           ref.read(setupActionProvider.notifier).changeMode(Mode.rule);
-    } else if (patch.findProcessMode != FindProcessMode.always) {
-      notice = l.applicationProxyEnableProcess;
-      action = l.findProcessMode;
-      onAction = () => ref.read(patchClashConfigProvider.notifier).update(
-        (state) => state.copyWith(findProcessMode: FindProcessMode.always),
-      );
     }
     final message = _error ?? notice;
     return Column(
@@ -329,15 +334,6 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                                     applicationProxyMode: mode,
                                   ),
                                 );
-                            if (mode == ApplicationProxyMode.httpSocks) {
-                              ref
-                                  .read(patchClashConfigProvider.notifier)
-                                  .update(
-                                    (state) => state.copyWith(
-                                      findProcessMode: FindProcessMode.always,
-                                    ),
-                                  );
-                            }
                           },
                         ),
                     ],
@@ -360,11 +356,13 @@ class _ApplicationProxyPanelState extends ConsumerState<ApplicationProxyPanel> {
                       message,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.caption1.of(context).copyWith(
-                        color: _error == null
-                            ? context.colorScheme.onSurfaceVariant
-                            : context.colorScheme.error,
-                      ),
+                      style: AppTextStyle.caption1
+                          .of(context)
+                          .copyWith(
+                            color: _error == null
+                                ? context.colorScheme.onSurfaceVariant
+                                : context.colorScheme.error,
+                          ),
                     ),
                   ),
                 ),
@@ -475,11 +473,14 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
         ),
       ),
       popupBuilder: (popupContext) => Material(
-        color: SurfaceLevel.floatingOf(context.colorScheme).colorOf(context.colorScheme),
+        color: SurfaceLevel.floatingOf(
+          context.colorScheme,
+        ).colorOf(context.colorScheme),
         shape: AppShape.md,
         child: SizedBox(
           width: (MediaQuery.sizeOf(popupContext).width - 32)
-              .clamp(0.0, 360.0).toDouble(),
+              .clamp(0.0, 360.0)
+              .toDouble(),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: ValueListenableBuilder<TextEditingValue>(
@@ -497,11 +498,13 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
                     padding: EdgeInsets.all(12),
                     child: GlyphIcon(AppGlyphs.search, size: 18),
                   ),
-                  suffixIcon: value.text.isEmpty ? null : IconButton(
-                    tooltip: l.clearSearch,
-                    onPressed: _clearSearch,
-                    icon: const GlyphIcon(AppGlyphs.close, size: 16),
-                  ),
+                  suffixIcon: value.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: l.clearSearch,
+                          onPressed: _clearSearch,
+                          icon: const GlyphIcon(AppGlyphs.close, size: 16),
+                        ),
                 ),
               ),
             ),
@@ -519,7 +522,9 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     try {
       await action();
     } catch (error) {
-      if (mounted) dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+      if (mounted) {
+        dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+      }
     }
   }
 
@@ -539,17 +544,32 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     }
     if (!mounted) return;
     setState(() => _resetting.remove(key));
-    dialogs.showNotifier(failed ? l.applicationResetFailed : l.applicationResetDone);
+    dialogs.showNotifier(
+      failed ? l.applicationResetFailed : l.applicationResetDone,
+    );
   }
 
   Future<void> _clearHistory() async {
     final l = context.appLocalizations;
-    final confirmed = await showDialog<bool>(context: context, builder: (context) =>
-      AlertDialog(content: Text(l.applicationClearConfirm), actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.cancel)),
-        TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l.applicationClearHistory)),
-      ]));
-    if (confirmed == true) await _historyAction(() => applicationHistory.remove(null));
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(l.applicationClearConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l.applicationClearHistory),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _historyAction(() => applicationHistory.remove(null));
+    }
   }
 
   @override
@@ -599,8 +619,11 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
           _snapshot = snapshot;
           _failed = false;
         });
-        widget.onCountChanged?.call(snapshot.applications.where((item) => item.connections > 0).length);
+        widget.onCountChanged?.call(
+          snapshot.applications.where((item) => item.connections > 0).length,
+        );
       }
+
       if (_snapshot == null) {
         show();
       } else {
@@ -613,7 +636,8 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     }
   }
 
-  String _speed(ApplicationProxyInfo application, bool download) => widget.stale || application.connections == 0
+  String _speed(ApplicationProxyInfo application, bool download) =>
+      widget.stale || application.connections == 0
       ? '—'
       : '${dashboardTraffic(download ? application.downloadSpeed : application.uploadSpeed)}/s';
 
@@ -625,7 +649,9 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
     if (_failed) return Center(child: Text(l.error));
     final snapshot = _snapshot;
     if (snapshot == null) return const SizedBox.shrink();
-    final live = snapshot.applications.where((item) => item.connections > 0).toList();
+    final live = snapshot.applications
+        .where((item) => item.connections > 0)
+        .toList();
     final history = applicationHistory;
     final all = <String, ApplicationProxyInfo>{
       for (final item in live) item.identity?.key ?? '': item,
@@ -641,169 +667,276 @@ class _ApplicationRowsState extends ConsumerState<_ApplicationRows>
       );
     }
     final query = _search.text.trim().toLowerCase();
-    final applications = (history.showHistory ? all.values : live).where((item) =>
-      query.isEmpty || (item.identity?.content.toLowerCase().contains(query) ?? false)).toList();
+    final applications = (history.showHistory ? all.values : live)
+        .where(
+          (item) =>
+              query.isEmpty ||
+              (item.identity?.content.toLowerCase().contains(query) ?? false),
+        )
+        .toList();
     if (history.showHistory) {
       applications.sort((a, b) {
-        final active = (b.connections > 0 ? 1 : 0).compareTo(a.connections > 0 ? 1 : 0);
+        final active = (b.connections > 0 ? 1 : 0).compareTo(
+          a.connections > 0 ? 1 : 0,
+        );
         if (active != 0) return active;
         final epoch = DateTime.fromMillisecondsSinceEpoch(0);
-        return (history.entries[b.identity?.key]?.lastSeen ?? epoch)
-          .compareTo(history.entries[a.identity?.key]?.lastSeen ?? epoch);
+        return (history.entries[b.identity?.key]?.lastSeen ?? epoch).compareTo(
+          history.entries[a.identity?.key]?.lastSeen ?? epoch,
+        );
       });
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(spacing: 6, children: [
-                ChoiceChip(
-                  label: Text('${l.applicationCurrent} (${live.length})'),
-                  showCheckmark: false,
-                  side: BorderSide.none,
-                  shape: AppShape.sm,
-                  labelStyle: AppTextStyle.footnote.of(context),
-                  selected: !history.showHistory,
-                  onSelected: (_) => _historyAction(() => history.select(false)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    spacing: 6,
+                    children: [
+                      ChoiceChip(
+                        label: Text('${l.applicationCurrent} (${live.length})'),
+                        showCheckmark: false,
+                        side: BorderSide.none,
+                        shape: AppShape.sm,
+                        labelStyle: AppTextStyle.footnote.of(context),
+                        selected: !history.showHistory,
+                        onSelected: (_) =>
+                            _historyAction(() => history.select(false)),
+                      ),
+                      ChoiceChip(
+                        label: Text('${l.applicationHistory} (${all.length})'),
+                        showCheckmark: false,
+                        side: BorderSide.none,
+                        shape: AppShape.sm,
+                        labelStyle: AppTextStyle.footnote.of(context),
+                        selected: history.showHistory,
+                        onSelected: (_) =>
+                            _historyAction(() => history.select(true)),
+                      ),
+                    ],
+                  ),
                 ),
-                ChoiceChip(
-                  label: Text('${l.applicationHistory} (${all.length})'),
-                  showCheckmark: false,
-                  side: BorderSide.none,
-                  shape: AppShape.sm,
-                  labelStyle: AppTextStyle.footnote.of(context),
-                  selected: history.showHistory,
-                  onSelected: (_) => _historyAction(() => history.select(true)),
+              ),
+              const SizedBox(width: 12),
+              _searchButton(context),
+              if (query.isNotEmpty)
+                IconButton(
+                  tooltip: l.clearSearch,
+                  onPressed: _clearSearch,
+                  icon: const GlyphIcon(AppGlyphs.close, size: 18),
                 ),
-              ]),
-            ),
+              if (history.showHistory)
+                IconButton(
+                  tooltip: l.applicationClearHistory,
+                  onPressed: history.entries.isEmpty ? null : _clearHistory,
+                  icon: const GlyphIcon(AppGlyphs.delete, size: 18),
+                ),
+            ],
           ),
-          const SizedBox(width: 12),
-          _searchButton(context),
-          if (query.isNotEmpty)
-            IconButton(
-              tooltip: l.clearSearch,
-              onPressed: _clearSearch,
-              icon: const GlyphIcon(AppGlyphs.close, size: 18),
-            ),
-          if (history.showHistory)
-            IconButton(
-              tooltip: l.applicationClearHistory,
-              onPressed: history.entries.isEmpty ? null : _clearHistory,
-              icon: const GlyphIcon(AppGlyphs.delete, size: 18),
-            ),
-        ]),
-      ),
-      Expanded(child: applications.isEmpty
-        ? Center(child: Text(query.isNotEmpty ? l.applicationNoMatches
-            : history.showHistory ? l.applicationHistoryEmpty : l.applicationProxyNoConnections))
-        : _Table<ApplicationProxyInfo>(
-      tableId: history.showHistory ? 'applications.history' : 'applications.current',
-      items: applications,
-      subtleRows: true,
-      rowHeight: widget.rowHeight,
-      maxRows: null,
-      scrollController: widget.scrollController,
-      columnsOf: (width) => [
-        RecordColumn(
-          TableColumn('application', l.app, flex: 2),
-          cell: (_, item) => Tooltip(
-            message: item.identity?.content ?? l.unknown,
-            child: _Source(item.identity?.name ?? l.unknown),
-          ),
-          sortKey: (item) => item.identity?.name.toLowerCase() ?? '',
         ),
-        if (width >= 620) RecordColumn(
-          TableColumn('status', l.status, width: 76),
-          cell: (_, item) => _ApplicationRouteText(item),
-          sortKey: (item) => item.route.index,
-        ),
-        RecordColumn(
-          TableColumn('mode', l.applicationProxyMode,
-            width: width < 460 ? (history.showHistory ? 80 : 96) : width < 700 ? 116 : 164),
-          cell: (_, item) => widget.modeBuilder(item),
-          sortKey: (item) => item.mode?.index ?? -1,
-        ),
-        RecordColumn(
-          width < 460
-              ? TableColumn('policy', l.strategy, width: history.showHistory ? 80 : 96)
-              : width < 700
-              ? TableColumn('policy', l.strategy, width: 112)
-              : TableColumn('policy', l.strategy, flex: 1),
-          cell: (_, item) => widget.policyBuilder(item),
-          sortKey: (item) => item.target ?? '',
-        ),
-        if (history.showHistory && width >= 1000)
-          RecordColumn(TableColumn('lastSeen', l.applicationLastSeen, width: 140),
-            cell: (_, item) => Text(history.entries[item.identity?.key]?.lastSeen
-                .toLocal().toString().substring(0, 16) ?? '—'),
-            sortKey: (item) => history.entries[item.identity?.key]?.lastSeen.millisecondsSinceEpoch ?? 0),
-        if (width >= 850) ...[
-          RecordColumn(
-            TableColumn('connections', l.liveConnections, width: 70, end: true),
-            cell: (_, item) => _Number(dashboardCount(item.connections)),
-            sortKey: (item) => item.connections,
-            descendingFirst: true,
-          ),
-          for (final download in [true, false])
-            RecordColumn(
-              TableColumn(
-                download ? 'download' : 'upload',
-                download ? l.download : l.upload,
-                width: 80,
-                end: true,
-              ),
-              cell: (_, item) => Tooltip(
-                message: dashboardTraffic(download ? item.download : item.upload),
-                child: _Number(_speed(item, download)),
-              ),
-              sortKey: (item) => download ? item.downloadSpeed : item.uploadSpeed,
-              descendingFirst: true,
-            ),
-        ] else if (width >= 460)
-          RecordColumn(
-            TableColumn('speed', l.networkSpeed, width: 88, end: true),
-            cell: (_, item) => Tooltip(
-              message: '${l.download}: ${_speed(item, true)} · ${l.upload}: ${_speed(item, false)}',
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (final download in [true, false])
-                    Text(
-                      '${download ? '↓' : '↑'} ${_speed(item, download)}',
-                      style: AppTextStyle.caption2.of(context).toTabular,
+        Expanded(
+          child: applications.isEmpty
+              ? Center(
+                  child: Text(
+                    query.isNotEmpty
+                        ? l.applicationNoMatches
+                        : history.showHistory
+                        ? l.applicationHistoryEmpty
+                        : l.applicationProxyNoConnections,
+                  ),
+                )
+              : _Table<ApplicationProxyInfo>(
+                  tableId: history.showHistory
+                      ? 'applications.history'
+                      : 'applications.current',
+                  items: applications,
+                  subtleRows: true,
+                  rowHeight: widget.rowHeight,
+                  maxRows: null,
+                  scrollController: widget.scrollController,
+                  columnsOf: (width) => [
+                    RecordColumn(
+                      TableColumn('application', l.app, flex: 2),
+                      cell: (_, item) => Tooltip(
+                        message: item.identity?.content ?? l.unknown,
+                        child: _Source(item.identity?.name ?? l.unknown),
+                      ),
+                      sortKey: (item) =>
+                          item.identity?.name.toLowerCase() ?? '',
                     ),
-                ],
-              ),
-            ),
-            sortKey: (item) => item.downloadSpeed + item.uploadSpeed,
-            descendingFirst: true,
-          ),
-        RecordColumn(
-          TableColumn('actions', '', width: history.showHistory ? 112 : 64),
-          cell: (_, item) => Row(children: [
-            IconButton(padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 32, height: 32), tooltip: l.applicationResetHint,
-              onPressed: widget.stale || item.connections == 0 || _resetting.contains(item.identity?.key ?? '')
-                ? null : () => _reset(item),
-              icon: _resetting.contains(item.identity?.key ?? '')
-                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const GlyphIcon(AppGlyphs.refresh, size: 18)),
-            if (history.showHistory && item.identity != null)
-              IconButton(padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 32, height: 32), tooltip: l.applicationRemoveHistory,
-                onPressed: () => _historyAction(() => history.remove(item.identity!.key)),
-                icon: const GlyphIcon(AppGlyphs.delete, size: 18)),
-          ]),
-          sortKey: (item) => item.connections,
+                    if (width >= 620)
+                      RecordColumn(
+                        TableColumn('status', l.status, width: 76),
+                        cell: (_, item) => _ApplicationRouteText(item),
+                        sortKey: (item) => item.route.index,
+                      ),
+                    RecordColumn(
+                      TableColumn(
+                        'mode',
+                        l.applicationProxyMode,
+                        width: width < 460
+                            ? (history.showHistory ? 80 : 96)
+                            : width < 700
+                            ? 116
+                            : 164,
+                      ),
+                      cell: (_, item) => widget.modeBuilder(item),
+                      sortKey: (item) => item.mode?.index ?? -1,
+                    ),
+                    RecordColumn(
+                      width < 460
+                          ? TableColumn(
+                              'policy',
+                              l.strategy,
+                              width: history.showHistory ? 80 : 96,
+                            )
+                          : width < 700
+                          ? TableColumn('policy', l.strategy, width: 112)
+                          : TableColumn('policy', l.strategy, flex: 1),
+                      cell: (_, item) => widget.policyBuilder(item),
+                      sortKey: (item) => item.target ?? '',
+                    ),
+                    if (history.showHistory && width >= 1000)
+                      RecordColumn(
+                        TableColumn(
+                          'lastSeen',
+                          l.applicationLastSeen,
+                          width: 140,
+                        ),
+                        cell: (_, item) => Text(
+                          history.entries[item.identity?.key]?.lastSeen
+                                  .toLocal()
+                                  .toString()
+                                  .substring(0, 16) ??
+                              '—',
+                        ),
+                        sortKey: (item) =>
+                            history
+                                .entries[item.identity?.key]
+                                ?.lastSeen
+                                .millisecondsSinceEpoch ??
+                            0,
+                      ),
+                    if (width >= 850) ...[
+                      RecordColumn(
+                        TableColumn(
+                          'connections',
+                          l.liveConnections,
+                          width: 70,
+                          end: true,
+                        ),
+                        cell: (_, item) =>
+                            _Number(dashboardCount(item.connections)),
+                        sortKey: (item) => item.connections,
+                        descendingFirst: true,
+                      ),
+                      for (final download in [true, false])
+                        RecordColumn(
+                          TableColumn(
+                            download ? 'download' : 'upload',
+                            download ? l.download : l.upload,
+                            width: 80,
+                            end: true,
+                          ),
+                          cell: (_, item) => Tooltip(
+                            message: dashboardTraffic(
+                              download ? item.download : item.upload,
+                            ),
+                            child: _Number(_speed(item, download)),
+                          ),
+                          sortKey: (item) =>
+                              download ? item.downloadSpeed : item.uploadSpeed,
+                          descendingFirst: true,
+                        ),
+                    ] else if (width >= 460)
+                      RecordColumn(
+                        TableColumn(
+                          'speed',
+                          l.networkSpeed,
+                          width: 88,
+                          end: true,
+                        ),
+                        cell: (_, item) => Tooltip(
+                          message:
+                              '${l.download}: ${_speed(item, true)} · ${l.upload}: ${_speed(item, false)}',
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              for (final download in [true, false])
+                                Text(
+                                  '${download ? '↓' : '↑'} ${_speed(item, download)}',
+                                  style: AppTextStyle.caption2
+                                      .of(context)
+                                      .toTabular,
+                                ),
+                            ],
+                          ),
+                        ),
+                        sortKey: (item) =>
+                            item.downloadSpeed + item.uploadSpeed,
+                        descendingFirst: true,
+                      ),
+                    RecordColumn(
+                      TableColumn(
+                        'actions',
+                        '',
+                        width: history.showHistory ? 112 : 64,
+                      ),
+                      cell: (_, item) => Row(
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 32,
+                              height: 32,
+                            ),
+                            tooltip: l.applicationResetHint,
+                            onPressed:
+                                widget.stale ||
+                                    item.connections == 0 ||
+                                    _resetting.contains(
+                                      item.identity?.key ?? '',
+                                    )
+                                ? null
+                                : () => _reset(item),
+                            icon: _resetting.contains(item.identity?.key ?? '')
+                                ? const SizedBox.square(
+                                    dimension: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const GlyphIcon(AppGlyphs.refresh, size: 18),
+                          ),
+                          if (history.showHistory && item.identity != null)
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 32,
+                                height: 32,
+                              ),
+                              tooltip: l.applicationRemoveHistory,
+                              onPressed: () => _historyAction(
+                                () => history.remove(item.identity!.key),
+                              ),
+                              icon: const GlyphIcon(AppGlyphs.delete, size: 18),
+                            ),
+                        ],
+                      ),
+                      sortKey: (item) => item.connections,
+                    ),
+                  ],
+                ),
         ),
       ],
-    )),
-    ]);
+    );
   }
 }
 
