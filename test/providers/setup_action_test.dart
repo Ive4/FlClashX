@@ -655,6 +655,38 @@ void main() {
   });
 
   group('initStatus', () {
+    for (final sameProfile in [true, false]) {
+      test(
+        'lightweight selections apply only to their profile: $sameProfile',
+        () async {
+          await mockPreferences({});
+          final profile = Profile.normal(
+            label: 'p',
+          ).copyWith(id: 42, selectedMap: {'group': 'old', 'other': 'keep'});
+          final scoped = ProviderContainer(
+            overrides: [
+              profilesProvider.overrideWith(() => TestProfiles([profile])),
+              currentProfileIdProvider.overrideWithBuild((_, _) => profile.id),
+              setupActionProvider.overrideWith(TestSetupAction.new),
+            ],
+          );
+          addTearDown(scoped.dispose);
+          desktopBackground.resumeState = CoreResumeState(
+            coreReused: true,
+            profileId: sameProfile ? '42' : '99',
+            selectedMap: const {'group': 'new'},
+          );
+
+          await scoped.read(setupActionProvider.notifier).initStatus();
+
+          expect(scoped.read(currentProfileProvider)?.selectedMap, {
+            'group': sameProfile ? 'new' : 'old',
+            'other': 'keep',
+          });
+        },
+      );
+    }
+
     test(
       'a lightweight restore adopts the run without touching the Core',
       () async {

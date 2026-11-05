@@ -42,6 +42,13 @@ func (h *host) trayInvoke(method string, arguments any) (json.RawMessage, error)
 }
 
 func (h *host) coreInvoke(method string, arguments any, timeout time.Duration) (json.RawMessage, error) {
+	return h.coreInvokeOn(h.core, method, arguments, timeout)
+}
+
+func (h *host) coreInvokeOn(core net.Conn, method string, arguments any, timeout time.Duration) (json.RawMessage, error) {
+	if core == nil {
+		return nil, net.ErrClosed
+	}
 	id := "tray-" + randomID()
 	pending := make(chan trayResponse, 1)
 	h.pendingMu.Lock()
@@ -56,11 +63,11 @@ func (h *host) coreInvoke(method string, arguments any, timeout time.Duration) (
 		return nil, err
 	}
 	h.coreWriteMu.Lock()
-	h.core.SetWriteDeadline(time.Now().Add(2 * time.Second))
-	err = writeFrame(h.core, data)
-	h.core.SetWriteDeadline(time.Time{})
+	core.SetWriteDeadline(time.Now().Add(2 * time.Second))
+	err = writeFrame(core, data)
+	core.SetWriteDeadline(time.Time{})
 	if err != nil {
-		h.core.Close()
+		core.Close()
 	}
 	h.coreWriteMu.Unlock()
 	if err != nil {
@@ -68,11 +75,14 @@ func (h *host) coreInvoke(method string, arguments any, timeout time.Duration) (
 	}
 	select {
 	case response := <-pending:
+		if response.File != "" {
+			response, err = h.readTrayResponse(response)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if response.Error != nil {
 			return nil, errors.New(response.Error.Message)
-		}
-		if response.File != "" {
-			return nil, errors.New("unexpected spilled tray response")
 		}
 		return response.Result, nil
 	case <-time.After(timeout):

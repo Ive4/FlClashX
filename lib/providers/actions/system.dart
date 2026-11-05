@@ -69,14 +69,7 @@ class SystemAction extends _$SystemAction {
       if (automatic) return;
       throw MessageException(localizations.lightweightModeBusy);
     }
-    final confirmed =
-        automatic ||
-        await dialogs.showMessage(
-              title: localizations.lightweightMode,
-              message: TextSpan(text: localizations.lightweightModeConfirm),
-            ) ==
-            true;
-    if (confirmed != true || _exitCoordinator != null || !ref.mounted) {
+    if (_exitCoordinator != null || !ref.mounted) {
       return;
     }
     if (!await ref
@@ -114,6 +107,10 @@ class SystemAction extends _$SystemAction {
       cleanupProxy: systemProxyQueue?.hasAppliedProxy ?? false,
       runningSince: runningSince,
       mode: ref.read(patchClashConfigProvider).mode.name,
+      profileId: ref.read(currentProfileProvider)?.id.toString(),
+      testUrl: ref.read(patchClashConfigProvider).testUrl,
+      delayTestTimeout: ref.read(appSettingProvider).delayTestTimeout,
+      closeConnections: ref.read(appSettingProvider).closeConnections,
     );
     if (automatic && !_canEnterAutomatically(shouldContinue)) {
       await desktopBackground.cancelEnter();

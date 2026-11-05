@@ -172,6 +172,21 @@ class SetupAction extends _$SetupAction {
       }
       _startTime = desktopResume.runningSince;
       if (desktopResume.coreReused) {
+        final profile = ref.read(currentProfileProvider);
+        if (profile != null &&
+            profile.id.toString() == desktopResume.profileId &&
+            desktopResume.selectedMap.isNotEmpty) {
+          ref
+              .read(profilesProvider.notifier)
+              .put(
+                profile.copyWith(
+                  selectedMap: {
+                    ...profile.selectedMap,
+                    ...desktopResume.selectedMap,
+                  },
+                ),
+              );
+        }
         globalState.lastConfigMd5 = await preferences.getAppliedConfigMd5();
         _setLocalRunning(_isRunning);
         if (_isRunning) {

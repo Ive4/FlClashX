@@ -40,6 +40,7 @@ func main() {
 	}
 	statePath := filepath.Join(config.Home, ".desktop-host.json")
 	if *trayOnly {
+		configureTrayApplication()
 		runTray(config, statePath)
 		return
 	}
@@ -130,6 +131,7 @@ func runTray(config launchConfig, statePath string) {
 		return
 	}
 	client := &http.Client{Transport: &http.Transport{Proxy: nil}, Timeout: 10 * time.Second}
+	var trayETag string
 	request := func(method, path string, body any) (*http.Response, error) {
 		data, err := json.Marshal(body)
 		if err != nil {
@@ -141,6 +143,9 @@ func runTray(config launchConfig, statePath string) {
 		}
 		request.Header.Set("Authorization", "Bearer "+state.Token)
 		request.Header.Set("Content-Type", "application/json")
+		if method == http.MethodGet && path == "/tray-state" && trayETag != "" {
+			request.Header.Set("If-None-Match", trayETag)
+		}
 		return client.Do(request)
 	}
 	systray.Run(func() {
@@ -161,9 +166,9 @@ func runTray(config launchConfig, statePath string) {
 		systray.AddSeparator()
 		show := systray.AddMenuItem(config.ShowLabel, "")
 		modes := systray.AddMenuItem(label("mode"), "")
-		actions := make(chan string, 8)
+		actions := make(chan trayActionRequest, 8)
 		done := make(chan struct{})
-		bind := func(item *systray.MenuItem, action string) {
+		bind := func(item *systray.MenuItem, action trayActionRequest) {
 			go func() {
 				for {
 					select {
@@ -186,12 +191,13 @@ func runTray(config launchConfig, statePath string) {
 		for _, mode := range []string{"rule", "global", "direct"} {
 			item := modes.AddSubMenuItemCheckbox(label(mode), "", false)
 			modeItems[mode] = item
-			bind(item, mode)
+			bind(item, trayActionRequest{Action: mode})
 		}
 		closeConnections := systray.AddMenuItem(label("closeConnections"), "")
-		bind(closeConnections, "closeConnections")
+		bind(closeConnections, trayActionRequest{Action: "closeConnections"})
+		proxies := newTrayProxyMenu(config.Labels, bind)
 		openHome := systray.AddMenuItem(label("openHome"), "")
-		bind(openHome, "openHome")
+		bind(openHome, trayActionRequest{Action: "openHome"})
 		systray.AddSeparator()
 		quit := systray.AddMenuItem(config.ExitLabel, "")
 		refresh := func() {
@@ -200,28 +206,26 @@ func runTray(config launchConfig, statePath string) {
 				return
 			}
 			defer response.Body.Close()
-			var current struct {
-				Mode    string `json:"mode"`
-				Running bool   `json:"running"`
+			if response.StatusCode == http.StatusNotModified {
+				return
 			}
+			var current trayMenuState
 			if response.StatusCode != http.StatusOK || json.NewDecoder(response.Body).Decode(&current) != nil {
 				return
 			}
+			trayETag = response.Header.Get("ETag")
 			runningLabel := label("notRunning")
 			if current.Running {
 				runningLabel = label("running")
-				closeConnections.Enable()
+				setTrayEnabled(closeConnections, true)
 			} else {
-				closeConnections.Disable()
+				setTrayEnabled(closeConnections, false)
 			}
 			status.SetTitle(label("lightweight") + " · " + runningLabel)
 			for mode, item := range modeItems {
-				if current.Mode == mode {
-					item.Check()
-				} else {
-					item.Uncheck()
-				}
+				setTrayChecked(item, current.Mode == mode)
 			}
+			proxies.update(current)
 		}
 		showUI := func() {
 			if response, err := request(http.MethodPost, "/show", nil); err == nil {
@@ -252,7 +256,7 @@ func runTray(config launchConfig, statePath string) {
 						response.Body.Close()
 					}
 				case action := <-actions:
-					response, err := request(http.MethodPost, "/tray-action", map[string]string{"action": action})
+					response, err := request(http.MethodPost, "/tray-action", action)
 					if err != nil {
 						status.SetTitle(label("error"))
 						continue
@@ -278,6 +282,7 @@ func runTray(config launchConfig, statePath string) {
 						systray.Quit()
 						return
 					}
+					refresh()
 				}
 			}
 		}()

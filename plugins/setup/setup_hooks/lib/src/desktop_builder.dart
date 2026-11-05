@@ -59,6 +59,7 @@ class DesktopBuilder {
             .where(
               (file) =>
                   file.path.endsWith('.go') ||
+                  file.path.endsWith('.m') ||
                   file.path.endsWith('go.mod') ||
                   file.path.endsWith('go.sum'),
             )

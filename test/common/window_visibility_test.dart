@@ -8,9 +8,7 @@ class _FakeNativeWindow {
   bool visible = true;
   Completer<void>? hideGate;
 
-  WindowVisibilityController controller({
-    Duration dockSettleDuration = const Duration(seconds: 1),
-  }) {
+  WindowVisibilityController controller({bool keepOffTaskbar = false}) {
     return WindowVisibilityController(
       showWindow: () async {
         calls.add('show');
@@ -25,62 +23,34 @@ class _FakeNativeWindow {
       setSkipTaskbar: (skip) async {
         calls.add(skip ? 'dock:off' : 'dock:on');
       },
-      dockSettleDuration: dockSettleDuration,
+      keepOffTaskbar: keepOffTaskbar,
     );
   }
 }
 
 void main() {
-  testWidgets('a hide right after a show waits for the Dock policy to settle', (
-    tester,
-  ) async {
+  testWidgets('a menu bar application never adds a Dock icon', (tester) async {
     final native = _FakeNativeWindow()..visible = false;
-    final controller = native.controller();
-
-    unawaited(controller.show());
-    await controller.hide();
-
-    expect(native.calls, ['show', 'dock:on', 'hide']);
-
-    await tester.pump(const Duration(milliseconds: 999));
-    expect(native.calls, ['show', 'dock:on', 'hide']);
-
-    await tester.pump(const Duration(milliseconds: 1));
-    expect(native.calls, ['show', 'dock:on', 'hide', 'dock:off']);
-  });
-
-  testWidgets(
-    'a show during the settle window cancels the deferred Dock hide',
-    (tester) async {
-      final native = _FakeNativeWindow()..visible = false;
-      final controller = native.controller();
-
-      unawaited(controller.show());
-      unawaited(controller.hide());
-      await controller.show();
-      await tester.pump(const Duration(seconds: 2));
-
-      expect(native.calls, ['show', 'dock:on', 'hide', 'show', 'dock:on']);
-      expect(native.visible, isTrue);
-    },
-  );
-
-  testWidgets('a hide outside the settle window switches the Dock at once', (
-    tester,
-  ) async {
-    final native = _FakeNativeWindow()..visible = false;
-    final controller = native.controller();
+    final controller = native.controller(keepOffTaskbar: true);
 
     await controller.show();
-    await tester.pump(const Duration(seconds: 1));
     await controller.hide();
+    await controller.toggle();
 
-    expect(native.calls, ['show', 'dock:on', 'hide', 'dock:off']);
+    expect(native.calls, [
+      'show',
+      'dock:off',
+      'hide',
+      'dock:off',
+      'show',
+      'dock:off',
+    ]);
+    expect(native.visible, isTrue);
   });
 
-  test('a zero settle duration never defers the Dock switch', () async {
+  test('other platforms show the taskbar entry only while visible', () async {
     final native = _FakeNativeWindow()..visible = false;
-    final controller = native.controller(dockSettleDuration: Duration.zero);
+    final controller = native.controller();
 
     unawaited(controller.show());
     await controller.hide();
@@ -105,7 +75,6 @@ void main() {
     native.hideGate!.complete();
     native.hideGate = null;
     await last;
-    await tester.pump(const Duration(seconds: 2));
 
     expect(native.calls, [
       'hide',
@@ -120,7 +89,7 @@ void main() {
 
   test('an idle controller starts a request without waiting a tick', () {
     final native = _FakeNativeWindow()..visible = false;
-    final controller = native.controller(dockSettleDuration: Duration.zero);
+    final controller = native.controller();
 
     unawaited(controller.show());
 
@@ -140,7 +109,6 @@ void main() {
       hideWindow: () async => calls.add('hide'),
       isWindowVisible: () async => false,
       setSkipTaskbar: (skip) async => calls.add(skip ? 'dock:off' : 'dock:on'),
-      dockSettleDuration: Duration.zero,
     );
 
     await expectLater(controller.show(), throwsStateError);

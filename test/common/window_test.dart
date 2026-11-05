@@ -57,7 +57,7 @@ void main() {
     expect(Window(), same(Window()));
   });
 
-  testWidgets('show raises the window and puts it back on the taskbar', (
+  testWidgets('show raises the window and applies its taskbar policy', (
     tester,
   ) async {
     await Window().show();
@@ -66,6 +66,7 @@ void main() {
       calls,
       containsAllInOrder(<String>['show', 'focus', 'setSkipTaskbar']),
     );
+    expect(methodCalls.last.arguments, {'value': Platform.isMacOS});
     await tester.pump(const Duration(seconds: 1));
   });
 

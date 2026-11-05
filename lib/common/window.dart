@@ -21,9 +21,7 @@ class Window implements WindowPort {
         hideWindow: _hideWindow,
         isWindowVisible: _isWindowVisible,
         setSkipTaskbar: (skip) => desktopWindow.setSkipTaskbar(skip),
-        dockSettleDuration: system.isMacOS
-            ? const Duration(seconds: 1)
-            : Duration.zero,
+        keepOffTaskbar: system.isMacOS,
       );
 
   Window._internal();
@@ -266,17 +264,14 @@ class _InitFailureWindowListener with WindowListener {
   void onWindowShouldTerminate() => unawaited(onExit());
 }
 
-/// Serializes visibility requests so a burst of hotkey toggles lands in
-/// order, and holds back the Dock-hiding activation policy switch while a
-/// preceding regular switch settles: flipping regular → accessory → regular
-/// within about a second leaves macOS with stray Dock icons.
+/// Serializes visibility requests so hotkey toggles keep their arrival order.
 class WindowVisibilityController {
   WindowVisibilityController({
     required Future<void> Function() showWindow,
     required Future<void> Function() hideWindow,
     required Future<bool> Function() isWindowVisible,
     required Future<void> Function(bool skip) setSkipTaskbar,
-    required this.dockSettleDuration,
+    this.keepOffTaskbar = false,
   }) : _showWindow = showWindow,
        _hideWindow = hideWindow,
        _isWindowVisible = isWindowVisible,
@@ -286,11 +281,9 @@ class WindowVisibilityController {
   final Future<void> Function() _hideWindow;
   final Future<bool> Function() _isWindowVisible;
   final Future<void> Function(bool skip) _setSkipTaskbar;
-  final Duration dockSettleDuration;
+  final bool keepOffTaskbar;
 
   Future<void>? _queue;
-  Timer? _dockSettleTimer;
-  bool _dockHidePending = false;
 
   Future<void> show() => _enqueue(_show);
 
@@ -318,38 +311,13 @@ class WindowVisibilityController {
   }
 
   Future<void> _show() async {
-    _dockHidePending = false;
     await _showWindow();
-    await _setSkipTaskbar(false);
-    _dockSettleTimer?.cancel();
-    _dockSettleTimer = dockSettleDuration == Duration.zero
-        ? null
-        : Timer(dockSettleDuration, _onDockSettled);
+    await _setSkipTaskbar(keepOffTaskbar);
   }
 
   Future<void> _hide() async {
     await _hideWindow();
-    if (_dockSettleTimer?.isActive ?? false) {
-      _dockHidePending = true;
-      return;
-    }
     await _setSkipTaskbar(true);
-  }
-
-  void _onDockSettled() {
-    _dockSettleTimer = null;
-    if (!_dockHidePending) {
-      return;
-    }
-    unawaited(
-      _enqueue(() async {
-        if (!_dockHidePending) {
-          return;
-        }
-        _dockHidePending = false;
-        await _setSkipTaskbar(true);
-      }),
-    );
   }
 }
 

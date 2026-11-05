@@ -70,8 +70,11 @@ visibility comes from native window events and an initial visibility/minimize pr
 since Flutter can still report resumed for a hidden startup window. Showing the UI or changing
 the delay invalidates an in-flight automatic handoff. Automatic entry also waits
 while any navigator has a pushed page or dialog, preserving unfinished edits.
-The native desktop tray sends a bounded set of Core requests while lightweight;
-its acknowledged mode returns in `CoreResumeState` when Flutter reattaches.
+The native desktop tray reads runtime groups, acknowledges node selections, and tests delays with at most eight
+concurrent probes. Restoring Flutter stops queued probes and rejects late results; acknowledged selections return with
+their profile identity in `CoreResumeState`, so another profile cannot inherit them. Unchanged menus use HTTP
+conditional requests. macOS keeps both the Flutter app and native tray as accessory applications, including while
+the main window is visible, so only the menu bar has an icon.
 
 `lib/core/controller.dart` (`CoreController`) selects the implementation based on platform. `lib/core/interface.dart` defines the shared `CoreHandlerInterface`.
 

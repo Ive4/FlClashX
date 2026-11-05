@@ -8,11 +8,15 @@ class CoreResumeState {
     required this.coreReused,
     this.runningSince,
     this.mode,
+    this.profileId,
+    this.selectedMap = const {},
   });
 
   final bool coreReused;
   final DateTime? runningSince;
   final String? mode;
+  final String? profileId;
+  final Map<String, String> selectedMap;
 }
 
 enum CoreLifecycleOutcome { applied, coalesced, superseded }

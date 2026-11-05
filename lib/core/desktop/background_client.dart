@@ -258,6 +258,10 @@ class DesktopBackgroundClient {
         ? CoreResumeState(
             coreReused: response['coreReused'] == true,
             mode: response['mode'] as String?,
+            profileId: response['profileId'] as String?,
+            selectedMap: Map<String, String>.from(
+              response['selectedMap'] as Map? ?? const {},
+            ),
             runningSince: switch (response['runningSince']) {
               final int milliseconds => DateTime.fromMillisecondsSinceEpoch(
                 milliseconds,
@@ -273,6 +277,10 @@ class DesktopBackgroundClient {
     required DateTime? runningSince,
     required bool cleanupProxy,
     required String mode,
+    String? profileId,
+    String testUrl = '',
+    int delayTestTimeout = defaultDelayTestTimeout,
+    bool closeConnections = false,
   }) async {
     await _request(
       '/lightweight',
@@ -283,6 +291,10 @@ class DesktopBackgroundClient {
         'showLabel': currentAppLocalizations.show,
         'exitLabel': currentAppLocalizations.exit,
         'mode': mode,
+        'profileId': profileId ?? '',
+        'testUrl': testUrl,
+        'delayTestTimeout': delayTestTimeout,
+        'closeConnections': closeConnections,
         'labels': {
           'lightweight': currentAppLocalizations.lightweightMode,
           'running': currentAppLocalizations.running,
@@ -292,6 +304,10 @@ class DesktopBackgroundClient {
           'closeConnections': currentAppLocalizations.closeConnections,
           'openHome': currentAppLocalizations.openConfigDirectory,
           'error': currentAppLocalizations.error,
+          'proxies': currentAppLocalizations.proxies,
+          'delayTest': currentAppLocalizations.delayTest,
+          'timeout': currentAppLocalizations.timeout,
+          'proxyGroupEmpty': currentAppLocalizations.proxyGroupEmpty,
         },
       },
     );

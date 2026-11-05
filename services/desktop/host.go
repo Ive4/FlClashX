@@ -46,13 +46,17 @@ type attachRequest struct {
 }
 
 type lightweightRequest struct {
-	SessionID    string            `json:"sessionId"`
-	RunningSince *int64            `json:"runningSince"`
-	CleanupProxy bool              `json:"cleanupProxy"`
-	ShowLabel    string            `json:"showLabel"`
-	ExitLabel    string            `json:"exitLabel"`
-	Mode         string            `json:"mode"`
-	Labels       map[string]string `json:"labels"`
+	SessionID        string            `json:"sessionId"`
+	RunningSince     *int64            `json:"runningSince"`
+	CleanupProxy     bool              `json:"cleanupProxy"`
+	ShowLabel        string            `json:"showLabel"`
+	ExitLabel        string            `json:"exitLabel"`
+	Mode             string            `json:"mode"`
+	Labels           map[string]string `json:"labels"`
+	ProfileID        string            `json:"profileId"`
+	TestURL          string            `json:"testUrl"`
+	DelayTimeout     int               `json:"delayTestTimeout"`
+	CloseConnections bool              `json:"closeConnections"`
 }
 
 type host struct {
@@ -84,6 +88,7 @@ type host struct {
 	mode           string
 	pendingMu      sync.Mutex
 	pending        map[string]chan trayResponse
+	tray           trayProxyState
 }
 
 func randomID() string {
@@ -129,13 +134,24 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		go h.showUI()
 		response = map[string]bool{"accepted": true}
 	case r.Method == http.MethodGet && r.URL.Path == "/tray-state":
-		response = map[string]any{"mode": h.mode, "running": h.runningSince != nil && h.core != nil}
-	case r.Method == http.MethodPost && r.URL.Path == "/tray-action":
-		var request struct {
-			Action string `json:"action"`
+		var state trayMenuState
+		state, err = h.trayState(r.Header.Get("If-None-Match"))
+		if err == nil {
+			w.Header().Set("ETag", state.revision)
+			if state.revision == r.Header.Get("If-None-Match") {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
 		}
+		response = state
+	case r.Method == http.MethodPost && r.URL.Path == "/tray-action":
+		var request trayActionRequest
 		if err = decodeRequest(r, &request); err == nil {
-			err = h.trayAction(request.Action)
+			if request.Action == "select" || request.Action == "test" {
+				err = h.trayProxyAction(request)
+			} else {
+				err = h.trayAction(request.Action)
+			}
 			response = map[string]bool{"applied": err == nil}
 		}
 	case r.Method == http.MethodPost && r.URL.Path == "/cancel-lightweight":
@@ -147,6 +163,7 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 				err = errors.New("superseded session")
 			} else {
 				h.lightweight = false
+				h.tray.cancelTests()
 				h.trayVisible.Store(false)
 				err = h.setTrayVisible(false)
 				response = map[string]bool{"cancelled": err == nil}
@@ -171,6 +188,13 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				h.config.Labels = request.Labels
 				h.mode = request.Mode
+				h.tray = trayProxyState{
+					profileID: request.ProfileID, testURL: request.TestURL,
+					timeout: request.DelayTimeout, closeConnections: request.CloseConnections,
+					generation: h.tray.generation + 1,
+					revision:   h.tray.revision + 1,
+					selections: make(map[string]string), delays: make(map[trayProbeKey]int),
+				}
 				h.lightweight = true
 				h.runningSince = request.RunningSince
 				h.cleanupProxy = request.CleanupProxy && !h.config.SafeMode
@@ -254,12 +278,13 @@ func (h *host) attach(request attachRequest) (any, error) {
 	h.front = front
 	h.frontMu.Unlock()
 	h.frontSession, h.uiPID = request.SessionID, request.UIPID
+	h.tray.cancelTests()
 	h.lightweight = false
 	h.trayVisible.Store(false)
 	_ = h.setTrayVisible(false)
 	core := h.core
 	go h.readFrontend(front, core, request.SessionID)
-	return map[string]any{"pid": os.Getpid(), "corePid": h.corePID, "wasLightweight": wasLightweight, "coreReused": reused, "runningSince": runningSince, "mode": h.mode}, nil
+	return map[string]any{"pid": os.Getpid(), "corePid": h.corePID, "wasLightweight": wasLightweight, "coreReused": reused, "runningSince": runningSince, "mode": h.mode, "profileId": h.tray.profileID, "selectedMap": h.tray.selections}, nil
 }
 
 func (h *host) startCore(request attachRequest) error {
