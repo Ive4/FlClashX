@@ -15,6 +15,7 @@ class DesktopBuilder {
     required this.cache,
     required this.notice,
     required this.harnessInputs,
+    this.environment = const {},
   });
 
   final String rootDir;
@@ -22,6 +23,7 @@ class DesktopBuilder {
   final BuildCache cache;
   final BuildNotice notice;
   final List<String> harnessInputs;
+  final Map<String, String> environment;
 
   Future<BuildExecution> build(Target target) async {
     final source = p.join(rootDir, 'services', 'desktop');
@@ -32,6 +34,7 @@ class DesktopBuilder {
       'FlClashDesktop${target.executableExtension}',
     );
     final environment = {
+      ...this.environment,
       'GOOS': target.goos,
       'GOARCH': target.goarch,
       'CGO_ENABLED': target.goos == 'darwin' ? '1' : '0',

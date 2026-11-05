@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'build_cache.dart';
 import 'fingerprint.dart';
 import 'desktop_builder.dart';
+import 'macos_toolchain.dart';
 import 'options.dart';
 import 'rust_builder.dart';
 import 'rust_core_builder.dart';
@@ -68,6 +69,7 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
       environment: request.environment,
     ),
   };
+  environment.addAll(macosBuildEnvironment(target, environment: environment));
 
   final core = await RustCoreBuilder(
     rootDir: rootDir,
@@ -83,6 +85,14 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
     cache: cache,
     notice: notice,
     harnessInputs: harnessInputs,
+    environment: {
+      for (final key in const [
+        'SDKROOT',
+        'DEVELOPER_DIR',
+        'MACOSX_DEPLOYMENT_TARGET',
+      ])
+        if (environment[key] case final String value) key: value,
+    },
   ).build(target);
   if (!target.hasHelper) {
     _log.info('Done in ${stopwatch.elapsed}: ${core.primaryOutput}');

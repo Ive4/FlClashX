@@ -51,19 +51,6 @@ class RustCoreBuilder {
   String get _crate => p.normalize(p.join(rootDir, config.coreDir));
 
   Future<BuildExecution> build(Target target) async {
-    final environment = {
-      ...this.environment,
-      if (target.goos == 'darwin' &&
-          (this.environment['SDKROOT']?.isEmpty ?? true))
-        'SDKROOT':
-            (command('xcrun', [
-                      '--sdk',
-                      'macosx',
-                      '--show-sdk-path',
-                    ], environment: this.environment).stdout
-                    as String)
-                .trim(),
-    };
     final triple = target.rustTriple;
     final cargoTarget = p.normalize(
       p.absolute(

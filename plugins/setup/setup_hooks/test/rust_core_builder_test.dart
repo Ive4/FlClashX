@@ -42,12 +42,7 @@ void main() {
     notice: BuildNotice(),
     environment: environment,
     command: (executable, arguments, {workingDirectory, environment}) =>
-        ProcessResult(
-          0,
-          0,
-          executable == 'xcrun' ? '/Xcode/MacOSX.sdk' : '$executable 1.99.1',
-          '',
-        ),
+        ProcessResult(0, 0, '$executable 1.99.1', ''),
     compile: (executable, arguments, {workingDirectory, environment}) async {
       expect(executable, 'cargo');
       expect(workingDirectory, p.join(root.path, 'core', 'rust'));
@@ -114,19 +109,17 @@ void main() {
     },
   );
 
-  test(
-    'macOS resolves its SDK and fingerprints explicit SDK overrides',
-    () async {
-      environment['MACOSX_DEPLOYMENT_TARGET'] = '12.0';
-      await builder().build(Target.macosArm64);
-      expect(compileEnvironments.last['SDKROOT'], '/Xcode/MacOSX.sdk');
-      expect(compileEnvironments.last['MACOSX_DEPLOYMENT_TARGET'], '12.0');
-      expect((await builder().build(Target.macosArm64)).rebuilt, isFalse);
-      environment['SDKROOT'] = '/another/MacOSX.sdk';
-      expect((await builder().build(Target.macosArm64)).rebuilt, isTrue);
-      expect(compileEnvironments.last['SDKROOT'], '/another/MacOSX.sdk');
-    },
-  );
+  test('macOS forwards and fingerprints its native SDK environment', () async {
+    environment['MACOSX_DEPLOYMENT_TARGET'] = '12.0';
+    environment['SDKROOT'] = '/Xcode/MacOSX.sdk';
+    await builder().build(Target.macosArm64);
+    expect(compileEnvironments.last['SDKROOT'], '/Xcode/MacOSX.sdk');
+    expect(compileEnvironments.last['MACOSX_DEPLOYMENT_TARGET'], '12.0');
+    expect((await builder().build(Target.macosArm64)).rebuilt, isFalse);
+    environment['SDKROOT'] = '/another/MacOSX.sdk';
+    expect((await builder().build(Target.macosArm64)).rebuilt, isTrue);
+    expect(compileEnvironments.last['SDKROOT'], '/another/MacOSX.sdk');
+  });
 
   test(
     'failed Cargo build preserves the staged core and invalidates no cache',
