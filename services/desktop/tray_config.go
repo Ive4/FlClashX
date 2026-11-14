@@ -40,7 +40,7 @@ func (h *host) configureTray(request trayConfigRequest) error {
 	if h.lightweight {
 		return nil
 	}
-	if request.UIPID <= 0 || (h.frontSession != "" && request.SessionID != h.frontSession) ||
+	if request.UIPID <= 0 || (request.SessionID != "" && h.frontSession != "" && request.SessionID != h.frontSession) ||
 		(h.uiPID != 0 && h.uiPID != request.UIPID && processAlive(h.uiPID)) {
 		return errors.New("inactive frontend")
 	}

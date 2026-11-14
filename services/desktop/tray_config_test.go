@@ -99,6 +99,23 @@ func TestTraySettingsCannotBeOverwrittenByAnOldOrDetachingUI(t *testing.T) {
 	}
 }
 
+func TestBootstrapTraySnapshotCanArriveAfterCoreAttach(t *testing.T) {
+	h, _ := testHost(t)
+	session := randomID()
+	attachFrontend(t, h, session)
+	request := trayConfigRequest{UIPID: os.Getpid(), Settings: traySettings{Mode: "rule"}}
+	if err := h.configureTray(request); err != nil {
+		t.Fatalf("bootstrap snapshot rejected after concurrent attach: %v", err)
+	}
+	if h.frontSession != session || h.corePID != os.Getpid() {
+		t.Fatal("tray snapshot changed the Core session")
+	}
+	request.UIPID++
+	if err := h.configureTray(request); err == nil {
+		t.Fatal("another frontend overwrote the current tray")
+	}
+}
+
 func TestDeferredConfigurationSurvivesUIReattachment(t *testing.T) {
 	h, _ := testHost(t)
 	session := randomID()
