@@ -103,6 +103,7 @@ class SystemAction extends _$SystemAction {
       await app?.enterLightweightMode();
       return;
     }
+    await updateTray();
     await desktopBackground.enter(
       cleanupProxy: systemProxyQueue?.hasAppliedProxy ?? false,
       runningSince: runningSince,

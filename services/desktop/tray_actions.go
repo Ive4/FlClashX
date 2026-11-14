@@ -92,7 +92,7 @@ func (h *host) coreInvokeOn(core net.Conn, method string, arguments any, timeout
 
 // The caller holds operation, so a restored frontend supersedes old tray actions.
 func (h *host) trayAction(action string) error {
-	if h.closed || !h.lightweight {
+	if h.closed {
 		return errors.New("inactive tray")
 	}
 	if action == "openHome" {

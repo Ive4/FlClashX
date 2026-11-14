@@ -25,11 +25,32 @@ class _TrayManagerState extends ConsumerState<TrayManager> {
   StreamSubscription<TrayEvent>? _subscription;
   bool _isUpdating = false;
   bool _hasPendingUpdate = false;
+  Timer? _actionTimer;
+  bool _isProcessingActions = false;
 
   @override
   void initState() {
     super.initState();
     _subscription = Tray.instance.events.listen(_handleTrayEvent);
+    if (appTray?.backgroundOwned == true) {
+      _actionTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (_isProcessingActions) return;
+        _isProcessingActions = true;
+        _reportFailure(
+          appTray
+              ?.processPendingActions(
+                read: ref.read,
+                shouldContinue: () => mounted,
+              )
+              .whenComplete(() {
+                _isProcessingActions = false;
+              }),
+        );
+      });
+    }
+    ref.listenManual(initProvider, (prev, next) {
+      if (next) _requestUpdate();
+    });
     ref.listenManual(trayStateProvider, (prev, next) {
       if (prev != next) {
         _requestUpdate();
@@ -115,6 +136,7 @@ class _TrayManagerState extends ConsumerState<TrayManager> {
 
   @override
   void dispose() {
+    _actionTimer?.cancel();
     _subscription?.cancel();
     super.dispose();
   }

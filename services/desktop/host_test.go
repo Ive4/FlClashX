@@ -53,7 +53,7 @@ func testHostReply(t *testing.T, reply func([]byte) []byte) (*host, net.Conn) {
 	core, peer := net.Pipe()
 	h := &host{
 		config: launchConfig{SafeMode: true}, token: "secret", controlURL: "http://127.0.0.1:12345",
-		core: core, corePID: os.Getpid(), quit: func() {}, setTrayVisible: func(bool) error { return nil },
+		core: core, corePID: os.Getpid(), quit: func() {}, waitTray: func() error { return nil },
 	}
 	go h.readCore(core)
 	go func() {
@@ -125,8 +125,8 @@ func TestTrayActionsUseCoreAcknowledgementsAndResumeMode(t *testing.T) {
 	if state["mode"] != "global" || state["wasLightweight"] != true {
 		t.Fatalf("resume: %v", state)
 	}
-	if response := control(h, "/tray-action", h.token, `{"action":"direct"}`); response.Code == http.StatusOK {
-		t.Fatal("a stale tray changed the foreground mode")
+	if response := control(h, "/tray-action", h.token, `{"action":"direct"}`); response.Code != http.StatusOK || len(h.uiActions) != 1 || h.mode != "global" {
+		t.Fatal("foreground mode action did not delegate to its existing owner")
 	}
 }
 
@@ -143,7 +143,7 @@ func TestCancelLightweightKeepsFrontendAndRejectsStaleSessions(t *testing.T) {
 	if result := control(h, "/cancel-lightweight", h.token, `{"sessionId":"`+session+`"}`); result.Code != http.StatusOK {
 		t.Fatal(result.Body.String())
 	}
-	if h.lightweight || h.trayVisible.Load() {
+	if h.lightweight {
 		t.Fatal("handoff was not cancelled")
 	}
 	if err := writeFrame(front, []byte("still running")); err != nil {
@@ -261,7 +261,7 @@ func TestTrayFailureKeepsTheFrontendActive(t *testing.T) {
 	h, _ := testHost(t)
 	session := randomID()
 	front, _ := attachFrontend(t, h, session)
-	h.setTrayVisible = func(bool) error { return errors.New("tray unavailable") }
+	h.waitTray = func() error { return errors.New("tray unavailable") }
 	response := control(h, "/lightweight", h.token, `{"sessionId":"`+session+`"}`)
 	if response.Code == http.StatusOK {
 		t.Fatal("accepted handoff without a tray")
@@ -269,7 +269,7 @@ func TestTrayFailureKeepsTheFrontendActive(t *testing.T) {
 	h.operation.Lock()
 	lightweight := h.lightweight
 	h.operation.Unlock()
-	if lightweight || h.trayVisible.Load() {
+	if lightweight {
 		t.Fatal("failed handoff changed mode")
 	}
 	if err := writeFrame(front, []byte("still connected")); err != nil {

@@ -64,6 +64,16 @@ frost, tint, blur and rim remain, with no shader-based refraction.
   repeated runs. Keep these checks when updating Flutter; do not infer that another platform shares the same
   measured Windows memory regression.
 
+## macOS FFI structs in release AOT
+
+- **Bug:** [flutter/flutter#191575](https://github.com/flutter/flutter/issues/191575). Release snapshot generation
+  in 3.47.6 can abort with `Class with illegal cid, full-aot` for `_Rect` in `_window_macos.dart`, on both architectures.
+- **Workaround:** the macOS package job runs `tool/patch_flutter_macos_aot.py` against the CI SDK. It adds
+  `@pragma('vm:entry-point')` to the five windowing FFI structs, checks the SDK version and declarations before writing,
+  and accepts an already patched cache. Windowing and renderer settings stay unchanged.
+- **Remove when:** the pinned SDK contains an upstream fix for #191575 and both macOS release packages compile
+  without this patch. A version change intentionally fails the guard until the workaround is reviewed.
+
 ## Wrong-size back buffer on macOS
 
 - **Bug:** [flutter/flutter#185394](https://github.com/flutter/flutter/issues/185394). `removeSurfaceForSize:` in

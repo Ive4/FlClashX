@@ -20,15 +20,23 @@ class AppTray implements TrayPort {
 
   final bool isMacOS;
   final bool isWindows;
+  final DesktopBackgroundClient? _background;
 
   bool _isShutDown = false;
 
-  AppTray._internal({required this.isMacOS, required this.isWindows});
+  AppTray._internal({
+    required this.isMacOS,
+    required this.isWindows,
+    DesktopBackgroundClient? background,
+  }) : _background = background;
+
+  bool get backgroundOwned => _background?.available ?? false;
 
   factory AppTray() {
     _instance ??= AppTray._internal(
       isMacOS: system.isMacOS,
       isWindows: system.isWindows,
+      background: desktopBackground,
     );
     return _instance!;
   }
@@ -37,8 +45,13 @@ class AppTray implements TrayPort {
   factory AppTray.forPlatform({
     required bool isMacOS,
     required bool isWindows,
+    DesktopBackgroundClient? background,
   }) {
-    return AppTray._internal(isMacOS: isMacOS, isWindows: isWindows);
+    return AppTray._internal(
+      isMacOS: isMacOS,
+      isWindows: isWindows,
+      background: background,
+    );
   }
 
   String get _trayIconSuffix {
@@ -78,6 +91,10 @@ class AppTray implements TrayPort {
   @override
   Future<void> shutdown() async {
     _isShutDown = true;
+    if (backgroundOwned) {
+      await _background!.closeUnusedTray();
+      return;
+    }
     // Removing a status item makes macOS forget where the user dragged it in
     // the menu bar; one that goes away with the process keeps its place.
     if (isMacOS) {
@@ -93,6 +110,55 @@ class AppTray implements TrayPort {
     required ProviderReader read,
   }) async {
     if (_isShutDown) {
+      return;
+    }
+    if (backgroundOwned) {
+      final setup = read(setupActionProvider.notifier);
+      final config = read(patchClashConfigProvider);
+      final appSetting = read(appSettingProvider);
+      await _background!.configureTray({
+        'mode': trayState.mode.name,
+        'runningSince': trayState.isStart
+            ? setup.runningSince?.millisecondsSinceEpoch
+            : null,
+        'tun': trayState.tunEnable,
+        'systemProxy': trayState.systemProxy,
+        'autoLaunch': trayState.autoLaunch,
+        'showTitle': trayState.showTrayTitle,
+        'monochrome': trayState.monochromeTrayIcon,
+        'icon': getTrayIcon(
+          isStart: trayState.isStart && !trayState.suspended,
+          tunEnable: trayState.tunEnable,
+          safeMode: trayState.safeMode,
+          monochrome: trayState.monochromeTrayIcon,
+        ),
+        'template': _isTemplate(trayState.monochromeTrayIcon),
+        'title': trayState.showTrayTitle ? traffic.trayTitle : '',
+        'toolTip': trayState.safeMode
+            ? currentAppLocalizations.safeModeAppTitle(appName)
+            : appName,
+        'shortcuts': {
+          for (final entry in {
+            'show': HotAction.view,
+            'running': HotAction.start,
+            'rule': HotAction.ruleMode,
+            'global': HotAction.globalMode,
+            'direct': HotAction.directMode,
+            'tun': HotAction.tun,
+            'systemProxy': HotAction.proxy,
+            'copyEnv': HotAction.copyEnv,
+            'exit': HotAction.exit,
+          }.entries)
+            if (_shortcut(trayState, entry.value) case final String shortcut)
+              entry.key: shortcut,
+        },
+        'profileId': read(currentProfileProvider)?.id.toString() ?? '',
+        'testUrl': config.testUrl,
+        'timeout': appSetting.delayTestTimeout,
+        'closeConnections': appSetting.closeConnections,
+        'selectedMap': trayState.selectedMap,
+        'onlyProxyTraffic': appSetting.onlyStatisticsProxy,
+      });
       return;
     }
     await Tray.instance.show(
@@ -123,7 +189,64 @@ class AppTray implements TrayPort {
     if (_isShutDown || !isMacOS) {
       return;
     }
+    if (backgroundOwned) {
+      await _background!.updateTrayTitle(
+        showTrayTitle ? traffic.trayTitle : '',
+      );
+      return;
+    }
     await Tray.instance.setTitle(showTrayTitle ? traffic.trayTitle : '');
+  }
+
+  Future<void> processPendingActions({
+    required ProviderReader read,
+    bool Function()? shouldContinue,
+  }) async {
+    if (!backgroundOwned || _isShutDown) return;
+    final actions = await _background!.takeTrayActions(
+      ready: read(initProvider),
+    );
+    for (final action in actions) {
+      if (_isShutDown || shouldContinue?.call() == false) return;
+      await globalState.safeRun(() async {
+        final systemAction = read(systemActionProvider.notifier);
+        final commonAction = read(commonActionProvider.notifier);
+        final setupAction = read(setupActionProvider.notifier);
+        switch (action['action']) {
+          case 'show':
+            await window?.show();
+          case 'lightweight':
+            await systemAction.enterLightweightMode();
+          case 'running':
+            commonAction.toggleRunning();
+          case 'tun':
+            systemAction.updateTun();
+          case 'systemProxy':
+            systemAction.updateSystemProxy();
+          case 'autoLaunch':
+            systemAction.updateAutoLaunch();
+          case 'copyEnv':
+            await systemAction.copyProxyEnv();
+          case 'showTitle':
+            commonAction.updateSpeedStatistics();
+          case 'monochrome':
+            commonAction.updateMonochromeTrayIcon();
+          case 'rule':
+            setupAction.changeMode(Mode.rule);
+          case 'global':
+            setupAction.changeMode(Mode.global);
+          case 'direct':
+            setupAction.changeMode(Mode.direct);
+          case 'select':
+            await read(proxiesActionProvider.notifier).changeProxy(
+              groupName: action['group'] as String,
+              proxyName: action['proxy'] as String,
+            );
+          case 'exit':
+            await systemAction.handleExit();
+        }
+      });
+    }
   }
 
   List<TrayMenuItem> _buildMenu({
@@ -152,14 +275,6 @@ class AppTray implements TrayPort {
 
     return [
       showItem,
-      if (desktopBackground.available)
-        TrayMenuAction(
-          label: appLocalizations.lightweightMode,
-          onSelected: () {
-            window?.show();
-            globalState.safeRun(systemAction.enterLightweightMode);
-          },
-        ),
       TrayMenuCheckbox(
         label: trayState.isStart
             ? appLocalizations.stop

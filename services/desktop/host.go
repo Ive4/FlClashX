@@ -19,13 +19,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 const maxFrameSize = 64 << 20
 
 type launchConfig struct {
+	UIPID     int               `json:"uiPid"`
 	Home      string            `json:"home"`
 	App       string            `json:"app"`
 	Core      string            `json:"core"`
@@ -60,35 +60,35 @@ type lightweightRequest struct {
 }
 
 type host struct {
-	config         launchConfig
-	token          string
-	controlURL     string
-	operation      sync.Mutex
-	frontMu        sync.Mutex
-	coreWriteMu    sync.Mutex
-	front          net.Conn
-	frontSession   string
-	uiPID          int
-	core           net.Conn
-	coreListener   net.Listener
-	coreProcess    *exec.Cmd
-	coreDone       chan struct{}
-	coreSession    string
-	corePID        int
-	helperURL      string
-	lightweight    bool
-	runningSince   *int64
-	cleanupProxy   bool
-	closed         bool
-	quit           func()
-	setTrayVisible func(bool) error
-	trayReady      chan struct{}
-	trayVisible    atomic.Bool
-	launching      bool
-	mode           string
-	pendingMu      sync.Mutex
-	pending        map[string]chan trayResponse
-	tray           trayProxyState
+	config       launchConfig
+	token        string
+	controlURL   string
+	operation    sync.Mutex
+	frontMu      sync.Mutex
+	coreWriteMu  sync.Mutex
+	front        net.Conn
+	frontSession string
+	uiPID        int
+	core         net.Conn
+	coreListener net.Listener
+	coreProcess  *exec.Cmd
+	coreDone     chan struct{}
+	coreSession  string
+	corePID      int
+	helperURL    string
+	lightweight  bool
+	runningSince *int64
+	cleanupProxy bool
+	closed       bool
+	quit         func()
+	waitTray     func() error
+	settings     traySettings
+	uiActions    []trayActionRequest
+	launching    bool
+	mode         string
+	pendingMu    sync.Mutex
+	pending      map[string]chan trayResponse
+	tray         trayProxyState
 }
 
 func randomID() string {
@@ -106,19 +106,6 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	if r.Method == http.MethodPost && r.URL.Path == "/tray-ready" {
-		select {
-		case h.trayReady <- struct{}{}:
-		default:
-		}
-		json.NewEncoder(w).Encode(map[string]bool{"ready": true})
-		return
-	}
-	if r.Method == http.MethodGet && r.URL.Path == "/tray-status" {
-		// Visibility must stay lock-free while attach waits for the tray to exit.
-		json.NewEncoder(w).Encode(map[string]bool{"visible": h.trayVisible.Load()})
-		return
-	}
 	h.operation.Lock()
 	defer h.operation.Unlock()
 	if h.closed {
@@ -147,12 +134,58 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && r.URL.Path == "/tray-action":
 		var request trayActionRequest
 		if err = decodeRequest(r, &request); err == nil {
-			if request.Action == "select" || request.Action == "test" {
-				err = h.trayProxyAction(request)
-			} else {
-				err = h.trayAction(request.Action)
-			}
+			err = h.dispatchTrayAction(request)
 			response = map[string]bool{"applied": err == nil}
+		}
+	case r.Method == http.MethodPost && r.URL.Path == "/tray-config":
+		var request trayConfigRequest
+		if err = decodeRequest(r, &request); err == nil {
+			err = h.configureTray(request)
+			response = map[string]bool{"applied": err == nil}
+		}
+	case r.Method == http.MethodPost && r.URL.Path == "/tray-ui":
+		var request struct {
+			SessionID string `json:"sessionId"`
+			UIPID     int    `json:"uiPid"`
+			Ready     bool   `json:"ready"`
+		}
+		if err = decodeRequest(r, &request); err == nil {
+			if request.UIPID != h.uiPID || request.UIPID <= 0 || request.SessionID != h.frontSession {
+				err = errors.New("inactive frontend")
+			} else {
+				actions := []trayActionRequest{}
+				if !h.lightweight {
+					for index, action := range h.uiActions {
+						if request.Ready || action.Action == "show" || action.Action == "exit" {
+							actions = append(actions, action)
+							h.uiActions = append(h.uiActions[:index], h.uiActions[index+1:]...)
+							break
+						}
+					}
+				}
+				response = map[string]any{"actions": actions}
+			}
+		}
+	case r.Method == http.MethodPost && r.URL.Path == "/tray-title":
+		var request struct {
+			SessionID string `json:"sessionId"`
+			Title     string `json:"title"`
+		}
+		if err = decodeRequest(r, &request); err == nil {
+			if request.SessionID != h.frontSession || h.lightweight {
+				err = errors.New("inactive frontend")
+			} else {
+				h.settings.Title = request.Title
+				response = map[string]bool{"applied": true}
+			}
+		}
+	case r.Method == http.MethodPost && r.URL.Path == "/close-tray":
+		var request struct {
+			UIPID int `json:"uiPid"`
+		}
+		if err = decodeRequest(r, &request); err == nil {
+			closed := h.closeIdleTray(request.UIPID)
+			response = map[string]bool{"closed": closed}
 		}
 	case r.Method == http.MethodPost && r.URL.Path == "/cancel-lightweight":
 		var request struct {
@@ -164,9 +197,7 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				h.lightweight = false
 				h.tray.cancelTests()
-				h.trayVisible.Store(false)
-				err = h.setTrayVisible(false)
-				response = map[string]bool{"cancelled": err == nil}
+				response = map[string]bool{"cancelled": true}
 			}
 		}
 	case r.Method == http.MethodPost && r.URL.Path == "/quit":
@@ -188,22 +219,18 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				h.config.Labels = request.Labels
 				h.mode = request.Mode
-				h.tray = trayProxyState{
-					profileID: request.ProfileID, testURL: request.TestURL,
-					timeout: request.DelayTimeout, closeConnections: request.CloseConnections,
-					generation: h.tray.generation + 1,
-					revision:   h.tray.revision + 1,
-					selections: make(map[string]string), delays: make(map[trayProbeKey]int),
-				}
+				h.tray.configure(request.ProfileID, request.TestURL, request.DelayTimeout, request.CloseConnections)
+				h.tray.revision++
 				h.lightweight = true
 				h.runningSince = request.RunningSince
 				h.cleanupProxy = request.CleanupProxy && !h.config.SafeMode
-				h.trayVisible.Store(true)
-				if err = h.setTrayVisible(true); err != nil {
+				if err = h.waitTray(); err != nil {
 					h.lightweight = false
-					h.trayVisible.Store(false)
 				} else {
 					response = map[string]any{"ready": true}
+					if len(h.uiActions) != 0 {
+						go h.showUI()
+					}
 				}
 			}
 		}
@@ -249,6 +276,32 @@ func decodeRequest(r *http.Request, value any) error {
 	return nil
 }
 
+func (h *host) closeIdleTray(uiPID int) bool {
+	if h.closed || uiPID <= 0 || uiPID != h.uiPID || h.core != nil || h.corePID != 0 {
+		return false
+	}
+	h.closed = true
+	go func() { time.Sleep(100 * time.Millisecond); h.quit() }()
+	return true
+}
+
+func (h *host) watchFrontend(done <-chan struct{}) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			h.operation.Lock()
+			if !h.lightweight && h.core == nil && h.corePID == 0 && !processAlive(h.uiPID) {
+				h.closeIdleTray(h.uiPID)
+			}
+			h.operation.Unlock()
+		}
+	}
+}
+
 func (h *host) attach(request attachRequest) (any, error) {
 	if value, err := hex.DecodeString(request.SessionID); err != nil || len(value) != 16 || request.UIPID <= 0 {
 		return nil, errors.New("invalid session")
@@ -280,8 +333,6 @@ func (h *host) attach(request attachRequest) (any, error) {
 	h.frontSession, h.uiPID = request.SessionID, request.UIPID
 	h.tray.cancelTests()
 	h.lightweight = false
-	h.trayVisible.Store(false)
-	_ = h.setTrayVisible(false)
 	core := h.core
 	go h.readFrontend(front, core, request.SessionID)
 	return map[string]any{"pid": os.Getpid(), "corePid": h.corePID, "wasLightweight": wasLightweight, "coreReused": reused, "runningSince": runningSince, "mode": h.mode, "profileId": h.tray.profileID, "selectedMap": h.tray.selections}, nil
@@ -522,6 +573,11 @@ func (h *host) stopCore() error {
 func (h *host) showUI() {
 	h.operation.Lock()
 	if h.closed || h.launching {
+		h.operation.Unlock()
+		return
+	}
+	if !h.lightweight && processAlive(h.uiPID) {
+		_ = h.queueTrayAction(trayActionRequest{Action: "show"})
 		h.operation.Unlock()
 		return
 	}

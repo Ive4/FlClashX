@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
+	"maps"
 
 	"fyne.io/systray"
 )
 
 type trayProxyMenu struct {
-	root    *systray.MenuItem
-	testAll *systray.MenuItem
-	empty   *systray.MenuItem
-	groups  []trayGroupMenu
-	labels  map[string]string
-	bind    func(*systray.MenuItem, trayActionRequest)
+	root         *systray.MenuItem
+	testAll      *systray.MenuItem
+	empty        *systray.MenuItem
+	emptyVisible bool
+	groups       []trayGroupMenu
+	labels       map[string]string
+	bind         func(*systray.MenuItem, trayActionRequest)
 }
 
 type trayGroupMenu struct {
@@ -31,6 +33,7 @@ func newTrayProxyMenu(labels map[string]string, bind func(*systray.MenuItem, tra
 	bind(menu.testAll, trayActionRequest{Action: "test"})
 	menu.empty = menu.root.AddSubMenuItem(labels["proxyGroupEmpty"], "")
 	menu.empty.Disable()
+	menu.emptyVisible = true
 	return menu
 }
 
@@ -90,6 +93,19 @@ func trayProxyTitle(proxy trayProxy, labels map[string]string) string {
 	return proxy.Name + " · " + labels["error"]
 }
 
+func (menu *trayProxyMenu) updateLabels(labels map[string]string) {
+	if maps.Equal(menu.labels, labels) {
+		return
+	}
+	menu.labels = labels
+	menu.root.SetTitle(menu.labels["proxies"])
+	menu.testAll.SetTitle(menu.labels["delayTest"])
+	menu.empty.SetTitle(menu.labels["proxyGroupEmpty"])
+	for _, group := range menu.groups {
+		group.test.SetTitle(menu.labels["delayTest"])
+	}
+}
+
 func (menu *trayProxyMenu) update(state trayMenuState) {
 	if !sameTrayGroupMembers(menu.groups, state.Groups) {
 		for _, group := range menu.groups {
@@ -111,10 +127,14 @@ func (menu *trayProxyMenu) update(state trayMenuState) {
 			menu.groups = append(menu.groups, current)
 		}
 	}
-	if len(state.Groups) == 0 {
-		menu.empty.Show()
-	} else {
-		menu.empty.Hide()
+	emptyVisible := len(state.Groups) == 0
+	if emptyVisible != menu.emptyVisible {
+		if emptyVisible {
+			menu.empty.Show()
+		} else {
+			menu.empty.Hide()
+		}
+		menu.emptyVisible = emptyVisible
 	}
 	setTrayEnabled(menu.testAll, !state.Testing && len(state.Groups) != 0)
 	for index, group := range state.Groups {

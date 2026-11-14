@@ -22,6 +22,7 @@ class DesktopBackgroundClient {
   String? _sessionId;
   int? _pid;
   String? _runtimeDir;
+  Future<void>? _startOperation;
   CoreResumeState? resumeState;
   bool showOnLaunch = false;
   bool restorePending = false;
@@ -111,7 +112,12 @@ class DesktopBackgroundClient {
     return true;
   }
 
-  Future<void> _ensureStarted() async {
+  Future<void> _ensureStarted() =>
+      _startOperation ??= _startHost().whenComplete(() {
+        _startOperation = null;
+      });
+
+  Future<void> _startHost() async {
     await _prepareRuntime();
     final home = await appPath.homeDirPath;
     final state = File(p.join(home, '.desktop-host.json'));
@@ -123,6 +129,7 @@ class DesktopBackgroundClient {
     await config.writeAsString(
       jsonEncode({
         'home': home,
+        'uiPid': pid,
         'app': _appImage ?? Platform.resolvedExecutable,
         'appImage': _appImage != null,
         'core': p.join(
@@ -155,9 +162,10 @@ class DesktopBackgroundClient {
                     ? 'status_2.ico'
                     : (Platform.isMacOS ? 'status_1.png' : 'status_2.png'),
               )
-            : p.join(_runtimeDir!, 'tray.png'),
+            : p.join(_runtimeDir!, 'tray', 'status_2.png'),
         'showLabel': localizations.show,
         'exitLabel': localizations.exit,
+        'labels': trayLabels,
         'safeMode': safeModeBuild,
       }),
       flush: true,
@@ -192,7 +200,7 @@ class DesktopBackgroundClient {
     final host = executablePath;
     final core = appPath.corePath;
     final home = await appPath.homeDirPath;
-    final icon = p.join(
+    final trayAssets = p.join(
       appPath.executableDirPath,
       'data',
       'flutter_assets',
@@ -200,8 +208,11 @@ class DesktopBackgroundClient {
       'images',
       'tray',
       'unix',
-      'status_2.png',
     );
+    final icons = [
+      for (var status = 1; status <= 4; status++)
+        p.join(trayAssets, 'status_$status.png'),
+    ];
     // AppImage unmounts its bundle when the Flutter process exits.
     _runtimeDir = await Isolate.run(() async {
       final hostHash = await sha256.bind(File(host).openRead()).first;
@@ -210,14 +221,16 @@ class DesktopBackgroundClient {
         p.join(home, '.desktop-runtime', '$hostHash-$coreHash'),
       );
       await directory.create(recursive: true);
-      for (final source in [host, core, icon]) {
+      for (final source in [host, core, ...icons]) {
+        final isIcon = icons.contains(source);
         final destination = p.join(
-          directory.path,
-          source == icon ? 'tray.png' : p.basename(source),
+          isIcon ? p.join(directory.path, 'tray') : directory.path,
+          p.basename(source),
         );
         if (!await File(destination).exists()) {
+          await File(destination).parent.create(recursive: true);
           final staged = await File(source).copy('$destination.staging-$pid');
-          if (source != icon) {
+          if (!isIcon) {
             final result = await Process.run('chmod', ['700', staged.path]);
             if (result.exitCode != 0) {
               throw StateError(
@@ -295,26 +308,91 @@ class DesktopBackgroundClient {
         'testUrl': testUrl,
         'delayTestTimeout': delayTestTimeout,
         'closeConnections': closeConnections,
-        'labels': {
-          'lightweight': currentAppLocalizations.lightweightMode,
-          'running': currentAppLocalizations.running,
-          'notRunning': currentAppLocalizations.notRunning,
-          'mode': currentAppLocalizations.mode,
-          for (final mode in Mode.values) mode.name: mode.label,
-          'closeConnections': currentAppLocalizations.closeConnections,
-          'openHome': currentAppLocalizations.openConfigDirectory,
-          'error': currentAppLocalizations.error,
-          'proxies': currentAppLocalizations.proxies,
-          'delayTest': currentAppLocalizations.delayTest,
-          'timeout': currentAppLocalizations.timeout,
-          'proxyGroupEmpty': currentAppLocalizations.proxyGroupEmpty,
-        },
+        'labels': trayLabels,
       },
     );
   }
 
   Future<void> cancelEnter() async {
     await _request('/cancel-lightweight', body: {'sessionId': _sessionId});
+  }
+
+  Map<String, String> get trayLabels => {
+    'show': currentAppLocalizations.show,
+    'exit': currentAppLocalizations.exit,
+    'lightweight': currentAppLocalizations.lightweightMode,
+    'start': currentAppLocalizations.start,
+    'stop': currentAppLocalizations.stop,
+    'showTitle': currentAppLocalizations.speedStatistics,
+    'monochrome': currentAppLocalizations.monochromeIcon,
+    'tun': currentAppLocalizations.tun,
+    'systemProxy': currentAppLocalizations.systemProxy,
+    'autoLaunch': currentAppLocalizations.autoLaunch,
+    'copyEnv': currentAppLocalizations.copyEnvVar,
+    for (final mode in Mode.values) mode.name: mode.label,
+    'closeConnections': currentAppLocalizations.closeConnections,
+    'openHome': currentAppLocalizations.openConfigDirectory,
+    'error': currentAppLocalizations.error,
+    'proxies': currentAppLocalizations.proxies,
+    'delayTest': currentAppLocalizations.delayTest,
+    'timeout': currentAppLocalizations.timeout,
+    'proxyGroupEmpty': currentAppLocalizations.proxyGroupEmpty,
+  };
+
+  Future<void> configureTray(Map<String, Object?> settings) async {
+    if (restorePending) return;
+    await _ensureStarted();
+    final asset = settings['icon'] as String;
+    final assetRoot = Platform.isMacOS
+        ? p.join(
+            appPath.executableDirPath,
+            '..',
+            'Frameworks',
+            'App.framework',
+            'Resources',
+            'flutter_assets',
+          )
+        : p.join(appPath.executableDirPath, 'data', 'flutter_assets');
+    await _request(
+      '/tray-config',
+      body: {
+        'sessionId': _sessionId,
+        'uiPid': pid,
+        'settings': {
+          ...settings,
+          'icon': _runtimeDir == null
+              ? p.normalize(p.join(assetRoot, asset))
+              : p.join(_runtimeDir!, 'tray', p.basename(asset)),
+          'labels': trayLabels,
+        },
+      },
+    );
+  }
+
+  Future<void> updateTrayTitle(String title) async {
+    if (_sessionId == null || restorePending) return;
+    await _request(
+      '/tray-title',
+      body: {'sessionId': _sessionId, 'title': title},
+    );
+  }
+
+  Future<void> closeUnusedTray() async {
+    if (_url == null) return;
+    await _request('/close-tray', body: {'uiPid': pid});
+  }
+
+  Future<List<Map<String, Object?>>> takeTrayActions({
+    required bool ready,
+  }) async {
+    if (_url == null || restorePending) return const [];
+    final response = await _request(
+      '/tray-ui',
+      body: {'sessionId': _sessionId ?? '', 'uiPid': pid, 'ready': ready},
+    );
+    return (response['actions'] as List)
+        .map((action) => Map<String, Object?>.from(action as Map))
+        .toList();
   }
 
   Future<CoreProcessStopResult> stop(

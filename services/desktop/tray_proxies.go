@@ -32,11 +32,13 @@ type trayGroup struct {
 }
 
 type trayMenuState struct {
-	Mode     string      `json:"mode"`
-	Running  bool        `json:"running"`
-	Testing  bool        `json:"testing"`
-	Groups   []trayGroup `json:"groups"`
-	revision string
+	Mode        string       `json:"mode"`
+	Running     bool         `json:"running"`
+	Lightweight bool         `json:"lightweight"`
+	Settings    traySettings `json:"settings"`
+	Testing     bool         `json:"testing"`
+	Groups      []trayGroup  `json:"groups"`
+	revision    string
 }
 
 type trayProbeKey struct{ name, url string }
@@ -59,6 +61,22 @@ func (s *trayProxyState) cancelTests() {
 	s.generation++
 	s.revision++
 	s.pending = nil
+}
+
+func (s *trayProxyState) configure(profileID, testURL string, timeout int, closeConnections bool) {
+	if s.profileID != profileID || s.testURL != testURL {
+		s.cancelTests()
+		s.groups, s.updated = nil, time.Time{}
+		s.selections, s.delays = nil, nil
+	}
+	s.profileID, s.testURL = profileID, testURL
+	s.timeout, s.closeConnections = timeout, closeConnections
+	if s.selections == nil {
+		s.selections = make(map[string]string)
+	}
+	if s.delays == nil {
+		s.delays = make(map[trayProbeKey]int)
+	}
 }
 
 func (h *host) refreshTrayGroups() error {
@@ -117,14 +135,14 @@ func (h *host) refreshTrayGroups() error {
 }
 
 func (h *host) trayState(since string) (trayMenuState, error) {
-	state := trayMenuState{Mode: h.mode, Running: h.runningSince != nil && h.core != nil, Groups: []trayGroup{}}
-	if h.lightweight && h.core != nil && time.Since(h.tray.updated) >= 15*time.Second {
+	state := trayMenuState{Mode: h.mode, Running: h.runningSince != nil && h.core != nil, Lightweight: h.lightweight, Settings: h.settings, Groups: []trayGroup{}}
+	if h.core != nil && time.Since(h.tray.updated) >= 15*time.Second {
 		if err := h.refreshTrayGroups(); err != nil {
 			return state, err
 		}
 	}
 	state.revision = fmt.Sprintf("\"%d:%s:%t:%t\"", h.tray.revision, h.mode, state.Running, h.lightweight)
-	if since == state.revision || !h.lightweight || h.core == nil {
+	if since == state.revision || h.core == nil {
 		return state, nil
 	}
 	state.Testing = len(h.tray.pending) != 0
@@ -148,9 +166,10 @@ func (h *host) trayState(since string) (trayMenuState, error) {
 }
 
 func (h *host) trayProxyAction(request trayActionRequest) error {
-	if h.closed || !h.lightweight || h.core == nil {
+	if h.closed || h.core == nil {
 		return errors.New("inactive tray")
 	}
+	h.tray.configure(h.tray.profileID, h.tray.testURL, h.tray.timeout, h.tray.closeConnections)
 	if err := h.refreshTrayGroups(); err != nil {
 		return err
 	}
@@ -235,7 +254,7 @@ func (h *host) trayProxyAction(request trayActionRequest) error {
 func (h *host) testTrayProxies(core net.Conn, session string, generation uint64, jobs []trayProbeKey, first, stride, timeout int) {
 	for index := first; index < len(jobs); index += stride {
 		h.operation.Lock()
-		active := !h.closed && h.lightweight && h.core == core && h.frontSession == session && h.tray.generation == generation
+		active := !h.closed && h.core == core && h.frontSession == session && h.tray.generation == generation
 		h.operation.Unlock()
 		if !active {
 			return
@@ -248,7 +267,7 @@ func (h *host) testTrayProxies(core net.Conn, session string, generation uint64,
 		}
 		valid := err == nil && json.Unmarshal(data, &result) == nil && result.Name == key.name && result.Value != nil && *result.Value != 0
 		h.operation.Lock()
-		if !h.closed && h.lightweight && h.core == core && h.frontSession == session && h.tray.generation == generation {
+		if !h.closed && h.core == core && h.frontSession == session && h.tray.generation == generation {
 			if !valid {
 				h.tray.cancelTests()
 				h.operation.Unlock()

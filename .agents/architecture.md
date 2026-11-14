@@ -54,7 +54,8 @@ Desktop core mode:
 - `services/desktop/` builds `FlClashDesktop`, the native background owner selected by
   `lib/core/desktop/background_client.dart` when bundled. It owns the Core connection and forwards frames to the UI.
   Its lease exposes the background PID; the background validates the actual Core peer and Helper session.
-  Entering lightweight mode hands off to a native tray before exiting Flutter. Reopening attaches to the same Core
+  The same host owns the native tray in normal and lightweight modes; there is no separate `--tray` process.
+  Entering lightweight mode confirms the existing tray is ready before exiting Flutter. Reopening attaches to the same Core
   and adopts its running state without reapplying the profile or reopening listeners. RPC IDs include a UI-session prefix.
   AppImage stages the native runtime outside its temporary mount. Normal exit stops the owned Core and background;
   native tray exit also clears the applied system proxy and restores macOS DNS through the cleanup entrypoint.
@@ -70,10 +71,14 @@ visibility comes from native window events and an initial visibility/minimize pr
 since Flutter can still report resumed for a hidden startup window. Showing the UI or changing
 the delay invalidates an in-flight automatic handoff. Automatic entry also waits
 while any navigator has a pushed page or dialog, preserving unfinished edits.
+Both modes use one native menu definition. Runtime groups and delay probes are handled by the host; normal-mode
+settings commands are delivered once to their existing Dart actions. A lightweight command that needs Flutter
+configuration or authorization restores the UI, waits for initialization, then uses that same action. The host
+starts before Core attach so the tray also remains available while Core initializes or its listeners are stopped.
 The native desktop tray reads runtime groups, acknowledges node selections, and tests delays with at most eight
 concurrent probes. Restoring Flutter stops queued probes and rejects late results; acknowledged selections return with
-their profile identity in `CoreResumeState`, so another profile cannot inherit them. Unchanged menus use HTTP
-conditional requests. macOS keeps both the Flutter app and native tray as accessory applications, including while
+their profile identity in `CoreResumeState`, so another profile cannot inherit them. macOS keeps both the Flutter
+app and background host as accessory applications, including while
 the main window is visible, so only the menu bar has an icon.
 
 `lib/core/controller.dart` (`CoreController`) selects the implementation based on platform. `lib/core/interface.dart` defines the shared `CoreHandlerInterface`.

@@ -361,6 +361,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Retain macOS FFI structs for release AOT
+        run: |
+          python3 -m unittest discover -s tool -p test_patch_flutter_macos_aot.py
+          python3 tool/patch_flutter_macos_aot.py "$FLUTTER_ROOT"
+
       - name: Fetch Dart CA certificates
         env:
           CA_BUNDLE: cacert-2026-09-25.pem

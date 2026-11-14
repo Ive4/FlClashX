@@ -142,8 +142,8 @@ func TestTraySelectionsValidateMembershipAndOnlyResumeAcknowledgedChoices(t *tes
 	if resumed["profileId"] != "42" || selected["Japan: 🇯🇵"] != "Node 1" {
 		t.Fatalf("resume state: %+v", resumed)
 	}
-	if result := control(h, "/tray-action", h.token, `{"action":"select","group":"Japan: 🇯🇵","proxy":"Node 0"}`); result.Code == http.StatusOK {
-		t.Fatal("a stale tray changed the restored frontend")
+	if result := control(h, "/tray-action", h.token, `{"action":"select","group":"Japan: 🇯🇵","proxy":"Node 0"}`); result.Code != http.StatusOK || len(h.uiActions) != 1 || selected["Japan: 🇯🇵"] != "Node 1" {
+		t.Fatal("foreground selection did not delegate to its existing owner")
 	}
 }
 
@@ -152,7 +152,7 @@ func asynchronousTrayCore(t *testing.T) (*host, <-chan trayTestCall, func(trayTe
 	core, peer := net.Pipe()
 	h := &host{
 		config: launchConfig{SafeMode: true}, token: "secret", controlURL: "http://127.0.0.1:12345",
-		core: core, corePID: os.Getpid(), quit: func() {}, setTrayVisible: func(bool) error { return nil },
+		core: core, corePID: os.Getpid(), quit: func() {}, waitTray: func() error { return nil },
 	}
 	calls := make(chan trayTestCall, 32)
 	var write sync.Mutex
@@ -264,6 +264,46 @@ func TestTrayTestsAreBoundedDeduplicatedAndDoNotBlockControl(t *testing.T) {
 	h.operation.Unlock()
 	if state := getTrayState(t, h); len(state.Groups) != 1 || state.Groups[0].Name != "GLOBAL" {
 		t.Fatal("global mode did not expose GLOBAL")
+	}
+}
+
+func TestNormalTrayCanTestNodesAndKeepsResultsWhenEnteringLightweight(t *testing.T) {
+	h, _ := testHostReply(t, func(frame []byte) []byte {
+		var call trayTestCall
+		json.Unmarshal(frame, &call)
+		var result any
+		switch call.Method {
+		case "getProxies":
+			result = proxyFixture("Node 0", 1)
+		case "asyncTestDelay":
+			result = map[string]any{"name": call.Arguments["proxy-name"], "value": 42}
+		}
+		data, _ := json.Marshal(map[string]any{"id": call.ID, "result": result})
+		return data
+	})
+	session := randomID()
+	attachFrontend(t, h, session)
+	h.tray.configure("42", "https://default.invalid/test", 1000, false)
+	h.mode = "rule"
+	if result := control(h, "/tray-action", h.token, `{"action":"test","group":"Japan: 🇯🇵"}`); result.Code != http.StatusOK {
+		t.Fatal(result.Body.String())
+	}
+	for deadline := time.Now().Add(2 * time.Second); ; {
+		state := getTrayState(t, h)
+		if !state.Testing {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("foreground probe did not finish")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	result := control(h, "/lightweight", h.token, `{"sessionId":"`+session+`","profileId":"42","mode":"rule","testUrl":"https://default.invalid/test"}`)
+	if result.Code != http.StatusOK {
+		t.Fatal(result.Body.String())
+	}
+	if state := getTrayState(t, h); state.Groups[0].Proxies[0].Delay == nil || *state.Groups[0].Proxies[0].Delay != 42 {
+		t.Fatal("mode switch discarded the existing menu delays")
 	}
 }
 
