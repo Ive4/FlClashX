@@ -8253,7 +8253,8 @@ class AppLocalizations {
   String customImportDroppedSubRules(num count, Object label) {
     return Intl.plural(
       count,
-      one: '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
+      one:
+          '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
       other:
           '$label SUB-RULE rules were dropped, since custom profiles do not support sub-rules',
       name: 'customImportDroppedSubRules',
@@ -8849,6 +8850,46 @@ class AppLocalizations {
       name: 'openConfigDirectory',
       desc: '',
       args: [],
+    );
+  }
+
+  /// `Run an app with process lookup enabled. Recognized programs are remembered here, even after they exit.`
+  String get desktopAccessHistoryDesc {
+    return Intl.message(
+      'Run an app with process lookup enabled. Recognized programs are remembered here, even after they exit.',
+      name: 'desktopAccessHistoryDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.`
+  String get desktopAccessDirectDesc {
+    return Intl.message(
+      'Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.',
+      name: 'desktopAccessDirectDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enable TUN and Rule mode for the application lists to take effect.`
+  String get desktopAccessRequiresTun {
+    return Intl.message(
+      'Enable TUN and Rule mode for the application lists to take effect.',
+      name: 'desktopAccessRequiresTun',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Match by program name: {name}`
+  String desktopAccessNameOnly(Object name) {
+    return Intl.message(
+      'Match by program name: $name',
+      name: 'desktopAccessNameOnly',
+      desc: '',
+      args: [name],
     );
   }
 }

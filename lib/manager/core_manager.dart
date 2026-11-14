@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/core/core.dart';
 import 'package:fl_clash/core/ohos/diagnostics.dart';
 import 'package:fl_clash/core/ohos/background_transfer.dart';
@@ -10,6 +11,7 @@ import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/providers/app.dart';
 import 'package:fl_clash/providers/config.dart';
+import 'package:fl_clash/providers/application_history.dart';
 import 'package:fl_clash/providers/core.dart';
 import 'package:fl_clash/providers/database.dart';
 import 'package:fl_clash/providers/route_state.dart';
@@ -222,6 +224,20 @@ class _CoreContainerState extends ConsumerState<CoreManager>
 
   @override
   void onRequest(TrackerInfo trackerInfo) async {
+    if (system.isWindows || system.isMacOS) {
+      unawaited(
+        ref
+            .read(applicationHistoryProvider)
+            .record(
+              applicationConnectionsOf([trackerInfo]),
+              system.isWindows,
+              DateTime.now(),
+            )
+            .catchError((Object error) {
+              commonPrint.log('application history: $error');
+            }),
+      );
+    }
     ref.read(requestsProvider.notifier).addRequest(trackerInfo);
     ref.read(requestCountProvider.notifier).update((count) => count + 1);
     super.onRequest(trackerInfo);

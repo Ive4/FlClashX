@@ -6,6 +6,7 @@ typedef _SetupInputs = (
   SetupState,
   PatchClashConfig,
   NetworkProps,
+  AccessControlProps,
   SetupParams,
 );
 
@@ -408,104 +409,6 @@ class SetupAction extends _$SetupAction {
   @protected
   Duration get maxApplyDebounce => const Duration(seconds: 10);
 
-  Future<bool> setApplicationProxy({
-    required int profileId,
-    required ApplicationIdentity application,
-    required String? target,
-    ApplicationProxyMode mode = ApplicationProxyMode.follow,
-  }) async {
-    if (!ref.read(networkSettingProvider).applicationProxyEnabled) {
-      throw MessageException(currentAppLocalizations.applicationProxyDisabled);
-    }
-    final profile = ref.read(profileProvider(profileId));
-    if (ref.read(currentProfileIdProvider) != profileId || profile == null) {
-      throw MessageException(currentAppLocalizations.applicationProxyNoProfile);
-    }
-    if (profile.type != ProfileType.custom &&
-        profile.extendType != ExtendType.standard) {
-      throw MessageException(
-        currentAppLocalizations.applicationProxyScriptUnsupported,
-      );
-    }
-    final routingIdentity = application.byName;
-    final policyTarget = mode == ApplicationProxyMode.httpSocks ? null : target;
-    final keepFollowOverride =
-        mode == ApplicationProxyMode.follow &&
-        policyTarget == null &&
-        ref.read(networkSettingProvider).applicationProxyMode ==
-            ApplicationProxyMode.httpSocks;
-    if (!routingIdentity.canRoute ||
-        ((mode == ApplicationProxyMode.httpSocks || keepFollowOverride) &&
-            RegExp(r'[()]').hasMatch(routingIdentity.content))) {
-      throw MessageException(
-        currentAppLocalizations.applicationProxyInvalidProcess,
-      );
-    }
-    if (policyTarget != null &&
-        (policyTarget.trim().isEmpty ||
-            RegExp(r'[,\r\n]').hasMatch(policyTarget) ||
-            (policyTarget != RuleTarget.DIRECT.value &&
-                !ref
-                    .read(groupsProvider)
-                    .any((group) => group.name == policyTarget)))) {
-      throw MessageException(
-        currentAppLocalizations.invalidPolicy(policyTarget),
-      );
-    }
-    await database.transaction(() async {
-      final rules = await database.rulesDao
-          .queryApplicationRules(profileId)
-          .get();
-      final matches = rules.where((rule) {
-        if (!rule.applicationProxyRule) return false;
-        final identity = applicationRuleIdentity(
-          rule,
-          windows: application.windows,
-        );
-        return identity?.byName.key == routingIdentity.key;
-      }).toList();
-      if (policyTarget == null &&
-          mode == ApplicationProxyMode.follow &&
-          !keepFollowOverride) {
-        await database.rulesDao.delRules(matches.map((rule) => rule.id));
-        return;
-      }
-      final firstOrder = await database.rulesDao.firstProfileRuleOrder(
-        profileId,
-      );
-      final process =
-          '(${routingIdentity.action.value},${routingIdentity.content})';
-      final scoped =
-          mode == ApplicationProxyMode.httpSocks || keepFollowOverride;
-      await database.rulesDao.putRule(
-        Rule(
-          id: matches.firstOrNull?.id ?? snowflake.id,
-          ruleAction: scoped ? RuleAction.AND : routingIdentity.action,
-          content: scoped
-              ? '($process,(IN-TYPE,TUN))'
-              : routingIdentity.content,
-          ruleTarget: keepFollowOverride
-              ? 'PASS-RULE'
-              : policyTarget ?? 'DIRECT',
-          order: indexing.generateKeyBetween(null, firstOrder),
-          applicationProxyRule: true,
-        ),
-        profileId: profileId,
-      );
-      await database.rulesDao.delRules(matches.skip(1).map((rule) => rule.id));
-    });
-    ref.invalidate(setupStateProvider(profileId));
-    if (ref.read(currentProfileIdProvider) != profileId) return true;
-    if (ref.read(coreStatusProvider) != CoreStatus.connected) return true;
-    try {
-      return await applyProfile(silence: true);
-    } catch (_) {
-      throw MessageException(
-        currentAppLocalizations.applicationProxyApplyFailed,
-      );
-    }
-  }
-
   void applyProfileDebounce({bool silence = false, bool force = false}) {
     _pendingForceApply |= force;
     debouncer.call(
@@ -574,6 +477,7 @@ class SetupAction extends _$SetupAction {
           setupState,
           _effectivePatchConfig(ref.read(patchClashConfigProvider)),
           ref.read(networkSettingProvider),
+          _desktopAccessControl,
           _appliedParams,
         );
   }
@@ -643,8 +547,6 @@ class SetupAction extends _$SetupAction {
       networkSettingProvider.select(
         (state) => (
           appendSystemDns: state.appendSystemDns,
-          applicationProxyMode: state.applicationProxyMode,
-          applicationProxyEnabled: state.applicationProxyEnabled,
           bypassPrivateRoute: state.bypassPrivateRoute,
           authentication: state.authentication,
         ),
@@ -694,11 +596,7 @@ class SetupAction extends _$SetupAction {
         bypassPrivateRoute: networkSetting.bypassPrivateRoute,
         keepEmptyDnsOverrides: setupState.profileType != ProfileType.custom,
         appendSystemDns: appendSystemDns,
-        applicationProxyEnabled: networkSetting.applicationProxyEnabled,
-        applicationProxyMode:
-            isCustom || setupState.extendType == ExtendType.standard
-            ? networkSetting.applicationProxyMode
-            : ApplicationProxyMode.follow,
+        accessControlProps: _desktopAccessControl,
         addedRules: setupState.addedRules,
         defaultUA: defaultUA,
         authentication: networkSetting.authentication.credentials,
@@ -794,9 +692,14 @@ class SetupAction extends _$SetupAction {
     return '';
   }
 
+  AccessControlProps get _desktopAccessControl =>
+      system.isWindows || system.isMacOS
+      ? ref.read(vpnSettingProvider).accessControlProps.forRouting
+      : const AccessControlProps();
+
   PatchClashConfig _effectivePatchConfig(PatchClashConfig patchConfig) {
     final config = patchConfig.withApplicationProxy(
-      ref.read(networkSettingProvider).applicationProxyEnabled,
+      _desktopAccessControl.enable,
     );
     if (ref.read(safeModeProvider)) {
       return config.copyWith(
@@ -913,6 +816,7 @@ class SetupAction extends _$SetupAction {
         state,
         realPatchConfig,
         networkSetting,
+        _desktopAccessControl,
         _appliedParams,
       ),
       _ => null,

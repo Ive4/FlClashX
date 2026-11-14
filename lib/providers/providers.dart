@@ -1,4 +1,5 @@
 export 'action.dart';
+export 'application_history.dart';
 export 'app.dart';
 export 'config.dart';
 export 'core.dart';

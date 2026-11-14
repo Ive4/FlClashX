@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/application_history.dart';
+import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/plugins/app.dart';
@@ -13,9 +15,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AccessView extends ConsumerStatefulWidget {
-  const AccessView({super.key, this.isOhos});
+  const AccessView({super.key, this.isOhos, this.isDesktop, this.isWindows});
 
   final bool? isOhos;
+  final bool? isDesktop;
+  final bool? isWindows;
 
   @override
   ConsumerState<AccessView> createState() => _AccessViewState();
@@ -28,6 +32,10 @@ class _AccessViewState extends ConsumerState<AccessView>
   bool _isInit = false;
   bool _installedAppsPermissionGranted = true;
   bool get _isOhos => widget.isOhos ?? system.isOhos;
+  bool get _isDesktop =>
+      widget.isDesktop ?? (system.isWindows || system.isMacOS);
+  bool get _isWindows => widget.isWindows ?? system.isWindows;
+  late final ApplicationHistory _history;
 
   final _completer = Completer();
 
@@ -50,6 +58,10 @@ class _AccessViewState extends ConsumerState<AccessView>
       accessControlStateProvider.select((state) => state.mode),
       (_, _) => _pinList(),
     );
+    if (_isDesktop) {
+      _history = ref.read(applicationHistoryProvider);
+      _history.addListener(_historyChanged);
+    }
     _completer.complete(_loadPackages());
   }
 
@@ -58,7 +70,10 @@ class _AccessViewState extends ConsumerState<AccessView>
 
   Future<void> _loadPackages() async {
     final action = ref.read(systemActionProvider.notifier);
-    final packages = await action.getPackages();
+    final packages = _isDesktop
+        ? await action.getDesktopPackages(windows: _isWindows)
+        : await action.getPackages();
+    if (_isDesktop) return;
     final granted =
         packages.isNotEmpty || await action.isInstalledAppsPermissionGranted();
     if (!mounted || granted == _installedAppsPermissionGranted) {
@@ -101,8 +116,20 @@ class _AccessViewState extends ConsumerState<AccessView>
     });
   }
 
+  void _historyChanged() {
+    if (!mounted) return;
+    final access = _isInit
+        ? ref.read(accessControlStateProvider)
+        : ref.read(vpnSettingProvider).accessControlProps;
+    ref.read(packagesProvider.notifier).value = _history.packages(
+      access,
+      windows: _isWindows,
+    );
+  }
+
   @override
   void dispose() {
+    if (_isDesktop) _history.removeListener(_historyChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -193,7 +220,7 @@ class _AccessViewState extends ConsumerState<AccessView>
     AccessControlProps accessControl,
   ) {
     final packages = ref.read(packagesProvider);
-    if (packages.isEmpty || _isOhos) {
+    if (packages.isEmpty || _isOhos || _isDesktop) {
       return accessControl;
     }
     final viewPackageNames = packages
@@ -240,6 +267,7 @@ class _AccessViewState extends ConsumerState<AccessView>
       ref
           .read(accessControlStateProvider.notifier)
           .update((state) => state.copyWithNewList(list.toSet().toList()));
+      if (_isDesktop) _historyChanged();
     });
   }
 
@@ -292,38 +320,40 @@ class _AccessViewState extends ConsumerState<AccessView>
             onSelected: (sort) =>
                 _update((state) => state.copyWith(sort: sort)),
           ),
-          CommonPopupMenuItem(
-            label: appLocalizations.systemApp,
-            checked: !accessControl.isFilterSystemApp,
-            section: CommonPopupMenuSection(title: appLocalizations.source),
-            onPressed: () => _update(
-              (state) =>
-                  state.copyWith(isFilterSystemApp: !state.isFilterSystemApp),
-            ),
-          ),
-          CommonPopupMenuItem(
-            label: appLocalizations.noNetworkApp,
-            checked: !accessControl.isFilterNonInternetApp,
-            onPressed: () => _update(
-              (state) => state.copyWith(
-                isFilterNonInternetApp: !state.isFilterNonInternetApp,
+          if (!_isDesktop)
+            CommonPopupMenuItem(
+              label: appLocalizations.systemApp,
+              checked: !accessControl.isFilterSystemApp,
+              section: CommonPopupMenuSection(title: appLocalizations.source),
+              onPressed: () => _update(
+                (state) =>
+                    state.copyWith(isFilterSystemApp: !state.isFilterSystemApp),
               ),
             ),
-          ),
+          if (!_isDesktop)
+            CommonPopupMenuItem(
+              label: appLocalizations.noNetworkApp,
+              checked: !accessControl.isFilterNonInternetApp,
+              onPressed: () => _update(
+                (state) => state.copyWith(
+                  isFilterNonInternetApp: !state.isFilterNonInternetApp,
+                ),
+              ),
+            ),
         ],
       ),
       CommonPopupMenuItem(
         glyph: AppGlyphs.moreCircle,
         label: appLocalizations.action,
         subItems: [
-          if (_isOhos)
+          if (_isOhos || _isDesktop)
             CommonPopupMenuItem(
               glyph: AppGlyphs.refresh,
               label: appLocalizations.update,
               onPressed: () =>
                   globalState.loadingRun(_loadPackages, tag: LoadingTag.access),
             ),
-          if (!_isOhos)
+          if (!_isOhos && !_isDesktop)
             CommonPopupMenuItem(
               glyph: AppGlyphs.sparkle,
               label: appLocalizations.intelligentSelected,
@@ -350,7 +380,13 @@ class _AccessViewState extends ConsumerState<AccessView>
     required bool isSearching,
   }) {
     final needsProcessLookup =
-        _isOhos &&
+        (_isOhos || _isDesktop) &&
+        !(_isDesktop &&
+            ref.watch(
+              vpnSettingProvider.select(
+                (state) => state.accessControlProps.enable,
+              ),
+            )) &&
         ref.watch(
               patchClashConfigProvider.select((state) => state.findProcessMode),
             ) !=
@@ -368,12 +404,14 @@ class _AccessViewState extends ConsumerState<AccessView>
           nullStatus: NullStatus(
             label: snapshot.hasError
                 ? snapshot.error.toString()
-                : _isOhos
+                : _isOhos || _isDesktop
                 ? appLocalizations.applicationHistoryEmpty
                 : appLocalizations.noData,
             illustration: NullStatusIllustration.apps,
             description: needsProcessLookup
                 ? appLocalizations.applicationProxyEnableProcess
+                : _isDesktop
+                ? appLocalizations.desktopAccessHistoryDesc
                 : null,
             action: needsProcessLookup
                 ? TonalButton(
@@ -407,6 +445,7 @@ class _AccessViewState extends ConsumerState<AccessView>
                   key: Key(package.packageName),
                   package: package,
                   value: selected.contains(package.packageName),
+                  desktop: _isDesktop,
                   onChanged: (value) {
                     _handleSelected(package.packageName);
                   },
@@ -449,8 +488,9 @@ class _AccessViewState extends ConsumerState<AccessView>
         .getViewList(
           pinedList: _pinedList ?? [],
           sortType: accessControl.sort,
-          isFilterNonInternetApp: accessControl.isFilterNonInternetApp,
-          isFilterSystemApp: accessControl.isFilterSystemApp,
+          isFilterNonInternetApp:
+              !_isDesktop && accessControl.isFilterNonInternetApp,
+          isFilterSystemApp: !_isDesktop && accessControl.isFilterSystemApp,
         )
         .whereMatches(query, (package) => [package.label, package.packageName])
         .toList();
@@ -501,6 +541,12 @@ class _AccessViewState extends ConsumerState<AccessView>
             ? _buildInstalledAppsPermissionStatus()
             : FloatingFootBar(
                 bar: _AccessStatus(
+                  desktop: _isDesktop,
+                  desktopReady: ref.watch(
+                    patchClashConfigProvider.select(
+                      (state) => state.tun.enable && state.mode == Mode.rule,
+                    ),
+                  ),
                   accessControl: accessControl,
                   selectedCount: valueList.length,
                   onEnable: () =>
@@ -525,18 +571,26 @@ class _AccessStatus extends StatelessWidget {
     required this.accessControl,
     required this.selectedCount,
     required this.onEnable,
+    this.desktop = false,
+    this.desktopReady = true,
   });
 
   final AccessControlProps accessControl;
   final int selectedCount;
   final VoidCallback onEnable;
+  final bool desktop;
+  final bool desktopReady;
 
   @override
   Widget build(BuildContext context) {
     final appLocalizations = context.appLocalizations;
     final colorScheme = context.colorScheme;
     final enabled = accessControl.enable;
-    final description = enabled
+    final description = desktop && enabled
+        ? desktopReady
+              ? appLocalizations.desktopAccessDirectDesc
+              : appLocalizations.desktopAccessRequiresTun
+        : enabled
         ? switch (accessControl.mode) {
             AccessControlMode.acceptSelected =>
               appLocalizations.accessControlAllowDesc,
@@ -586,25 +640,38 @@ class PackageListItem extends StatelessWidget {
   final Package package;
   final bool value;
   final void Function(bool?) onChanged;
+  final bool desktop;
 
   const PackageListItem({
     super.key,
     required this.package,
     required this.value,
     required this.onChanged,
+    this.desktop = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final identity = desktop
+        ? ApplicationIdentity.fromSelection(
+            package.packageName,
+            windows: package.packageName.startsWith('windows:'),
+          )
+        : null;
+    final subtitle = identity?.action == RuleAction.PROCESS_NAME
+        ? context.appLocalizations.desktopAccessNameOnly(identity!.content)
+        : identity?.content ?? package.packageName;
     return ListItem.checkbox(
-      leading: PackageIcon(packageName: package.packageName, size: 48),
+      leading: desktop
+          ? const GlyphIcon(AppGlyphs.appsList, size: 32)
+          : PackageIcon(packageName: package.packageName, size: 48),
       title: Text(
         package.label,
         style: const TextStyle(overflow: TextOverflow.ellipsis),
         maxLines: 1,
       ),
       subtitle: Text(
-        package.packageName,
+        subtitle,
         style: const TextStyle(overflow: TextOverflow.ellipsis),
         maxLines: 1,
       ),

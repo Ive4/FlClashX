@@ -1,12 +1,27 @@
 import 'dart:convert';
+
 import 'package:fl_clash/common/application_history.dart';
 import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+ApplicationConnection connection(
+  String path, {
+  String process = 'browser.exe',
+}) => (
+  id: path,
+  process: process,
+  path: path,
+  outbound: null,
+  start: DateTime.utc(2026),
+  upload: 0,
+  download: 0,
+);
 
 void main() {
   test(
-    'history survives reload, merges installs by name, and remembers the view',
+    'memory survives restart and distinguishes same-name programs',
     () async {
       String? saved;
       ApplicationHistory store() => ApplicationHistory(
@@ -16,133 +31,171 @@ void main() {
         },
       );
       final history = store();
-      final at = DateTime.utc(2026, 10, 25);
-      ApplicationConnection connection(String path) => (
-        id: '1',
-        process: 'browser.exe',
-        path: path,
-        outbound: 'DIRECT',
-        start: at,
-        upload: 0,
-        download: 0,
-      );
-      await history.record([connection(r'C:\Apps\Browser.exe')], true, at);
       await history.record(
-        [connection(r'D:\Apps\v2\browser.exe')],
+        [
+          connection(r'C:\Apps\Browser.exe'),
+          connection(r'D:\Apps\Browser.exe'),
+        ],
         true,
-        at.add(const Duration(minutes: 1)),
+        DateTime.utc(2026),
       );
-      await history.select(true);
-      final reloaded = store();
-      await reloaded.load();
-      expect(reloaded.entries.length, 1);
+      final restored = store();
+      await restored.load();
+      expect(restored.entries.length, 2);
       expect(
-        reloaded.entries.values.single.identity.action,
-        RuleAction.PROCESS_NAME,
+        restored.entries.values.every(
+          (entry) => entry.identity.action == RuleAction.PROCESS_PATH,
+        ),
+        isTrue,
       );
-      expect(reloaded.entries.values.single.identity.content, 'browser.exe');
-      expect(reloaded.entries.values.single.firstSeen, at);
-      expect(
-        reloaded.entries.values.single.lastSeen,
-        at.add(const Duration(minutes: 1)),
+      final packages = restored.packages(
+        const AccessControlProps(),
+        windows: true,
       );
-      expect(reloaded.showHistory, isTrue);
-      await reloaded.remove(reloaded.entries.keys.single);
-      expect((jsonDecode(saved!) as Map)['entries'], isEmpty);
+      expect(packages.map((app) => app.packageName).toSet(), {
+        r'windows:PROCESS-PATH:c:\apps\browser.exe',
+        r'windows:PROCESS-PATH:d:\apps\browser.exe',
+      });
       history.dispose();
-      reloaded.dispose();
+      restored.dispose();
     },
   );
 
   test(
-    'saved paths and names merge with their full first and last seen range',
+    'Windows case changes merge, macOS app helpers share a bundle row',
     () async {
-      final at = DateTime.utc(2026, 10, 25);
+      final history = ApplicationHistory(
+        read: () async => null,
+        write: (_) async {},
+      );
+      final at = DateTime.utc(2026);
+      await history.record(
+        [connection(r'C:\Apps\Browser.exe'), connection('c:/apps/browser.EXE')],
+        true,
+        at,
+      );
+      expect(history.entries.length, 1);
+      await history.record(
+        [
+          connection('/Applications/Chat.app/Contents/MacOS/Chat'),
+          connection(
+            '/Applications/Chat.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper',
+          ),
+          connection('/Applications/Other.app/Contents/MacOS/Chat'),
+        ],
+        false,
+        at,
+      );
+      final packages = history.packages(
+        const AccessControlProps(),
+        windows: false,
+      );
+      expect(packages.map((app) => app.packageName).toSet(), {
+        'macos:PROCESS-PATH:/Applications/Chat.app',
+        'macos:PROCESS-PATH:/Applications/Other.app',
+      });
+      history.dispose();
+    },
+  );
+
+  test(
+    'saved selections remain available when no process is running',
+    () async {
+      final history = ApplicationHistory(
+        read: () async => null,
+        write: (_) async {},
+      );
+      await history.load();
+      final packages = history.packages(
+        const AccessControlProps(
+          acceptList: [r'windows:PROCESS-PATH:c:\old\browser.exe'],
+          rejectList: [
+            r'windows:PROCESS-PATH:d:\other\tool.exe',
+            'macos:PROCESS-PATH:/Applications/Chat.app',
+          ],
+        ),
+        windows: true,
+      );
+      expect(packages.length, 2);
+      history.dispose();
+    },
+  );
+
+  test(
+    'damaged history rows do not discard legacy names or valid paths',
+    () async {
+      final at = DateTime.utc(2026).toIso8601String();
       final history = ApplicationHistory(
         read: () async => jsonEncode({
           'entries': [
-            for (final row in [
-              (content: r'C:\Apps\Browser.exe', path: true, first: 2, last: 4),
-              (content: 'browser.exe', path: false, first: 1, last: 3),
-              (content: r'D:\Apps\BROWSER.exe', path: true, first: 3, last: 5),
-            ])
-              {
-                'content': row.content,
-                'path': row.path,
-                'windows': true,
-                'first': at.add(Duration(minutes: row.first)).toIso8601String(),
-                'last': at.add(Duration(minutes: row.last)).toIso8601String(),
-              },
+            {
+              'content': 'legacy.exe',
+              'path': false,
+              'windows': true,
+              'first': at,
+              'last': at,
+            },
+            {
+              'content': r'C:\Apps\Browser.exe',
+              'path': true,
+              'windows': true,
+              'first': at,
+              'last': at,
+            },
+            {'content': 17},
           ],
         }),
         write: (_) async {},
       );
       await history.load();
-      final entry = history.entries.values.single;
-      expect(entry.identity.key, 'PROCESS-NAME:browser.exe');
-      expect(entry.firstSeen, at.add(const Duration(minutes: 1)));
-      expect(entry.lastSeen, at.add(const Duration(minutes: 5)));
-      history.dispose();
-    },
-  );
-
-  test(
-    'missing process names use the same filename identity as live statistics',
-    () async {
-      final at = DateTime.utc(2026, 10, 25);
-      final history = ApplicationHistory(
-        read: () async => null,
-        write: (_) async {},
-      );
-      await history.record(
-        [
-          for (final path in ['/apps/v1/browser', '/apps/v2/browser'])
-            (
-              id: path,
-              process: '',
-              path: path,
-              outbound: null,
-              start: at,
-              upload: 0,
-              download: 0,
-            ),
-        ],
-        false,
-        at,
-      );
+      expect(history.entries.length, 2);
       expect(
-        history.entries.values.single.identity.key,
-        'PROCESS-NAME:browser',
+        history.entries.values.map((entry) => entry.identity.action).toSet(),
+        {RuleAction.PROCESS_NAME, RuleAction.PROCESS_PATH},
       );
       history.dispose();
     },
   );
 
-  test(
-    'unknown processes are excluded and damaged history is recoverable',
-    () async {
-      final history = ApplicationHistory(
-        read: () async => '{bad',
-        write: (_) async {},
-      );
-      await history.record(
-        [
-          (
-            id: 'unknown',
-            process: '',
-            path: '',
-            outbound: null,
-            start: DateTime(2026),
-            upload: 0,
-            download: 0,
-          ),
-        ],
-        false,
-        DateTime(2026),
-      );
-      expect(history.entries, isEmpty);
-      await history.remove(null);
-      history.dispose();
-    },
-  );
+  test('unknown owners are not remembered as applications', () async {
+    var writes = 0;
+    final history = ApplicationHistory(
+      read: () async => null,
+      write: (_) async {
+        writes++;
+      },
+    );
+    await history.record(
+      [connection('', process: '')],
+      true,
+      DateTime.utc(2026),
+    );
+    expect(history.entries, isEmpty);
+    expect(writes, 0);
+    history.dispose();
+  });
+  test('mobile history retains package-name identities', () async {
+    final history = ApplicationHistory(
+      read: () async => null,
+      write: (_) async {},
+    );
+    await history.record(
+      [
+        connection('com.example.browser', process: 'com.example.browser'),
+        connection('', process: ''),
+      ],
+      false,
+      DateTime.utc(2026),
+      preservePaths: false,
+    );
+    expect(
+      history.entries.values.single.identity.action,
+      RuleAction.PROCESS_NAME,
+    );
+    expect(
+      history.entries.values.single.identity.content,
+      'com.example.browser',
+    );
+    history.dispose();
+  });
 }

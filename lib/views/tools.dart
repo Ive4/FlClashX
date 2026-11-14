@@ -56,8 +56,11 @@ class _ToolViewState extends ConsumerState<ToolsView> {
         const _ThemeItem(),
         const _BackupItem(),
         if (system.isDesktop) const _HotkeyItem(),
-        if (system.isAndroid || system.isOhos) const _AccessItem(),
-        const _ApplicationProxyItem(),
+        if (system.isAndroid ||
+            system.isOhos ||
+            system.isWindows ||
+            system.isMacOS)
+          const _AccessItem(),
         const _AdvancedConfigItem(),
         const _CustomResourcesItem(),
         const _GeneralItem(),
@@ -66,7 +69,6 @@ class _ToolViewState extends ConsumerState<ToolsView> {
         if (system.isAndroid || system.isOhos)
           appLocalizations.accessControlDesc,
         appLocalizations.advancedConfigDesc,
-        appLocalizations.applicationProxyFeatureDesc,
         appLocalizations.customProfileResourcesDesc,
       ].join('\n'),
     );
@@ -188,24 +190,6 @@ class _AccessItem extends StatelessWidget {
       leading: const GlyphIcon(AppGlyphs.appsList),
       title: Text(context.appLocalizations.accessControl),
       widget: const AccessView(),
-    );
-  }
-}
-
-class _ApplicationProxyItem extends ConsumerWidget {
-  const _ApplicationProxyItem();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ConfigToggleItem(
-      leading: const GlyphIcon(AppGlyphs.appsList),
-      title: (l) => l.applicationProxyFeature,
-      selector: networkSettingProvider.select(
-        (state) => state.applicationProxyEnabled,
-      ),
-      onChanged: (ref, value) => ref
-          .read(networkSettingProvider.notifier)
-          .update((state) => state.copyWith(applicationProxyEnabled: value)),
     );
   }
 }

@@ -259,14 +259,6 @@ Map<String, dynamic> _$AuthenticationPropsToJson(
 
 _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
     _NetworkProps(
-      applicationProxyEnabled:
-          json['applicationProxyEnabled'] as bool? ?? false,
-      applicationProxyMode:
-          $enumDecodeNullable(
-            _$ApplicationProxyModeEnumMap,
-            json['applicationProxyMode'],
-          ) ??
-          ApplicationProxyMode.follow,
       systemProxy: json['systemProxy'] as bool? ?? true,
       bypassDomain:
           (json['bypassDomain'] as List<dynamic>?)
@@ -285,9 +277,6 @@ _NetworkProps _$NetworkPropsFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$NetworkPropsToJson(_NetworkProps instance) =>
     <String, dynamic>{
-      'applicationProxyEnabled': instance.applicationProxyEnabled,
-      'applicationProxyMode':
-          _$ApplicationProxyModeEnumMap[instance.applicationProxyMode]!,
       'systemProxy': instance.systemProxy,
       'bypassDomain': instance.bypassDomain,
       'bypassPrivateRoute': instance.bypassPrivateRoute,
@@ -295,11 +284,6 @@ Map<String, dynamic> _$NetworkPropsToJson(_NetworkProps instance) =>
       'appendSystemDns': instance.appendSystemDns,
       'authentication': instance.authentication,
     };
-
-const _$ApplicationProxyModeEnumMap = {
-  ApplicationProxyMode.follow: 'follow',
-  ApplicationProxyMode.httpSocks: 'httpSocks',
-};
 
 _ProxiesStyleProps _$ProxiesStylePropsFromJson(Map<String, dynamic> json) =>
     _ProxiesStyleProps(

@@ -14,11 +14,6 @@ NavigationItemsState navigationItemsState(Ref ref) {
     value:
         navigationPort?.getItems(
           openLogs: openLogs,
-          applicationProxyEnabled: ref.watch(
-            networkSettingProvider.select(
-              (state) => state.applicationProxyEnabled,
-            ),
-          ),
           hasProxies: !isInit ? hasProfiles : hasProxies,
         ) ??
         const [],

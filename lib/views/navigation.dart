@@ -12,7 +12,6 @@ class Navigation implements NavigationPort {
   List<NavigationItem> getItems({
     bool openLogs = false,
     bool hasProxies = false,
-    bool applicationProxyEnabled = false,
   }) {
     return [
       NavigationItem(
@@ -36,15 +35,6 @@ class Navigation implements NavigationPort {
         builder: (_) =>
             const ProfilesView(key: GlobalObjectKey(PageLabel.profiles)),
       ),
-      if (applicationProxyEnabled)
-        NavigationItem(
-          glyph: AppGlyphs.appsList,
-          label: PageLabel.applicationProxy,
-          builder: (_) => const ApplicationProxyView(
-            key: GlobalObjectKey(PageLabel.applicationProxy),
-          ),
-          modes: [NavigationItemMode.desktop, NavigationItemMode.moreFull],
-        ),
       NavigationItem(
         glyph: AppGlyphs.requests,
         label: PageLabel.requests,

@@ -220,19 +220,24 @@ class CoreController {
     return _interface.checkRoutes(params);
   }
 
-  Future<List<TrackerInfo>> getConnections() async {
+  Future<List<TrackerInfo>> getConnections({
+    bool rememberApplications = true,
+  }) async {
     final connections = await _interface.getConnections();
-    unawaited(
-      applicationHistory
-          .record(
-            applicationConnectionsOf(connections),
-            system.isWindows,
-            DateTime.now(),
-          )
-          .catchError((Object error) {
-            commonPrint.log('application history: $error');
-          }),
-    );
+    if (rememberApplications) {
+      unawaited(
+        applicationHistory
+            .record(
+              applicationConnectionsOf(connections),
+              system.isWindows,
+              DateTime.now(),
+              preservePaths: system.isWindows || system.isMacOS,
+            )
+            .catchError((Object error) {
+              commonPrint.log('application history: $error');
+            }),
+      );
+    }
     return connections;
   }
 

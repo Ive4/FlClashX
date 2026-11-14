@@ -11,10 +11,7 @@ class BackupAction extends _$BackupAction {
   @override
   void build() {}
 
-  Future<bool> backup(
-    BackupDelivery deliver, {
-    BackupFetch? mergeFrom,
-  }) {
+  Future<bool> backup(BackupDelivery deliver, {BackupFetch? mergeFrom}) {
     return _withWorkDir((workDir) async {
       var archivePath = await _createArchive(workDir);
       if (mergeFrom != null) {
@@ -58,7 +55,10 @@ class BackupAction extends _$BackupAction {
         });
       }
       await applyRestore(
-        data, option, stagingDirPath: stagingDirPath, strategy: strategy,
+        data,
+        option,
+        stagingDirPath: stagingDirPath,
+        strategy: strategy,
       );
       return true;
     });
@@ -92,6 +92,7 @@ class BackupAction extends _$BackupAction {
       database.clashProvidersDao.query().get(),
     ).wait;
     final configMap = ref.read(configProvider).toJson();
+    configMap['applicationAccessPlatform'] = Platform.operatingSystem;
     configMap['version'] = await preferences.getVersion();
     final archivePath = join(workDir, 'backup.tar.xz');
     await backupTask((
@@ -147,8 +148,27 @@ class BackupAction extends _$BackupAction {
     if (config == null) {
       return;
     }
-    // A desktop backup carries no package lists; the apps picked here stay.
-    final accessControlProps = config.vpnProps.accessControlProps.hasPackages
+    final savedAccess = config.vpnProps.accessControlProps;
+    final savedApps = [...savedAccess.acceptList, ...savedAccess.rejectList];
+    final desktop = system.isWindows || system.isMacOS;
+    final compatibleApps = desktop
+        ? savedApps.any(
+            (value) =>
+                ApplicationIdentity.fromSelection(
+                  value,
+                  windows: system.isWindows,
+                ) !=
+                null,
+          )
+        : !savedApps.any(
+            (value) =>
+                value.startsWith('windows:') || value.startsWith('macos:'),
+          );
+    final sameDesktop =
+        desktop &&
+        configMap?['applicationAccessPlatform'] == Platform.operatingSystem;
+    final accessControlProps =
+        sameDesktop || (savedAccess.hasPackages && compatibleApps)
         ? config.vpnProps.accessControlProps
         : ref.read(vpnSettingProvider).accessControlProps;
     writeConfig(

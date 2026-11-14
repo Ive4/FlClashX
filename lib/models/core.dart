@@ -108,19 +108,10 @@ extension VpnOptionsExt on VpnOptions {
         stack: '',
       );
     }
-    final accessControl = accessControlProps;
-    final accepts = accessControl.mode == AccessControlMode.acceptSelected;
     return copyWith(
       port: systemProxy ? port : 0,
       bypassDomain: systemProxy ? bypassDomain : const [],
-      accessControlProps: accessControl.enable
-          ? AccessControlProps(
-              enable: true,
-              mode: accessControl.mode,
-              acceptList: accepts ? accessControl.acceptList : const [],
-              rejectList: accepts ? const [] : accessControl.rejectList,
-            )
-          : const AccessControlProps(),
+      accessControlProps: accessControlProps.forRouting,
     );
   }
 }

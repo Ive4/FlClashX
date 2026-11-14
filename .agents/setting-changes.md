@@ -53,10 +53,10 @@ rebuilds the profile YAML and hands it to Go's `applyConfig` through `setupConfi
 
 - `PatchClashConfig.setupOnly`: the config with every field that update carries reset to its default.
 - `NetworkProps.appendSystemDns`.
-- `NetworkProps.applicationProxyMode`, which adds the default TUN bypass while keeping individual app modes.
-- `NetworkProps.applicationProxyEnabled`, default false. Enabling it exposes the application page and forces process
-  lookup only in the effective Core config. Disabling it suspends rules marked `applicationProxyRule` and the default
-  TUN bypass while retaining saved policies, manual rules and the user's process-lookup preference.
+- On Windows/macOS, `VpnProps.accessControlProps.forRouting` carries the enabled blacklist/whitelist and active list.
+  It adds TUN-only DIRECT exclusions and forces process lookup in the effective Core config so application history
+  can learn programs before the first selection. Sort/filter changes do not reapply the profile. Mobile keeps its
+  existing VPN restart path. Retired rules marked `applicationProxyRule` are never injected; manual rules remain intact.
 - `NetworkProps.bypassPrivateRoute` on desktop, where the task adds the private ranges to the TUN's final
   `route-exclude-address`.
 

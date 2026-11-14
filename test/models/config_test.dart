@@ -427,13 +427,6 @@ void main() {
   group('NetworkProps JSON round-trip', () {
     test('default values', () {
       const props = NetworkProps();
-      expect(props.applicationProxyMode, ApplicationProxyMode.follow);
-      expect(
-        NetworkProps.fromJson({}).applicationProxyMode,
-        ApplicationProxyMode.follow,
-      );
-      expect(props.applicationProxyEnabled, isFalse);
-      expect(NetworkProps.fromJson({}).applicationProxyEnabled, isFalse);
       expect(props.systemProxy, true);
       expect(props.bypassDomain, defaultBypassDomain);
       expect(props.bypassPrivateRoute, true);
@@ -443,15 +436,11 @@ void main() {
 
     test('round-trip with custom values', () {
       const props = NetworkProps(
-        applicationProxyEnabled: true,
-        applicationProxyMode: ApplicationProxyMode.httpSocks,
         systemProxy: false,
         bypassDomain: ['example.com'],
         bypassPrivateRoute: true,
       );
       final restored = roundTrip(() => props.toJson(), NetworkProps.fromJson);
-      expect(restored.applicationProxyMode, ApplicationProxyMode.httpSocks);
-      expect(restored.applicationProxyEnabled, isTrue);
       expect(restored.systemProxy, false);
       expect(restored.bypassDomain, ['example.com']);
       expect(restored.bypassPrivateRoute, true);

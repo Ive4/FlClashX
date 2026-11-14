@@ -121,7 +121,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: TestApp(child: AccessView(isOhos: isOhos)),
+        child: TestApp(child: AccessView(isOhos: isOhos, isDesktop: false)),
       ),
     );
     await tester.pump();

@@ -1,20 +1,13 @@
-import 'package:fl_clash/common/application_history.dart';
 import 'dart:async';
 
-import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/method.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
-import 'package:fl_clash/providers/action.dart';
 import 'package:fl_clash/providers/app.dart';
-import 'package:fl_clash/providers/application_proxy.dart';
-import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/providers/core.dart';
-import 'package:fl_clash/providers/state.dart';
-import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/connection/connections.dart';
 import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/views/dashboard/layout.dart';
@@ -26,8 +19,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'card.dart';
 import 'current_outbound.dart';
-
-part 'application_proxy.dart';
 
 /// Enough to fill the tallest card several times over; the full feed is a
 /// tap away.
@@ -165,9 +156,7 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
       }
     } catch (error) {
       if (pollsConnections && isCurrent()) {
-        updateWhenRouteSettled(
-          () => setState(() => connectionsStale = true),
-        );
+        updateWhenRouteSettled(() => setState(() => connectionsStale = true));
       }
       commonPrint.log(
         'dashboard connections error: $error',
@@ -262,8 +251,7 @@ class _ConnectionsTableCardState extends ConsumerState<ConnectionsTableCard>
   Timer? _snapshot;
 
   @override
-  bool get pollsConnections =>
-      _feed == DashboardFeed.connections;
+  bool get pollsConnections => _feed == DashboardFeed.connections;
 
   @override
   void initState() {
@@ -556,7 +544,8 @@ class _TableState<T> extends ConsumerState<_Table<T>>
         final overflows =
             items.length * rowHeight + 2 > constraints.maxHeight - headerHeight;
         final shape = widget.subtleRows
-            ? AppShape.sm : AppShape.all(DashboardCorner.tableHeader);
+            ? AppShape.sm
+            : AppShape.all(DashboardCorner.tableHeader);
         final fill = ShapeDecoration(
           color: widget.subtleRows
               ? colorScheme.onSurface.withValues(alpha: 0.04)
@@ -985,7 +974,9 @@ class _QuietTableRowState extends State<_QuietTableRow> {
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
           color: color.withValues(alpha: _hovered ? 0.04 : 0),
-          border: Border(bottom: BorderSide(color: color.withValues(alpha: 0.06))),
+          border: Border(
+            bottom: BorderSide(color: color.withValues(alpha: 0.06)),
+          ),
         ),
         child: widget.child,
       ),

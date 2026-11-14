@@ -1,4 +1,5 @@
 import 'package:fl_clash/enum/enum.dart';
+import 'config.dart';
 import 'package:fl_clash/ui/color.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -214,9 +215,7 @@ abstract class ComputeGroupsState with _$ComputeGroupsState {
 @freezed
 abstract class MakeRealProfileState with _$MakeRealProfileState {
   const factory MakeRealProfileState({
-    @Default(false) bool applicationProxyEnabled,
-    @Default(ApplicationProxyMode.follow)
-    ApplicationProxyMode applicationProxyMode,
+    @Default(defaultAccessControlProps) AccessControlProps accessControlProps,
     required String profilesPath,
     required int profileId,
     required Map<String, dynamic> rawConfig,

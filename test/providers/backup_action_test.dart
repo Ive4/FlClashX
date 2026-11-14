@@ -66,30 +66,49 @@ void main() {
       jsonDecode(jsonEncode(container.read(configProvider).toJson()))
           as Map<String, Object?>;
 
-  test('explicit restore mode overrides the saved preference without changing it', () async {
-    final container = buildContainer();
-    container.read(appSettingProvider.notifier).update(
-      (state) => state.copyWith(restoreStrategy: RestoreStrategy.override),
-    );
-    await testDatabase.profilesDao.putAll([
-      _profile(1, 'Local conflict').toCompanion(),
-      _profile(2, 'Local only').toCompanion(),
-    ]);
-    await actionOf(container).applyRestore(
-      MigrationData(profiles: [_profile(1, 'Remote conflict'), _profile(3, 'Remote only')]),
-      RestoreOption.onlyProfiles,
-      strategy: RestoreStrategy.compatible,
-    );
-    expect({for (final p in await testDatabase.profilesDao.query().get()) p.id: p.label}, {
-      1: 'Remote conflict', 2: 'Local only', 3: 'Remote only',
-    });
-    expect(container.read(appSettingProvider).restoreStrategy, RestoreStrategy.override);
-    await actionOf(container).applyRestore(
-      const MigrationData(), RestoreOption.onlyProfiles,
-      strategy: RestoreStrategy.override,
-    );
-    expect(await testDatabase.profilesDao.query().get(), isEmpty);
-  });
+  test(
+    'explicit restore mode overrides the saved preference without changing it',
+    () async {
+      final container = buildContainer();
+      container
+          .read(appSettingProvider.notifier)
+          .update(
+            (state) =>
+                state.copyWith(restoreStrategy: RestoreStrategy.override),
+          );
+      await testDatabase.profilesDao.putAll([
+        _profile(1, 'Local conflict').toCompanion(),
+        _profile(2, 'Local only').toCompanion(),
+      ]);
+      await actionOf(container).applyRestore(
+        MigrationData(
+          profiles: [
+            _profile(1, 'Remote conflict'),
+            _profile(3, 'Remote only'),
+          ],
+        ),
+        RestoreOption.onlyProfiles,
+        strategy: RestoreStrategy.compatible,
+      );
+      expect(
+        {
+          for (final p in await testDatabase.profilesDao.query().get())
+            p.id: p.label,
+        },
+        {1: 'Remote conflict', 2: 'Local only', 3: 'Remote only'},
+      );
+      expect(
+        container.read(appSettingProvider).restoreStrategy,
+        RestoreStrategy.override,
+      );
+      await actionOf(container).applyRestore(
+        const MigrationData(),
+        RestoreOption.onlyProfiles,
+        strategy: RestoreStrategy.override,
+      );
+      expect(await testDatabase.profilesDao.query().get(), isEmpty);
+    },
+  );
 
   group('backup and restore round trip', () {
     late Directory kept;
@@ -415,7 +434,7 @@ void main() {
       expect(target.read(vpnSettingProvider).accessControlProps, picked);
     });
 
-    test('takes the apps a backup lists from another phone', () async {
+    test('restores phone selections only on mobile platforms', () async {
       const listed = AccessControlProps(
         enable: true,
         rejectList: ['com.example.bank'],
@@ -440,8 +459,35 @@ void main() {
         target,
       ).applyRestore(MigrationData(configMap: configMap), RestoreOption.all);
 
-      expect(target.read(vpnSettingProvider).accessControlProps, listed);
+      expect(
+        target.read(vpnSettingProvider).accessControlProps,
+        system.isWindows || system.isMacOS
+            ? const AccessControlProps(acceptList: ['com.example.browser'])
+            : listed,
+      );
     });
+
+    test(
+      'restores an explicit empty desktop whitelist from the same platform',
+      () async {
+        if (!system.isWindows && !system.isMacOS) return;
+        const empty = AccessControlProps(
+          enable: true,
+          mode: AccessControlMode.acceptSelected,
+        );
+        final source = buildContainer();
+        source
+            .read(vpnSettingProvider.notifier)
+            .update((state) => state.copyWith(accessControlProps: empty));
+        final configMap = configMapOf(source);
+        configMap['applicationAccessPlatform'] = Platform.operatingSystem;
+        final target = buildContainer();
+        await actionOf(
+          target,
+        ).applyRestore(MigrationData(configMap: configMap), RestoreOption.all);
+        expect(target.read(vpnSettingProvider).accessControlProps, empty);
+      },
+    );
 
     test('leaves the settings untouched for an onlyProfiles restore', () async {
       final source = buildContainer();

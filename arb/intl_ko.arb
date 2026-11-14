@@ -1044,5 +1044,9 @@
   "autoLightweightMode": "자동 경량 모드(분)",
   "autoLightweightModeDesc": "창을 최소화하거나 숨긴 뒤 설정한 시간이 지나면 프록시를 유지하고 화면을 닫습니다. 0은 비활성화입니다. 열린 하위 페이지, 대화상자 또는 로컬 업데이트가 있으면 전환을 미룹니다. 구독 자동 업데이트는 화면을 다시 열 때까지 중지됩니다.",
   "autoLightweightMinutesInvalid": "0~1440 사이의 정수를 입력하세요. 0은 비활성화입니다.",
-  "openConfigDirectory": "설정 폴더 열기"
+  "openConfigDirectory": "설정 폴더 열기",
+  "desktopAccessHistoryDesc": "프로세스 식별을 켠 뒤 앱에서 네트워크를 사용하세요. 식별한 프로그램은 종료 후에도 목록에 저장됩니다.",
+  "desktopAccessDirectDesc": "프록시에서 제외한 앱은 Core DIRECT를 사용하며 트래픽은 계속 TUN을 통과합니다.",
+  "desktopAccessRequiresTun": "앱 목록을 적용하려면 TUN과 규칙 모드를 켜세요.",
+  "desktopAccessNameOnly": "프로그램 이름으로 일치: {name}"
 }

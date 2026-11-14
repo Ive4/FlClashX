@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fl_clash/common/application_proxy.dart';
 import 'package:fl_clash/common/preferences.dart';
 import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/models/models.dart';
 import 'package:flutter/foundation.dart';
 
 class ApplicationHistoryEntry {
@@ -13,15 +14,15 @@ class ApplicationHistoryEntry {
 }
 
 class ApplicationHistory extends ChangeNotifier {
-  ApplicationHistory({Future<String?> Function()? read,
-    Future<void> Function(String)? write})
-    : _read = read ?? preferences.getApplicationHistory,
-      _write = write ?? preferences.saveApplicationHistory;
+  ApplicationHistory({
+    Future<String?> Function()? read,
+    Future<void> Function(String)? write,
+  }) : _read = read ?? preferences.getApplicationHistory,
+       _write = write ?? preferences.saveApplicationHistory;
 
   final Future<String?> Function() _read;
   final Future<void> Function(String) _write;
   final entries = <String, ApplicationHistoryEntry>{};
-  bool showHistory = false;
   Future<void>? _loading;
   Future<void> _writes = Future.value();
   DateTime? _lastSave;
@@ -33,16 +34,16 @@ class ApplicationHistory extends ChangeNotifier {
     if (raw != null) {
       try {
         final data = jsonDecode(raw) as Map<String, dynamic>;
-        showHistory = data['showHistory'] == true;
         for (final row in data['entries'] as List) {
           try {
             final identity = ApplicationIdentity(
               action: row['path'] == true
-                  ? RuleAction.PROCESS_PATH : RuleAction.PROCESS_NAME,
+                  ? RuleAction.PROCESS_PATH
+                  : RuleAction.PROCESS_NAME,
               content: row['content'] as String,
               windows: row['windows'] == true,
-            ).byName;
-            if (identity.content.trim().isEmpty) continue;
+            );
+            if (!identity.canRoute) continue;
             final first = DateTime.parse(row['first'] as String);
             final last = DateTime.parse(row['last'] as String);
             final old = entries[identity.key];
@@ -53,23 +54,34 @@ class ApplicationHistory extends ChangeNotifier {
                   : first,
               old != null && old.lastSeen.isAfter(last) ? old.lastSeen : last,
             );
-          } catch (_) { /* Skip a damaged entry, retaining the others. */ }
+          } catch (_) {
+            /* Skip a damaged entry, retaining the others. */
+          }
         }
-      } catch (_) { /* Old or damaged history does not prevent startup. */ }
+      } catch (_) {
+        /* Old or damaged history does not prevent startup. */
+      }
     }
     notifyListeners();
   }
 
-  Future<void> record(List<ApplicationConnection> connections, bool windows,
-      DateTime at) async {
+  Future<void> record(
+    List<ApplicationConnection> connections,
+    bool windows,
+    DateTime at, {
+    bool preservePaths = true,
+  }) async {
     await load();
     var added = false;
+    var recorded = false;
     for (final connection in connections) {
       final identity = ApplicationIdentity.fromConnection(
         connection,
         windows: windows,
+        preservePath: preservePaths,
       );
-      if (identity.content.trim().isEmpty) continue;
+      if (!identity.canRoute) continue;
+      recorded = true;
       final old = entries[identity.key];
       if (old != null && old.lastSeen.isAfter(at)) continue;
       added |= old == null;
@@ -79,42 +91,49 @@ class ApplicationHistory extends ChangeNotifier {
         at,
       );
     }
-    if (connections.isEmpty) return;
-    notifyListeners();
-    if (added || _lastSave == null || at.difference(_lastSave!).inSeconds >= 30) {
+    if (!recorded) return;
+    if (added ||
+        _lastSave == null ||
+        at.difference(_lastSave!).inSeconds >= 30) {
       _lastSave = at;
+      notifyListeners();
       await _save();
     }
   }
 
-  Future<void> select(bool value) async {
-    await load();
-    showHistory = value;
-    notifyListeners();
-    await _save();
-  }
-
-  Future<void> remove(String? key) async {
-    await load();
-    if (key == null) {
-      entries.clear();
-    } else {
-      entries.remove(key);
-    }
-    notifyListeners();
-    await _save();
+  List<Package> packages(AccessControlProps access, {required bool windows}) {
+    final known = <String, ApplicationHistoryEntry>{
+      for (final entry in entries.values)
+        if (entry.identity.windows == windows)
+          entry.identity.selectionKey: entry,
+    };
+    final keys = {...known.keys, ...access.acceptList, ...access.rejectList};
+    return [
+      for (final key in keys)
+        if (ApplicationIdentity.fromSelection(key, windows: windows)
+            case final identity?)
+          Package(
+            packageName: key,
+            label: known[key]?.identity.name ?? identity.name,
+            system: false,
+            internet: true,
+            lastUpdateTime: known[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
+          ),
+    ];
   }
 
   Future<void> _save() {
     final value = jsonEncode({
-      'showHistory': showHistory,
-      'entries': [for (final entry in entries.values) {
-        'path': entry.identity.action == RuleAction.PROCESS_PATH,
-        'content': entry.identity.content,
-        'windows': entry.identity.windows,
-        'first': entry.firstSeen.toIso8601String(),
-        'last': entry.lastSeen.toIso8601String(),
-      }],
+      'entries': [
+        for (final entry in entries.values)
+          {
+            'path': entry.identity.action == RuleAction.PROCESS_PATH,
+            'content': entry.identity.content,
+            'windows': entry.identity.windows,
+            'first': entry.firstSeen.toIso8601String(),
+            'last': entry.lastSeen.toIso8601String(),
+          },
+      ],
     });
     final write = _writes.then((_) => _write(value));
     _writes = write.catchError((Object _) {});

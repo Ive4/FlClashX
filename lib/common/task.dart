@@ -117,15 +117,13 @@ Future<RealProfile> makeRealProfileTask(MakeRealProfileState data) async {
 Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
   final rawConfig = Map.from(data.rawConfig);
   final realPatchConfig = data.realPatchConfig.withApplicationProxy(
-    data.applicationProxyEnabled,
+    data.accessControlProps.enable,
   );
   final profilesPath = data.profilesPath;
   final profileId = data.profileId;
   final overrides = data.overrides;
   final addedRules = data.addedRules
-      .where(
-        (rule) => data.applicationProxyEnabled || !rule.applicationProxyRule,
-      )
+      .where((rule) => !rule.applicationProxyRule)
       .toList();
   final appendSystemDns = data.appendSystemDns;
   final defaultUA = data.defaultUA;
@@ -333,8 +331,7 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
       };
     }
   }
-  String runtimeRule(Rule rule) =>
-      applicationProxyRuntimeRule(rule, windows: Platform.isWindows);
+  String runtimeRule(Rule rule) => rule.rawValue;
   List<String> rules = [];
   if (data.rules.isEmpty) {
     if (rawConfig['rules'] != null) {
@@ -373,20 +370,17 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
     }
   } else {
     rules = data.rules
-        .where(
-          (rule) => data.applicationProxyEnabled || !rule.applicationProxyRule,
-        )
+        .where((rule) => !rule.applicationProxyRule)
         .map(runtimeRule)
         .toList();
   }
-  if (data.applicationProxyEnabled &&
-      data.applicationProxyMode == ApplicationProxyMode.httpSocks) {
-    rules.insert(
+  if (data.accessControlProps.enable) {
+    rules.insertAll(
       0,
-      applicationProxyDefaultRule([
-        ...data.rules,
-        ...data.addedRules,
-      ], windows: Platform.isWindows),
+      applicationAccessRules(
+        data.accessControlProps,
+        windows: Platform.isWindows,
+      ),
     );
   }
   if (data.proxyGroups.isNotEmpty) {

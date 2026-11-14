@@ -308,6 +308,19 @@ abstract class AccessControlProps with _$AccessControlProps {
 extension AccessControlPropsExt on AccessControlProps {
   bool get hasPackages => acceptList.isNotEmpty || rejectList.isNotEmpty;
 
+  AccessControlProps get forRouting => enable
+      ? AccessControlProps(
+          enable: true,
+          mode: mode,
+          acceptList: mode == AccessControlMode.acceptSelected
+              ? acceptList
+              : const [],
+          rejectList: mode == AccessControlMode.rejectSelected
+              ? rejectList
+              : const [],
+        )
+      : const AccessControlProps();
+
   List<String> get currentList => switch (mode) {
     AccessControlMode.acceptSelected => acceptList,
     AccessControlMode.rejectSelected => rejectList,
@@ -383,9 +396,6 @@ extension AuthenticationPropsExt on AuthenticationProps {
 @freezed
 abstract class NetworkProps with _$NetworkProps {
   const factory NetworkProps({
-    @Default(false) bool applicationProxyEnabled,
-    @Default(ApplicationProxyMode.follow)
-    ApplicationProxyMode applicationProxyMode,
     @Default(true) bool systemProxy,
     @Default(defaultBypassDomain) List<String> bypassDomain,
     @Default(true) bool bypassPrivateRoute,

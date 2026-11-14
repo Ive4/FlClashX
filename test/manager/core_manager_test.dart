@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:fl_clash/common/application_history.dart';
+import 'package:fl_clash/providers/application_history.dart';
 
 import 'package:fl_clash/core/core.dart';
 import 'package:fl_clash/core/interface.dart';
@@ -156,6 +158,49 @@ Future<void> _waitForSetupToSettle(
 }
 
 void main() {
+  testWidgets(
+    'desktop requests remember apps without opening a connection page',
+    (tester) async {
+      String? saved;
+      final history = ApplicationHistory(
+        read: () async => null,
+        write: (value) async {
+          saved = value;
+        },
+      );
+      addTearDown(history.dispose);
+      final container = await _pumpCoreManager(
+        tester,
+        _coreInterface(),
+        overrides: [applicationHistoryProvider.overrideWithValue(history)],
+      );
+      final path = Platform.isWindows
+          ? r'C:\Apps\Remembered.exe'
+          : '/Applications/Remembered.app/Contents/MacOS/Remembered';
+      final tracker = TrackerInfo(
+        id: 'remembered',
+        start: DateTime.utc(2026),
+        metadata: Metadata(process: 'Remembered', processPath: path),
+        chains: const ['DIRECT'],
+        rule: 'MATCH',
+        rulePayload: '',
+      );
+      coreEventManager.sendEvent(
+        CoreEvent(
+          type: CoreEventType.request,
+          data: {...tracker.toJson(), 'metadata': tracker.metadata.toJson()},
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(history.entries.length, 1);
+      expect(saved, isNotNull);
+      expect(container.read(requestCountProvider), 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+    skip: !(Platform.isWindows || Platform.isMacOS),
+  );
+
   late Directory profileSwitchTempDir;
 
   setUpAll(() async {

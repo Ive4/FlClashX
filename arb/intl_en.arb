@@ -1044,5 +1044,9 @@
   "autoLightweightMode": "Automatic lightweight mode (minutes)",
   "autoLightweightModeDesc": "After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.",
   "autoLightweightMinutesInvalid": "Enter a whole number from 0 to 1440. Use 0 to disable.",
-  "openConfigDirectory": "Open configuration directory"
+  "openConfigDirectory": "Open configuration directory",
+  "desktopAccessHistoryDesc": "Run an app with process lookup enabled. Recognized programs are remembered here, even after they exit.",
+  "desktopAccessDirectDesc": "Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.",
+  "desktopAccessRequiresTun": "Enable TUN and Rule mode for the application lists to take effect.",
+  "desktopAccessNameOnly": "Match by program name: {name}"
 }

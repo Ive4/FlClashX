@@ -139,6 +139,33 @@ class SystemAction extends _$SystemAction {
     return ref.read(packagesProvider);
   }
 
+  Future<List<Package>> getDesktopPackages({required bool windows}) async {
+    final history = ref.read(applicationHistoryProvider);
+    await history.load();
+    final packages = history.packages(
+      ref.read(vpnSettingProvider).accessControlProps,
+      windows: windows,
+    );
+    ref.read(packagesProvider.notifier).value = packages;
+    if (ref.read(coreStatusProvider) == CoreStatus.connected) {
+      unawaited(
+        _core
+            .getConnections(rememberApplications: false)
+            .then(
+              (connections) => history.record(
+                applicationConnectionsOf(connections),
+                windows,
+                DateTime.now(),
+              ),
+            )
+            .catchError((Object error) {
+              commonPrint.log('application history: $error');
+            }),
+      );
+    }
+    return packages;
+  }
+
   Future<bool> isInstalledAppsPermissionGranted() async {
     return await app?.isInstalledAppsPermissionGranted() ?? true;
   }

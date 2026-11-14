@@ -986,19 +986,29 @@ void main() {
       container.read(setupPatchProvider),
       system.isDesktop ? isNot(withSystemDns) : withSystemDns,
     );
-    final beforeMode = container.read(setupPatchProvider);
+    final beforeAccess = container.read(setupPatchProvider);
     container
-        .read(networkSettingProvider.notifier)
+        .read(vpnSettingProvider.notifier)
         .update(
           (state) => state.copyWith(
-            applicationProxyMode: ApplicationProxyMode.httpSocks,
+            accessControlProps: const AccessControlProps(enable: true),
           ),
         );
-    expect(container.read(setupPatchProvider), isNot(beforeMode));
     expect(
-      container.read(setupPatchProvider).applicationProxyMode,
-      ApplicationProxyMode.httpSocks,
+      container.read(setupPatchProvider),
+      system.isWindows || system.isMacOS ? isNot(beforeAccess) : beforeAccess,
     );
+    final effective = container.read(setupPatchProvider);
+    container
+        .read(vpnSettingProvider.notifier)
+        .update(
+          (state) => state.copyWith(
+            accessControlProps: state.accessControlProps.copyWith(
+              sort: AccessSortType.name,
+            ),
+          ),
+        );
+    expect(container.read(setupPatchProvider), effective);
   });
 
   test('shared state carries the notification stop action switch', () async {

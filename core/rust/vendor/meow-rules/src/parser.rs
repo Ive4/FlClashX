@@ -26,6 +26,7 @@ use crate::network::NetworkRule;
 use crate::port::PortRule;
 use crate::process::ProcessRule;
 use crate::process_path::ProcessPathRule;
+use crate::process_regex::ProcessRegexRule;
 use crate::src_geoip::SrcGeoIpRule;
 use crate::uid::UidRule;
 
@@ -192,6 +193,11 @@ fn parse_rule_depth(
         "UID" => UidRule::new(payload, adapter).map(|r| Box::new(r) as Box<dyn Rule>),
         "PROCESS-PATH" => {
             ProcessPathRule::new(payload, adapter).map(|r| Box::new(r) as Box<dyn Rule>)
+        }
+        "PROCESS-PATH-REGEX" | "PROCESS-NAME-REGEX" => {
+            ProcessRegexRule::new(payload, adapter, rule_type == "PROCESS-PATH-REGEX")
+                .map(|r| Box::new(r) as Box<dyn Rule>)
+                .map_err(|e| format!("invalid process regex '{payload}': {e}"))
         }
         "DOMAIN-WILDCARD" => {
             DomainWildcardRule::new(payload, adapter).map(|r| Box::new(r) as Box<dyn Rule>)

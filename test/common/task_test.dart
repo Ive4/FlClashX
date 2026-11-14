@@ -10,157 +10,46 @@ import 'package:yaml/yaml.dart';
 
 void main() {
   test(
-    'application routing is opt-in and suspends only its own rules',
+    'blacklist replaces retired policies and preserves manual process rules',
     () async {
       const managed = Rule(
         ruleAction: RuleAction.PROCESS_NAME,
         content: 'managed-app',
-        ruleTarget: 'Proxy',
+        ruleTarget: 'REJECT',
         applicationProxyRule: true,
       );
       final manual = Rule.parse('PROCESS-NAME,manual-app,DIRECT');
       for (final custom in [false, true]) {
-        final rules = [managed, manual, Rule.parse('MATCH,DIRECT')];
-        final state = MakeRealProfileState(
-          profilesPath: '/profiles',
-          profileId: 7,
-          rawConfig: const {
-            'rules': ['MATCH,DIRECT'],
-          },
-          realPatchConfig: const PatchClashConfig(),
-          appendSystemDns: false,
-          proxyGroups: const [],
-          rules: custom ? rules : const [],
-          addedRules: custom ? const [] : rules,
-          defaultUA: 'test',
-          applicationProxyMode: ApplicationProxyMode.httpSocks,
-        );
-        expect(state.applicationProxyEnabled, isFalse);
-        for (final enabled in [false, true, false, true]) {
-          final output =
-              loadYaml(
-                    (await makeRealProfileTask(
-                      state.copyWith(applicationProxyEnabled: enabled),
-                    )).yaml,
-                  )
-                  as YamlMap;
-          final generated = output['rules'] as YamlList;
-          expect(generated, contains(manual.rawValue));
-          expect(generated.contains(managed.rawValue), enabled);
-          expect(output['find-process-mode'], enabled ? 'always' : 'off');
+        for (final enabled in [false, true]) {
+          final rules = [managed, manual, Rule.parse('MATCH,REJECT')];
+          final state = MakeRealProfileState(
+            profilesPath: '/profiles',
+            profileId: 7,
+            rawConfig: const {
+              'rules': ['MATCH,REJECT'],
+            },
+            realPatchConfig: const PatchClashConfig(),
+            appendSystemDns: false,
+            proxyGroups: const [],
+            rules: custom ? rules : [],
+            addedRules: custom ? [] : rules,
+            defaultUA: 'test',
+            accessControlProps: AccessControlProps(
+              enable: enabled,
+              mode: AccessControlMode.acceptSelected,
+            ),
+          );
+          final config =
+              loadYaml((await makeRealProfileTask(state)).yaml) as YamlMap;
+          expect(config['rules'], contains(manual.rawValue));
+          expect(config['rules'], isNot(contains(managed.rawValue)));
           expect(
-            generated.any((rule) => rule.toString().contains('IN-TYPE,TUN')),
+            (config['rules'] as YamlList).contains('IN-TYPE,TUN,DIRECT'),
             enabled,
           );
-          expect(
-            state.rules.contains(managed) || state.addedRules.contains(managed),
-            isTrue,
-          );
+          expect(config['find-process-mode'], enabled ? 'always' : 'off');
         }
       }
-    },
-  );
-
-  test(
-    'app follow markers continue the profile rules for every profile path',
-    () async {
-      final marker = Rule.parse(
-        'AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS-RULE',
-      );
-      for (final custom in [false, true]) {
-        for (final mode in ApplicationProxyMode.values) {
-          for (final matchTarget in <String?>[null, 'DIRECT']) {
-            final state = MakeRealProfileState(
-              profilesPath: '/profiles',
-              profileId: 7,
-              rawConfig: const {
-                'rules': ['MATCH,DIRECT'],
-              },
-              realPatchConfig: const PatchClashConfig(),
-              appendSystemDns: false,
-              proxyGroups: const [],
-              rules: custom ? [marker] : const [],
-              addedRules: custom ? const [] : [marker],
-              defaultUA: 'test',
-              matchTarget: matchTarget,
-              applicationProxyEnabled: true,
-              applicationProxyMode: mode,
-            );
-            final config =
-                loadYaml((await makeRealProfileTask(state)).yaml) as YamlMap;
-            expect(
-              config['rules'],
-              contains('AND,((PROCESS-NAME,browser.exe),(IN-TYPE,TUN)),PASS'),
-            );
-            expect(config['rules'], isNot(contains(marker.rawValue)));
-            if (mode == ApplicationProxyMode.httpSocks) {
-              expect(
-                config['rules'].first,
-                'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser.exe)))),DIRECT',
-              );
-            }
-            expect(marker.ruleTarget, 'PASS-RULE');
-          }
-        }
-      }
-    },
-  );
-
-  test(
-    'default app mode routes new TUN connections direct before website rules',
-    () async {
-      const state = MakeRealProfileState(
-        profilesPath: '/profiles',
-        profileId: 7,
-        rawConfig: {
-          'rules': ['DOMAIN,example.test,Proxy', 'MATCH,DIRECT'],
-        },
-        realPatchConfig: PatchClashConfig(),
-        appendSystemDns: false,
-        proxyGroups: [],
-        rules: [],
-        addedRules: [],
-        defaultUA: 'test',
-        applicationProxyEnabled: true,
-        applicationProxyMode: ApplicationProxyMode.httpSocks,
-      );
-      final config =
-          loadYaml((await makeRealProfileTask(state)).yaml) as YamlMap;
-      expect(config['rules'], [
-        'IN-TYPE,TUN,DIRECT',
-        'DOMAIN,example.test,Proxy',
-        'MATCH,DIRECT',
-      ]);
-
-      final existingPolicy = Rule.parse('PROCESS-NAME,browser,Proxy');
-      for (final custom in [false, true]) {
-        final config =
-            loadYaml(
-                  (await makeRealProfileTask(
-                    state.copyWith(
-                      rules: custom ? [existingPolicy] : [],
-                      addedRules: custom ? [] : [existingPolicy],
-                    ),
-                  )).yaml,
-                )
-                as YamlMap;
-        expect(
-          config['rules'].first,
-          'AND,((IN-TYPE,TUN),(NOT,((PROCESS-NAME,browser)))),DIRECT',
-        );
-        expect(config['rules'], contains('PROCESS-NAME,browser,Proxy'));
-      }
-      final following =
-          loadYaml(
-                (await makeRealProfileTask(
-                  state.copyWith(
-                    applicationProxyEnabled: true,
-                    applicationProxyMode: ApplicationProxyMode.follow,
-                  ),
-                )).yaml,
-              )
-              as YamlMap;
-      expect(following['rules'].first, 'DOMAIN,example.test,Proxy');
     },
   );
 

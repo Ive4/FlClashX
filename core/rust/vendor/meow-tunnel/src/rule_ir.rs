@@ -1439,6 +1439,7 @@ fn compile_op(rule_type: RuleType, payload: &str) -> Option<RuleOp> {
             .ok()
             .filter(|v| *v <= 63)
             .map(RuleOp::Dscp),
+        RuleType::ProcessNameRegex | RuleType::ProcessPathRegex => None,
         RuleType::ProcessName => Some(RuleOp::ProcessName(payload.into())),
         RuleType::ProcessPath => {
             compile_process_path(payload).map(|op| RuleOp::ProcessPath(Box::new(op)))

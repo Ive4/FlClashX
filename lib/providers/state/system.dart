@@ -23,17 +23,17 @@ UpdateParams updateParams(Ref ref) {
   PatchClashConfig patchConfig,
   bool appendSystemDns,
   bool bypassPrivateRoute,
-  bool applicationProxyEnabled,
-  ApplicationProxyMode applicationProxyMode,
+  AccessControlProps applicationAccessControl,
 })
 setupPatch(Ref ref) {
   return (
-    applicationProxyEnabled: ref.watch(
-      networkSettingProvider.select((state) => state.applicationProxyEnabled),
-    ),
-    applicationProxyMode: ref.watch(
-      networkSettingProvider.select((state) => state.applicationProxyMode),
-    ),
+    applicationAccessControl: system.isWindows || system.isMacOS
+        ? ref.watch(
+            vpnSettingProvider.select(
+              (state) => state.accessControlProps.forRouting,
+            ),
+          )
+        : const AccessControlProps(),
     patchConfig: ref.watch(
       patchClashConfigProvider.select((state) => state.setupOnly),
     ),

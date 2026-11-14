@@ -153,3 +153,118 @@ async fn application_modes_reload_and_route_tun_separately_from_http_and_socks()
     assert_eq!(std::fs::read(home().join("config.yaml")).unwrap(), saved);
     core.shutdown().await;
 }
+
+#[test]
+fn desktop_access_lists_match_full_paths_and_scope_only_tun() {
+    let blacklist = parse_rule(
+        r"AND,((IN-TYPE,TUN),(OR,((PROCESS-PATH-REGEX,(?i)^C:\\Apps \x281\x29\x2cTest\\browser\.exe$),(PROCESS-PATH-REGEX,(?i)^D:\\Tools\\client\.exe$)))),DIRECT",
+        &ParserContext::default(),
+    )
+    .unwrap();
+    for (path, expected) in [
+        (r"c:\APPS (1),Test\Browser.EXE", true),
+        (r"D:\Tools\client.exe", true),
+        (r"E:\Other\browser.exe", false),
+        (r"C:\Apps (1),Test\browser.exe.other", false),
+        ("", false),
+    ] {
+        for conn_type in [ConnType::Tun, ConnType::Http, ConnType::Socks5] {
+            let metadata = Metadata {
+                conn_type,
+                process_path: path.into(),
+                ..Default::default()
+            };
+            assert_eq!(
+                blacklist.match_metadata(&metadata, &RuleMatchHelper),
+                expected && conn_type == ConnType::Tun,
+                "{path}: {conn_type}"
+            );
+        }
+    }
+
+    let whitelist = parse_rule(
+        r"AND,((IN-TYPE,TUN),(NOT,((OR,((PROCESS-PATH-REGEX,^/Applications/Chat\.app/Contents/),(PROCESS-PATH-REGEX,^/usr/bin/curl$)))))),DIRECT",
+        &ParserContext::default(),
+    )
+    .unwrap();
+    for (path, excluded) in [
+        ("/Applications/Chat.app/Contents/MacOS/Chat", false),
+        (
+            "/Applications/Chat.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper",
+            false,
+        ),
+        ("/Applications/Chat.app.other/Contents/MacOS/Chat", true),
+        ("/Applications/Other.app/Contents/MacOS/Chat", true),
+        ("/usr/bin/curl", false),
+        ("/usr/bin/curl-extra", true),
+        ("", true),
+    ] {
+        for conn_type in [ConnType::Tun, ConnType::Http, ConnType::Socks5] {
+            let metadata = Metadata {
+                conn_type,
+                process_path: path.into(),
+                ..Default::default()
+            };
+            assert_eq!(
+                whitelist.match_metadata(&metadata, &RuleMatchHelper),
+                excluded && conn_type == ConnType::Tun,
+                "{path}: {conn_type}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn desktop_access_regex_survives_profile_compilation_and_reload() {
+    let core = Core::new();
+    assert_eq!(
+        invoke(&core, "initClash", json!({"home-dir":home(),"version":35})).await["result"],
+        true
+    );
+    for (rule, selected, other) in [
+        (
+            r"AND,((IN-TYPE,TUN),(PROCESS-PATH-REGEX,(?i)^C:\\Apps\\browser\.exe$)),DIRECT",
+            "DIRECT",
+            "REJECT",
+        ),
+        (
+            r"AND,((IN-TYPE,TUN),(NOT,((PROCESS-PATH-REGEX,(?i)^C:\\Apps\\browser\.exe$)))),DIRECT",
+            "REJECT",
+            "DIRECT",
+        ),
+    ] {
+        let response = setup(&core, &[rule, "MATCH,REJECT"]).await;
+        assert_eq!(response["result"], "", "{response}");
+        let engine = core.active().unwrap();
+        for (conn_type, path, expected) in [
+            (ConnType::Tun, r"C:\Apps\Browser.exe", selected),
+            (ConnType::Tun, r"D:\Apps\browser.exe", other),
+            (ConnType::Http, r"C:\Apps\Browser.exe", "REJECT"),
+            (ConnType::Socks5, r"D:\Apps\browser.exe", "REJECT"),
+        ] {
+            let metadata = Metadata {
+                conn_type,
+                process: "browser.exe".into(),
+                process_path: path.into(),
+                dst_ip: Some("127.0.0.1".parse().unwrap()),
+                dst_port: 80,
+                ..Default::default()
+            };
+            let target = engine
+                .state
+                .tunnel
+                .inner()
+                .resolve_proxy(&metadata)
+                .await
+                .unwrap();
+            assert_eq!(
+                target.adapter.name(),
+                expected,
+                "{rule}: {conn_type}, {path}"
+            );
+        }
+    }
+    for kind in ["PROCESS-PATH-REGEX", "PROCESS-NAME-REGEX"] {
+        assert!(parse_rule(&format!("{kind},[,DIRECT"), &ParserContext::default()).is_err());
+    }
+}
