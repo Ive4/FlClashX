@@ -568,6 +568,7 @@ enum PageLabel {
   resources,
   connections,
   dns,
+  accessControl,
 }
 
 enum RuleAction {

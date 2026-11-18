@@ -1,7 +1,9 @@
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
+import 'package:fl_clash/views/navigation.dart';
 import 'package:fl_clash/views/tools.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +18,9 @@ void main() {
         overrides: [
           moreToolsSelectorStateProvider.overrideWith(
             (_) => const MoreToolsSelectorState(navigationItems: []),
+          ),
+          currentNavigationItemsStateProvider.overrideWith(
+            (_) => const NavigationItemsState(value: []),
           ),
         ],
       );
@@ -47,4 +52,38 @@ void main() {
       );
     },
   );
+
+  testWidgets('Tools selects the existing desktop access control destination', (
+    tester,
+  ) async {
+    final items = navigation.getItems().where(
+      (item) => item.label == PageLabel.accessControl,
+    );
+    if (!system.isWindows && !system.isMacOS) {
+      expect(items, isEmpty);
+      return;
+    }
+    expect(items.single.modes, [NavigationItemMode.desktop]);
+    final container = ProviderContainer(
+      overrides: [
+        moreToolsSelectorStateProvider.overrideWith(
+          (_) => const MoreToolsSelectorState(navigationItems: []),
+        ),
+        currentNavigationItemsStateProvider.overrideWith(
+          (_) => NavigationItemsState(value: items.toList()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    globalState.container = container;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const TestApp(child: ToolsView()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(currentAppLocalizations.accessControl));
+    expect(container.read(currentPageLabelProvider), PageLabel.accessControl);
+  });
 }

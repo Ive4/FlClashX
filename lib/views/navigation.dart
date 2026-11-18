@@ -1,4 +1,5 @@
 import 'package:fl_clash/common/app_ports.dart';
+import 'package:fl_clash/common/system.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/ui/icons/app_glyphs.dart';
@@ -71,6 +72,14 @@ class Navigation implements NavigationPort {
             ? [NavigationItemMode.desktop, NavigationItemMode.more]
             : [],
       ),
+      if (system.isWindows || system.isMacOS)
+        NavigationItem(
+          glyph: AppGlyphs.appsList,
+          label: PageLabel.accessControl,
+          builder: (_) =>
+              const AccessView(key: GlobalObjectKey(PageLabel.accessControl)),
+          modes: [NavigationItemMode.desktop],
+        ),
       NavigationItem(
         glyph: AppGlyphs.tools,
         label: PageLabel.tools,

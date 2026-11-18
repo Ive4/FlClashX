@@ -34,6 +34,14 @@ class SystemAction extends _$SystemAction {
     if (navigator == null || navigator.canPop()) {
       return false;
     }
+    final accessContext = const GlobalObjectKey(
+      PageLabel.accessControl,
+    ).currentContext;
+    if (accessContext != null &&
+        ModalRoute.of(accessContext)?.popDisposition ==
+            RoutePopDisposition.doNotPop) {
+      return false;
+    }
     var blocked = false;
     void check(Element element) {
       if (blocked) return;

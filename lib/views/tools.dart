@@ -181,14 +181,32 @@ class _HotkeyItem extends StatelessWidget {
   }
 }
 
-class _AccessItem extends StatelessWidget {
+class _AccessItem extends ConsumerWidget {
   const _AccessItem();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inSidebar = ref.watch(
+      currentNavigationItemsStateProvider.select(
+        (state) =>
+            state.value.any((item) => item.label == PageLabel.accessControl),
+      ),
+    );
+    const leading = GlyphIcon(AppGlyphs.appsList);
+    final title = Text(context.appLocalizations.accessControl);
+    if (inSidebar) {
+      return ListItem(
+        leading: leading,
+        title: title,
+        trailing: const GlyphIcon(AppGlyphs.chevronForward),
+        onTap: () => ref
+            .read(currentPageLabelProvider.notifier)
+            .toPage(PageLabel.accessControl),
+      );
+    }
     return ListItem.open(
-      leading: const GlyphIcon(AppGlyphs.appsList),
-      title: Text(context.appLocalizations.accessControl),
+      leading: leading,
+      title: title,
       widget: const AccessView(),
     );
   }
