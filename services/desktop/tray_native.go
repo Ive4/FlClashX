@@ -141,7 +141,7 @@ func (h *host) runTray(labels map[string]string, done <-chan struct{}, onReady f
 			}
 		}
 		if runtime.GOOS == "darwin" && title != settings.Title {
-			systray.SetTitle(settings.Title)
+			setTrayTitle(settings.Title)
 			title = settings.Title
 		}
 		currentTooltip := settings.ToolTip

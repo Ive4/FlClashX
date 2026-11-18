@@ -3,3 +3,5 @@
 package main
 
 func configureTrayApplication() {}
+
+func setTrayTitle(string) {}
