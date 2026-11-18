@@ -1,11 +1,12 @@
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/interface.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/core.dart';
 import 'package:fl_clash/state.dart';
-import 'package:fl_clash/views/connection/connections.dart';
+import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
@@ -64,7 +65,10 @@ void main() {
         child: _TestApp(
           child: PageActivityScope(
             isActive: isPageActive,
-            child: ConnectionsView(connectionsReader: connectionsReader),
+            child: RequestsView(
+              initialFeed: RequestFeed.live,
+              connectionsReader: connectionsReader,
+            ),
           ),
         ),
       ),
@@ -72,7 +76,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('ConnectionsView lazily builds every connection', (tester) async {
+  testWidgets('The live feed lazily builds every connection', (tester) async {
     final connections = buildConnections(100);
 
     await pumpConnections(tester, connectionsReader: () async => connections);
@@ -150,7 +154,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('ConnectionsView polls only while the page is active', (
+  testWidgets('The live feed polls only while the page is active', (
     tester,
   ) async {
     var readCount = 0;
@@ -175,7 +179,10 @@ void main() {
         child: _TestApp(
           child: PageActivityScope(
             isActive: true,
-            child: ConnectionsView(connectionsReader: readConnections),
+            child: RequestsView(
+              initialFeed: RequestFeed.live,
+              connectionsReader: readConnections,
+            ),
           ),
         ),
       ),
@@ -195,7 +202,10 @@ void main() {
         child: _TestApp(
           child: PageActivityScope(
             isActive: false,
-            child: ConnectionsView(connectionsReader: readConnections),
+            child: RequestsView(
+              initialFeed: RequestFeed.live,
+              connectionsReader: readConnections,
+            ),
           ),
         ),
       ),
@@ -208,7 +218,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('ConnectionsView stops polling while the app is paused', (
+  testWidgets('The live feed stops polling while the app is paused', (
     tester,
   ) async {
     var readCount = 0;

@@ -53,7 +53,9 @@ mixin SharedXPageRouteMixin<T> on PageRoute<T>, DragBackRouteMixin<T> {
               ? kAlwaysDismissedAnimation
               : secondaryAnimation,
           color: surface,
-          slide: SharedXPageTransition.pageSlide,
+          slide: MediaQuery.disableAnimationsOf(context)
+              ? Offset.zero
+              : SharedXPageTransition.pageSlide,
           overSettledPage: _overSettledPage,
           uncoveredByGesture: navigator!.userGestureInProgress,
           child: ColoredBox(

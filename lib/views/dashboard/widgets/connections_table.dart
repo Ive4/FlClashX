@@ -8,7 +8,6 @@ import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/app.dart';
 import 'package:fl_clash/providers/core.dart';
-import 'package:fl_clash/views/connection/connections.dart';
 import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/views/dashboard/layout.dart';
 import 'package:fl_clash/views/dashboard/style.dart';
@@ -54,7 +53,7 @@ enum DashboardFeed {
 
   String get label => switch (this) {
     connections => PageLabel.connections.label,
-    requests => PageLabel.requests.label,
+    requests => currentAppLocalizations.recentRequests,
     dns => PageLabel.dns.label,
   };
 }
@@ -68,10 +67,12 @@ void openDashboardFeed(BuildContext context, DashboardFeed feed) {
     },
     builder: (_, controller) => NestedPagedSheet(
       builder: (_) => switch (feed) {
-        DashboardFeed.connections => ConnectionsView(
-          scrollController: controller,
+        DashboardFeed.connections => const RequestsView(
+          initialFeed: RequestFeed.live,
         ),
-        DashboardFeed.requests => RequestsView(scrollController: controller),
+        DashboardFeed.requests => const RequestsView(
+          initialFeed: RequestFeed.recent,
+        ),
         DashboardFeed.dns => DnsQueriesView(scrollController: controller),
       },
     ),

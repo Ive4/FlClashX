@@ -117,6 +117,18 @@ void main() {
   });
 
   group('AppSettingProps JSON round-trip', () {
+    test(
+      'remembers the requests feed and defaults older settings to recent',
+      () {
+        const props = AppSettingProps(requestFeed: RequestFeed.live);
+        expect(
+          roundTrip(props.toJson, AppSettingProps.fromJson).requestFeed,
+          RequestFeed.live,
+        );
+        expect(AppSettingProps.fromJson({}).requestFeed, RequestFeed.recent);
+      },
+    );
+
     test('default values survive round-trip', () {
       const props = AppSettingProps();
       final restored = roundTrip(

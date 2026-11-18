@@ -28,6 +28,62 @@ void main() {
     );
   }
 
+  testWidgets('an iOS search can select all from a partial selection', (
+    tester,
+  ) async {
+    await tester.pumpWidget(scaffold(type: SheetType.bottomSheet));
+    final field = find.byType(EditableText);
+    await tester.enterText(field, 'first second');
+    final editable = tester.state<EditableTextState>(field);
+    editable.userUpdateTextEditingValue(
+      const TextEditingValue(
+        text: 'first second',
+        selection: TextSelection(baseOffset: 0, extentOffset: 5),
+      ),
+      SelectionChangedCause.longPress,
+    );
+    await tester.pump();
+
+    final menu =
+        tester.widget<EditableText>(field).contextMenuBuilder!(
+              tester.element(field),
+              editable,
+            )
+            as AdaptiveTextSelectionToolbar;
+    final selectAll = menu.buttonItems!.singleWhere(
+      (item) => item.type == ContextMenuButtonType.selectAll,
+    );
+    selectAll.onPressed!();
+    expect(
+      editable.textEditingValue.selection,
+      const TextSelection(baseOffset: 0, extentOffset: 12),
+    );
+  }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
+
+  testWidgets('holding the search clear button swells it before clearing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      TestApp(
+        child: Scaffold(body: SearchField(onChanged: queries.add)),
+      ),
+    );
+    await tester.enterText(find.byType(EditableText), 'lookup');
+    await tester.pumpAndSettle();
+    final clear = find.byGlyph(AppGlyphs.clearField);
+    final press = await tester.startGesture(tester.getCenter(clear));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      ElasticPress.liftOf(tester.renderObject<RenderBox>(clear)),
+      greaterThan(0),
+    );
+    expect(queries.last, 'lookup');
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(queries.last, '');
+  });
+
   testWidgets('a bottom sheet searches from a docked field, not a bar button', (
     tester,
   ) async {

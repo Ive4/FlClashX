@@ -43,6 +43,10 @@ PageLabel shownPageLabelOf(
       navigationItems.any((item) => item.label == pageLabel)) {
     return pageLabel;
   }
+  if (pageLabel == PageLabel.connections &&
+      navigationItems.any((item) => item.label == PageLabel.requests)) {
+    return PageLabel.requests;
+  }
   return navigationItems.first.label;
 }
 

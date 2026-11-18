@@ -1,39 +1,26 @@
-import 'dart:async';
+part of 'requests.dart';
 
-import 'package:fl_clash/common/common.dart';
-import 'package:fl_clash/core/controller.dart';
-import 'package:fl_clash/core/method.dart';
-import 'package:fl_clash/enum/enum.dart';
-import 'package:fl_clash/features/features.dart';
-import 'package:fl_clash/models/models.dart';
-import 'package:fl_clash/providers/providers.dart';
-import 'package:fl_clash/ui/icons/icons.dart';
-import 'package:fl_clash/widgets/widgets.dart';
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-class ConnectionsView extends ConsumerStatefulWidget {
-  final ScrollController? scrollController;
+class _LiveConnections extends ConsumerStatefulWidget {
+  final TrackerInfoListController listController;
   final Future<List<TrackerInfo>> Function()? connectionsReader;
 
-  const ConnectionsView({
+  const _LiveConnections({
     super.key,
-    this.scrollController,
-    @visibleForTesting this.connectionsReader,
+    required this.listController,
+    required this.connectionsReader,
   });
 
   @override
-  ConsumerState<ConnectionsView> createState() => _ConnectionsViewState();
+  ConsumerState<_LiveConnections> createState() => _LiveConnectionsState();
 }
 
-class _ConnectionsViewState extends ConsumerState<ConnectionsView>
+class _LiveConnectionsState extends ConsumerState<_LiveConnections>
     with
         WidgetsBindingObserver,
-        ActivePollingMixin<ConnectionsView>,
-        RouteMotionHoldMixin<ConnectionsView> {
+        ActivePollingMixin<_LiveConnections>,
+        RouteMotionHoldMixin<_LiveConnections> {
   CoreController get _core => ref.read(coreHandlerProvider);
 
-  final _listController = TrackerInfoListController();
   final _speedRanker = TrackerSpeedRanker();
   late final ScrollController _scrollController;
   var _loaded = false;
@@ -41,38 +28,18 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView>
   @override
   void initState() {
     super.initState();
-    _scrollController =
-        widget.scrollController ?? sheetScrollController(context);
+    _scrollController = sheetScrollController(context);
   }
 
   @override
   Duration get pollInterval => const Duration(seconds: 1);
 
-  List<IconButtonData> _buildActions() {
-    return [
-      IconButtonData(
-        glyph: AppGlyphs.clearAll,
-        tooltip: context.appLocalizations.closeConnections,
-        onPressed: () async {
-          unawaited(_core.closeConnections());
-          await _refreshConnections();
-        },
-      ),
-    ];
-  }
+  Future<void> closeAll() => _close(_core.closeConnections);
 
   @override
   Future<void> poll(PollGuard isCurrent) async {
     final trackerInfos = await _readConnections();
     if (!isCurrent()) {
-      return;
-    }
-    _showConnections(trackerInfos);
-  }
-
-  Future<void> _refreshConnections() async {
-    final trackerInfos = await _readConnections();
-    if (!mounted) {
       return;
     }
     _showConnections(trackerInfos);
@@ -97,7 +64,7 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView>
     final readAt = DateTime.now();
     if (!_loaded) {
       setState(() => _loaded = true);
-      _applyConnections(trackerInfos, readAt);
+      _applyConnections(trackerInfos ?? const [], readAt);
       return;
     }
     updateWhenRouteSettled(() => _applyConnections(trackerInfos, readAt));
@@ -107,77 +74,72 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView>
     if (trackerInfos == null) {
       return;
     }
-    _listController.setTrackerInfos(_speedRanker.rank(trackerInfos, readAt));
+    widget.listController.setTrackerInfos(
+      _speedRanker.rank(trackerInfos, readAt),
+    );
   }
 
-  Future<void> _handleBlockConnection(String id) async {
-    await _core.closeConnection(id);
-    await _refreshConnections();
+  Future<void> _close(Future<void> Function() close) async {
+    await globalState.safeRun(close);
+    if (mounted) {
+      restartPolling();
+    }
   }
 
   @override
   void dispose() {
-    _listController.dispose();
-    if (widget.scrollController == null) {
-      _scrollController.dispose();
-    }
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final appLocalizations = context.appLocalizations;
-    return CommonScaffold(
-      title: PageLabel.connections.label,
-      onKeywordsUpdate: _listController.updateKeywords,
-      searchState: AppBarSearchState(onSearch: _listController.search),
-      iconActions: _buildActions(),
-      body: ValueListenableBuilder<TrackerInfosState>(
-        valueListenable: _listController,
-        builder: (context, state, _) {
-          final connections = state.list;
-          Widget buildAction(TrackerInfo trackerInfo) {
-            return _BlockConnectionButton(
-              onPressed: () {
-                _handleBlockConnection(trackerInfo.id);
-              },
-            );
-          }
-
-          return NullStatusSwitcher(
-            isLoading: !_loaded,
-            isEmpty: connections.isEmpty,
-            isSearching: state.isSearching,
-            nullStatus: NullStatus(
-              label: appLocalizations.nullTip(appLocalizations.connections),
-              illustration: NullStatusIllustration.connections,
-            ),
-            child: RecordTableFrame<TrackerInfo>(
-              tableId: 'connections',
-              items: connections,
-              columnsOf: (width) => trackerInfoColumns(
-                context,
-                width: width,
-                isLive: true,
-                actionBuilder: buildAction,
-              ),
-              builder: (context, table, connections) => TrackerInfoAnimatedList(
-                controller: _scrollController,
-                padding: EdgeInsets.only(
-                  top: context.contentTopPadding,
-                  bottom: 16 + context.bottomInset,
-                ),
-                trackerInfos: connections,
-                table: table,
-                detailTitle: appLocalizations.details(
-                  appLocalizations.connection,
-                ),
-                actionBuilder: buildAction,
-              ),
-            ),
+    return ValueListenableBuilder<TrackerInfosState>(
+      valueListenable: widget.listController,
+      builder: (context, state, _) {
+        final connections = state.list;
+        Widget buildAction(TrackerInfo trackerInfo) {
+          return _BlockConnectionButton(
+            onPressed: () =>
+                _close(() => _core.closeConnection(trackerInfo.id)),
           );
-        },
-      ),
+        }
+
+        return NullStatusSwitcher(
+          isLoading: !_loaded,
+          isEmpty: connections.isEmpty,
+          isSearching: state.isSearching,
+          nullStatus: NullStatus(
+            label: appLocalizations.nullTip(appLocalizations.connections),
+            illustration: NullStatusIllustration.connections,
+          ),
+          child: RecordTableFrame<TrackerInfo>(
+            tableId: 'connections',
+            items: connections,
+            keepSort: true,
+            columnsOf: (width) => trackerInfoColumns(
+              context,
+              width: width,
+              isLive: true,
+              actionBuilder: buildAction,
+            ),
+            builder: (context, table, connections) => TrackerInfoAnimatedList(
+              controller: _scrollController,
+              padding: EdgeInsets.only(
+                top: context.contentTopPadding,
+                bottom: 16 + context.bottomInset,
+              ),
+              trackerInfos: connections,
+              table: table,
+              detailTitle: appLocalizations.details(
+                appLocalizations.connection,
+              ),
+              actionBuilder: buildAction,
+            ),
+          ),
+        );
+      },
     );
   }
 }

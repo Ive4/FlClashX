@@ -157,6 +157,7 @@ class RecordTable<T> {
 class RecordTableFrame<T> extends ConsumerStatefulWidget {
   final String tableId;
   final List<T> items;
+  final bool keepSort;
 
   /// Whether the list shows [items] bottom up, its last item on top.
   final bool reverse;
@@ -172,6 +173,7 @@ class RecordTableFrame<T> extends ConsumerStatefulWidget {
     super.key,
     required this.tableId,
     required this.items,
+    this.keepSort = false,
     this.reverse = false,
     required this.columnsOf,
     required this.builder,
@@ -185,10 +187,24 @@ class RecordTableFrame<T> extends ConsumerStatefulWidget {
 class _RecordTableFrameState<T> extends ConsumerState<RecordTableFrame<T>>
     with TableColumnWidthsMixin<RecordTableFrame<T>> {
   final _sorter = RecordSorter<T>();
-  RecordSort? _sort;
+  late RecordSort? _sort = widget.keepSort
+      ? PageStorage.maybeOf(context)?.readState(context, identifier: _sortKey)
+            as RecordSort?
+      : null;
+
+  (Type, String) get _sortKey => (RecordTableFrame, widget.tableId);
 
   @override
   String get tableId => widget.tableId;
+
+  void _changeSort(RecordColumn<T> column) {
+    setState(() => _sort = nextRecordSort(_sort, column));
+    if (widget.keepSort) {
+      PageStorage.maybeOf(
+        context,
+      )?.writeState(context, _sort, identifier: _sortKey);
+    }
+  }
 
   RecordTable<T>? _tableOf(BuildContext context, double width) {
     if (width < _recordTableMinWidth) {
@@ -239,8 +255,7 @@ class _RecordTableFrameState<T> extends ConsumerState<RecordTableFrame<T>>
                     _RecordTableHeader(
                       table: table,
                       sort: _sort,
-                      onSort: (column) =>
-                          setState(() => _sort = nextRecordSort(_sort, column)),
+                      onSort: _changeSort,
                       onResize: (boundary, delta) => resizeColumn(
                         table.layouts,
                         table.widths,

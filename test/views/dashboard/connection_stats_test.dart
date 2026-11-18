@@ -5,7 +5,6 @@ import 'package:fl_clash/features/connection/tracker_info_list.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
-import 'package:fl_clash/views/connection/connections.dart';
 import 'package:fl_clash/views/connection/requests.dart';
 import 'package:fl_clash/views/dashboard/widgets/connection_stats.dart';
 import 'package:fl_clash/views/dns_queries.dart';
@@ -53,6 +52,7 @@ void main() {
   setUp(() {
     core = _MockCore();
     when(() => core.getConnectionCount()).thenAnswer((_) async => 0);
+    when(() => core.getConnections()).thenAnswer((_) async => []);
     container = ProviderContainer(
       overrides: [
         profilesProvider.overrideWith(TestProfiles.new),
@@ -140,15 +140,21 @@ void main() {
   testWidgets('every count opens its own list in a sheet', (tester) async {
     await pumpCard(tester);
 
-    for (final (label, view) in [
-      ('Live connections', ConnectionsView),
-      ('Recent requests', RequestsView),
-      ('DNS queries', DnsQueriesView),
+    for (final (label, view, feed) in [
+      ('Live connections', RequestsView, RequestFeed.live),
+      ('Recent requests', RequestsView, RequestFeed.recent),
+      ('DNS queries', DnsQueriesView, null),
     ]) {
       await tester.tap(_stat(label));
       await tester.pumpAndSettle();
 
       expect(find.byType(view), findsOneWidget);
+      if (feed != null) {
+        expect(
+          tester.widget<RequestsView>(find.byType(view)).initialFeed,
+          feed,
+        );
+      }
       expect(
         tester.getTopLeft(find.byType(SheetDragHandle)).dy,
         closeTo(_mobileSize.height * (1 - snapSheetDetents.first), 1),

@@ -1,4 +1,5 @@
 import 'package:fl_clash/providers/app.dart';
+import 'package:fl_clash/ui/navigator.dart';
 import 'package:fl_clash/ui/paged_sheet.dart';
 import 'package:fl_clash/ui/route_motion_hold.dart';
 import 'package:fl_clash/ui/sheet.dart';
@@ -70,14 +71,38 @@ void main() {
 
   tearDown(() => source.dispose());
 
-  Future<void> pumpFeed(WidgetTester tester) async {
+  Future<void> pumpFeed(
+    WidgetTester tester, {
+    bool reduceMotion = false,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         navigatorKey: navigator,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(disableAnimations: reduceMotion),
+          child: child!,
+        ),
         home: Scaffold(body: _Feed(source: source)),
       ),
     );
   }
+
+  testWidgets('reduce motion keeps a pushed page in place during its fade', (
+    tester,
+  ) async {
+    await pumpFeed(tester, reduceMotion: true);
+    const page = Key('pushed page');
+    navigator.currentState!.push(
+      CommonRoute<void>(builder: (_) => const SizedBox.expand(key: page)),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(tester.getTopLeft(find.byKey(page)), Offset.zero);
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('applies updates at once while the route is still', (
     tester,

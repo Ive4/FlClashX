@@ -386,7 +386,18 @@ void main() {
     expect(desktop.currentIndex, greaterThan(0));
     expect(
       desktop.navigationItems[desktop.currentIndex].label,
-      PageLabel.connections,
+      PageLabel.requests,
+    );
+    expect(
+      desktop.navigationItems.map((item) => item.label),
+      isNot(contains(PageLabel.connections)),
+    );
+    expect(
+      navigation
+          .getItems()
+          .where((item) => item.modes.contains(NavigationItemMode.moreFull))
+          .map((item) => item.label),
+      [PageLabel.requests, PageLabel.dns],
     );
 
     container

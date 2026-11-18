@@ -1,4 +1,5 @@
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
@@ -75,6 +76,7 @@ void main() {
   Future<void> pumpRequests(
     WidgetTester tester, {
     Size size = _tableSize,
+    Future<List<TrackerInfo>> Function()? connectionsReader,
   }) async {
     container.read(viewSizeProvider.notifier).update((_) => size);
     tester.view.physicalSize = size;
@@ -85,7 +87,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const TestApp(child: RequestsView()),
+        child: TestApp(
+          child: RequestsView(connectionsReader: connectionsReader),
+        ),
       ),
     );
     await tester.pump();
@@ -96,6 +100,48 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 2));
   }
+
+  testWidgets('the title menu switches feeds without leaving the page', (
+    tester,
+  ) async {
+    seedRequests([_tracker(id: 'request', host: 'recent.test')]);
+    var reads = 0;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    container.listen(appSettingProvider, (_, _) {});
+    await pumpRequests(
+      tester,
+      connectionsReader: () async {
+        reads++;
+        return [_tracker(id: 'live', host: 'live.test')];
+      },
+    );
+
+    final recent = find.textContaining('recent.test');
+    expect(recent, findsWidgets);
+    expect(reads, 0);
+    expect(find.byTooltip('Close connections'), findsNothing);
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Live connections'));
+    await tester.pumpAndSettle();
+
+    expect(recent, findsNothing);
+    expect(find.textContaining('live.test'), findsWidgets);
+    expect(find.byTooltip('Close connections'), findsOneWidget);
+    expect(container.read(appSettingProvider).requestFeed, RequestFeed.live);
+
+    await tester.tap(find.text('Live connections'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
+
+    expect(recent, findsWidgets);
+    expect(find.byTooltip('Close connections'), findsNothing);
+    final stoppedAt = reads;
+    await tester.pump(const Duration(seconds: 3));
+    expect(reads, stoppedAt);
+    await teardownView(tester);
+  });
 
   testWidgets('shows the empty state without any request', (tester) async {
     await pumpRequests(tester);
@@ -222,7 +268,7 @@ void main() {
       _tracker(id: 'c', host: 'beta.test', download: 20),
     ]);
 
-    await pumpRequests(tester);
+    await pumpRequests(tester, connectionsReader: () async => []);
 
     List<String> hostsTopDown() {
       final rows = tester
@@ -262,6 +308,16 @@ void main() {
     expect(sortArrow(AppGlyphs.arrowUp), findsNothing);
 
     await tapHeader('Target');
+    expect(hostsTopDown(), ['alpha.test', 'beta.test', 'gamma.test']);
+
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Live connections'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Live connections'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
     expect(hostsTopDown(), ['alpha.test', 'beta.test', 'gamma.test']);
 
     await teardownView(tester);

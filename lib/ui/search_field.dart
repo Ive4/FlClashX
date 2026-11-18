@@ -1,11 +1,14 @@
 import 'package:fl_clash/common/input_limits.dart';
 import 'package:fl_clash/ui/button.dart';
+import 'package:fl_clash/ui/context.dart';
 import 'package:fl_clash/ui/focus.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/ui/l10n.dart';
+import 'package:fl_clash/ui/navigation_dock.dart';
 import 'package:fl_clash/ui/shape.dart';
 import 'package:fl_clash/ui/surface.dart';
 import 'package:fl_clash/ui/typography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Below this many items a sheet is short enough to scan without a search.
@@ -65,6 +68,34 @@ class _SearchFieldState extends State<SearchField> {
     widget.onChanged?.call('');
   }
 
+  Widget _selectionMenu(BuildContext context, EditableTextState editable) {
+    final value = editable.textEditingValue;
+    final selection = value.selection;
+    final needsSelectAll =
+        defaultTargetPlatform == TargetPlatform.iOS &&
+        selection.isValid &&
+        !selection.isCollapsed &&
+        selection.end - selection.start < value.text.length &&
+        !editable.selectAllEnabled;
+    if (!needsSelectAll) {
+      return SystemContextMenu.isSupportedByField(editable)
+          ? SystemContextMenu.editableText(editableTextState: editable)
+          : AdaptiveTextSelectionToolbar.editableText(
+              editableTextState: editable,
+            );
+    }
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editable.contextMenuAnchors,
+      buttonItems: [
+        ...editable.contextMenuButtonItems,
+        ContextMenuButtonItem(
+          type: ContextMenuButtonType.selectAll,
+          onPressed: () => editable.selectAll(SelectionChangedCause.toolbar),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = UiLocalizations.of(context);
@@ -86,6 +117,7 @@ class _SearchFieldState extends State<SearchField> {
           textInputAction: TextInputAction.search,
           style: AppTextStyle.body.of(context),
           inputFormatters: TextInputLimits.limit(TextInputLimits.search),
+          contextMenuBuilder: _selectionMenu,
           onChanged: widget.onChanged,
           onSubmitted: (_) => widget.onSubmitted?.call(),
           // Not dense: a dense decorator fits its fill to the text and ignores
@@ -122,18 +154,23 @@ class _SearchFieldState extends State<SearchField> {
                       if (!empty)
                         SizedBox(
                           width: _clearReach,
-                          child: IconButton(
-                            tooltip: localizations.clearSearch,
-                            onPressed: _handleClear,
-                            style: IconButton.styleFrom(
-                              foregroundColor: colorScheme.onSurface,
-                              overlayColor: Colors.transparent,
-                              splashFactory: NoSplash.splashFactory,
-                            ),
-                            icon: const GlyphIcon(
-                              AppGlyphs.clearField,
-                              size: _clearSize,
-                              fill: 1,
+                          child: ElasticPress(
+                            enabled:
+                                !context.disableAnimations &&
+                                ElasticPress.maybeOf(context) == null,
+                            child: IconButton(
+                              tooltip: localizations.clearSearch,
+                              onPressed: _handleClear,
+                              style: IconButton.styleFrom(
+                                foregroundColor: colorScheme.onSurface,
+                                overlayColor: Colors.transparent,
+                                splashFactory: NoSplash.splashFactory,
+                              ),
+                              icon: const GlyphIcon(
+                                AppGlyphs.clearField,
+                                size: _clearSize,
+                                fill: 1,
+                              ),
                             ),
                           ),
                         )

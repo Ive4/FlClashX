@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/interface.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/core.dart';
 import 'package:fl_clash/providers/database.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/ui.dart';
-import 'package:fl_clash/views/connection/connections.dart';
+import 'package:fl_clash/views/connection/requests.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,7 +82,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const TestApp(child: ConnectionsView()),
+        child: const TestApp(
+          child: RequestsView(initialFeed: RequestFeed.live),
+        ),
       ),
     );
     await tester.pump();
@@ -108,6 +111,30 @@ void main() {
     expect(find.byType(NullStatus), findsOneWidget);
     expect(tester.takeException(), null);
 
+    await teardownView(tester);
+  });
+
+  testWidgets('close all refreshes the live feed after the Core answers', (
+    tester,
+  ) async {
+    var connections = [_tracker(id: 'a')];
+    final closing = Completer<bool>();
+    when(core.getConnections).thenAnswer((_) async => connections);
+    when(core.closeConnections).thenAnswer((_) => closing.future);
+    await pumpConnections(tester);
+    final rows = find.byType(TrackerInfoTableRow);
+    expect(rows, findsOneWidget);
+
+    await tester.tap(find.byTooltip('Close connections'));
+    await tester.pump();
+    expect(rows, findsOneWidget);
+    connections = [];
+    closing.complete(true);
+    await tester.pumpAndSettle();
+
+    verify(core.closeConnections).called(1);
+    expect(rows, findsNothing);
+    expect(find.byType(NullStatus), findsOneWidget);
     await teardownView(tester);
   });
 
@@ -151,7 +178,8 @@ void main() {
             builder: (context) => TextButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => const ConnectionsView(),
+                  builder: (_) =>
+                      const RequestsView(initialFeed: RequestFeed.live),
                 ),
               ),
               child: const Text('open'),
@@ -165,7 +193,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
 
-    final route = ModalRoute.of(tester.element(find.byType(ConnectionsView)))!;
+    final route = ModalRoute.of(tester.element(find.byType(RequestsView)))!;
     expect(route.animation!.isAnimating, isTrue);
     expect(find.textContaining('alpha.test'), findsWidgets);
 

@@ -206,6 +206,8 @@ enum TrafficUnit { B, KB, MB, GB, TB }
 
 enum NavigationItemMode { mobile, desktop, more, moreFull }
 
+enum RequestFeed { recent, live }
+
 enum ProxiesSortType { none, delay, name }
 
 enum TunStack { gvisor, system, mixed, mips }
