@@ -8253,8 +8253,7 @@ class AppLocalizations {
   String customImportDroppedSubRules(num count, Object label) {
     return Intl.plural(
       count,
-      one:
-          '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
+      one: '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
       other:
           '$label SUB-RULE rules were dropped, since custom profiles do not support sub-rules',
       name: 'customImportDroppedSubRules',
@@ -8823,20 +8822,20 @@ class AppLocalizations {
     );
   }
 
-  /// `After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.`
+  /// `After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Use 0 to enter immediately or -1 to disable automatic entry. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.`
   String get autoLightweightModeDesc {
     return Intl.message(
-      'After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.',
+      'After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Use 0 to enter immediately or -1 to disable automatic entry. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.',
       name: 'autoLightweightModeDesc',
       desc: '',
       args: [],
     );
   }
 
-  /// `Enter a whole number from 0 to 1440. Use 0 to disable.`
+  /// `Enter a whole number from -1 to 1440. Use 0 for immediate entry or -1 to disable.`
   String get autoLightweightMinutesInvalid {
     return Intl.message(
-      'Enter a whole number from 0 to 1440. Use 0 to disable.',
+      'Enter a whole number from -1 to 1440. Use 0 for immediate entry or -1 to disable.',
       name: 'autoLightweightMinutesInvalid',
       desc: '',
       args: [],

@@ -474,20 +474,20 @@ class AutoLightweightModeItem extends ConsumerWidget {
     );
     return ListItem.input(
       title: Text(l.autoLightweightMode),
-      subtitle: Text(minutes <= 0 ? l.disabled : '$minutes ${l.minutes}'),
+      subtitle: Text(minutes < 0 ? l.disabled : '$minutes ${l.minutes}'),
       dialogTitle: l.autoLightweightMode,
       value: '$minutes',
       maxLength: 4,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(signed: true),
       validator: (text) {
         final value = int.tryParse(text?.trim() ?? '');
-        return value == null || value < 0 || value > 1440
+        return value == null || value < -1 || value > 1440
             ? l.autoLightweightMinutesInvalid
             : null;
       },
       onChanged: (text) {
         final value = int.tryParse(text?.trim() ?? '');
-        if (value == null || value < 0 || value > 1440) return;
+        if (value == null || value < -1 || value > 1440) return;
         ref
             .read(appSettingProvider.notifier)
             .update((state) => state.copyWith(autoLightweightMinutes: value));

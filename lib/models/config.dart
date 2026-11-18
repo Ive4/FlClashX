@@ -259,7 +259,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     bool sidebarExpanded,
     @Default(0) int acceptedDisclaimerVersion,
     @Default(true) bool minimizeOnExit,
-    @Default(5) int autoLightweightMinutes,
+    @Default(0) int autoLightweightMinutes,
     @Default(false) bool hidden,
     @Default(false) bool developerMode,
     @Default(RestoreStrategy.compatible) RestoreStrategy restoreStrategy,

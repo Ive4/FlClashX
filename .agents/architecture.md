@@ -66,11 +66,12 @@ reconnection adopts the existing Core and TUN. UI-owned scheduled profile update
 and SSID rules or active local updates prevent entry.
 
 `LightweightManager` counts a continuous hidden interval from
-`AppSettingProps.autoLightweightMinutes` (5 by default; 0 disables it). Desktop
+`AppSettingProps.autoLightweightMinutes` (defaults to 0 for immediate entry; -1 disables automatic entry). Desktop
 visibility comes from native window events and an initial visibility/minimize probe,
 since Flutter can still report resumed for a hidden startup window. Showing the UI or changing
 the delay invalidates an in-flight automatic handoff. Automatic entry also waits
 while any navigator has a pushed page or dialog, preserving unfinished edits.
+A blocked zero-delay attempt retries after five seconds.
 Both modes use one native menu definition. Runtime groups and delay probes are handled by the host; normal-mode
 settings commands are delivered once to their existing Dart actions. A lightweight command that needs Flutter
 configuration or authorization restores the UI, waits for initialization, then uses that same action. The host

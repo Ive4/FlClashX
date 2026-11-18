@@ -45,7 +45,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
       (json['acceptedDisclaimerVersion'] as num?)?.toInt() ?? 0,
   minimizeOnExit: json['minimizeOnExit'] as bool? ?? true,
   autoLightweightMinutes:
-      (json['autoLightweightMinutes'] as num?)?.toInt() ?? 5,
+      (json['autoLightweightMinutes'] as num?)?.toInt() ?? 0,
   hidden: json['hidden'] as bool? ?? false,
   developerMode: json['developerMode'] as bool? ?? false,
   restoreStrategy:

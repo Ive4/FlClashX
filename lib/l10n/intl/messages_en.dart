@@ -452,13 +452,13 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoInclude": MessageLookupByLibrary.simpleMessage("Auto-include"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("Auto launch"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "Enter a whole number from 0 to 1440. Use 0 to disable.",
+      "Enter a whole number from -1 to 1440. Use 0 for immediate entry or -1 to disable.",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage(
       "Automatic lightweight mode (minutes)",
     ),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Enter 0 to disable. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.",
+      "After the window has been minimized or hidden for this many minutes, close the interface and keep the proxy running. Use 0 to enter immediately or -1 to disable automatic entry. Open pages or dialogs and local updates postpone entry. Scheduled subscription updates pause until the interface reopens.",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("Auto run"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(
@@ -1079,9 +1079,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Enter the rule content",
     ),
-    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
-      "The app list permission was denied, so installed apps cannot be listed. Please grant it manually in system settings.",
-    ),
+    "installedAppsPermissionDeniedMessage":
+        MessageLookupByLibrary.simpleMessage(
+          "The app list permission was denied, so installed apps cannot be listed. Please grant it manually in system settings.",
+        ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "This system hides the installed app list until the permission is granted. Authorize it to configure the per-app proxy.",
     ),

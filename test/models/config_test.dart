@@ -133,24 +133,24 @@ void main() {
       expect(restored.autoCheckUpdate, true);
       expect(restored.sidebarExpanded, true);
       expect(restored.minimizeOnExit, true);
-      expect(restored.autoLightweightMinutes, 5);
+      expect(restored.autoLightweightMinutes, 0);
       expect(restored.restoreStrategy, RestoreStrategy.compatible);
       expect(restored.userAgents, defaultUserAgents);
       expect(restored.filters, defaultFilters);
     });
 
     test(
-      'automatic lightweight delay persists and older configs default to five minutes',
+      'automatic lightweight delay persists and missing values default to zero',
       () {
         const props = AppSettingProps(autoLightweightMinutes: 7);
         final restored = roundTrip(props.toJson, AppSettingProps.fromJson);
         expect(restored.autoLightweightMinutes, 7);
-        expect(AppSettingProps.fromJson({}).autoLightweightMinutes, 5);
+        expect(AppSettingProps.fromJson({}).autoLightweightMinutes, 0);
         expect(
           AppSettingProps.fromJson({
-            'autoLightweightMinutes': 0,
+            'autoLightweightMinutes': -1,
           }).autoLightweightMinutes,
-          0,
+          -1,
         );
       },
     );

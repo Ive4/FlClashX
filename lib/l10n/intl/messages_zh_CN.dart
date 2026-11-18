@@ -381,11 +381,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoInclude": MessageLookupByLibrary.simpleMessage("自动包含"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("自启动"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "请输入 0～1440 的整数，0 表示关闭。",
+      "请输入 -1～1440 的整数。0 表示立即进入，-1 表示关闭自动切换。",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage("自动轻量模式（分钟）"),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "窗口最小化或隐藏达到设定分钟数后，自动关闭界面并保留后台代理，填 0 关闭。有打开的子页面、弹窗或本地更新时暂缓进入；进入后订阅定时更新暂停，重新打开界面后恢复。",
+      "窗口最小化或隐藏达到设定分钟数后，自动关闭界面并保留后台代理，填 0 立即进入，填 -1 关闭自动切换。有打开的子页面、弹窗或本地更新时暂缓进入；进入后订阅定时更新暂停，重新打开界面后恢复。",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("自动运行"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage("自动运行会在打开应用时启动代理。"),

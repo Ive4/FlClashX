@@ -400,11 +400,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoInclude": MessageLookupByLibrary.simpleMessage("自動で含める"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("自動起動"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "0～1440 の整数を入力してください。0 で無効。",
+      "-1～1440 の整数を入力してください。0 ですぐに移行し、-1 で自動移行を無効にします。",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage("自動軽量モード（分）"),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "ウィンドウを最小化または非表示にして指定した分数が経過すると、プロキシを維持して画面を閉じます。0 で無効。ページ、ダイアログ、ローカル更新が開いている間は延期します。購読の定期更新は画面を再度開くまで停止します。",
+      "ウィンドウを最小化または非表示にして指定した分数が経過すると、プロキシを維持して画面を閉じます。0 ですぐに移行し、-1 で自動移行を無効にします。ページ、ダイアログ、ローカル更新が開いている間は延期します。購読の定期更新は画面を再度開くまで停止します。",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("自動実行"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(

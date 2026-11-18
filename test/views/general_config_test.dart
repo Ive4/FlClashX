@@ -81,10 +81,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       final l = currentAppLocalizations;
-      expect(find.text(l.disabled), findsOneWidget);
+      expect(find.text('0 ${l.minutes}'), findsOneWidget);
       await tester.tap(find.text(l.autoLightweightMode));
       await tester.pumpAndSettle();
-      for (final invalid in ['-1', '1441', '1.5', 'abc']) {
+      for (final invalid in ['-2', '1441', '1.5', 'abc']) {
         await tester.enterText(find.byType(TextField), invalid);
         await tester.tap(find.text(l.submit));
         await tester.pumpAndSettle();
@@ -98,10 +98,10 @@ void main() {
       expect(find.text('7 ${l.minutes}'), findsOneWidget);
       await tester.tap(find.text(l.autoLightweightMode));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '0');
+      await tester.enterText(find.byType(TextField), '-1');
       await tester.tap(find.text(l.submit));
       await tester.pumpAndSettle();
-      expect(container.read(appSettingProvider).autoLightweightMinutes, 0);
+      expect(container.read(appSettingProvider).autoLightweightMinutes, -1);
       expect(find.text(l.disabled), findsOneWidget);
     },
   );

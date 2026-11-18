@@ -397,11 +397,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoInclude": MessageLookupByLibrary.simpleMessage("자동 포함"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("자동 실행"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "0~1440 사이의 정수를 입력하세요. 0은 비활성화입니다.",
+      "-1~1440 사이의 정수를 입력하세요. 0은 즉시 전환, -1은 자동 전환 끄기입니다.",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage("자동 경량 모드(분)"),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "창을 최소화하거나 숨긴 뒤 설정한 시간이 지나면 프록시를 유지하고 화면을 닫습니다. 0은 비활성화입니다. 열린 하위 페이지, 대화상자 또는 로컬 업데이트가 있으면 전환을 미룹니다. 구독 자동 업데이트는 화면을 다시 열 때까지 중지됩니다.",
+      "창을 최소화하거나 숨긴 뒤 설정한 시간이 지나면 프록시를 유지하고 화면을 닫습니다. 0은 즉시 전환, -1은 자동 전환 끄기입니다. 열린 하위 페이지, 대화상자 또는 로컬 업데이트가 있으면 전환을 미룹니다. 구독 자동 업데이트는 화면을 다시 열 때까지 중지됩니다.",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("자동 시작"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(

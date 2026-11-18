@@ -474,13 +474,13 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("Lancement automatique"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "Saisissez un entier de 0 à 1440. 0 désactive la fonction.",
+      "Saisissez un entier de -1 à 1440. 0 permet un passage immédiat, -1 désactive la fonction.",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage(
       "Mode léger automatique (minutes)",
     ),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "Fermer l’interface tout en gardant le proxy actif après ce délai si la fenêtre est réduite ou masquée. Saisissez 0 pour désactiver. Les pages, dialogues et mises à jour locales reportent le passage. Les mises à jour des abonnements sont suspendues jusqu’à la réouverture.",
+      "Fermer l’interface tout en gardant le proxy actif après ce délai si la fenêtre est réduite ou masquée. Saisissez 0 pour passer immédiatement ou -1 pour désactiver le passage automatique. Les pages, dialogues et mises à jour locales reportent le passage. Les mises à jour des abonnements sont suspendues jusqu’à la réouverture.",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("Démarrage automatique"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(
@@ -1145,9 +1145,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Saisissez le contenu de la règle",
     ),
-    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
-      "L’autorisation de la liste des apps a été refusée ; les apps installées ne peuvent donc pas être listées. Veuillez l’accorder manuellement dans les réglages du système.",
-    ),
+    "installedAppsPermissionDeniedMessage":
+        MessageLookupByLibrary.simpleMessage(
+          "L’autorisation de la liste des apps a été refusée ; les apps installées ne peuvent donc pas être listées. Veuillez l’accorder manuellement dans les réglages du système.",
+        ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Ce système masque la liste des apps installées tant que l’autorisation n’est pas accordée. Accordez-la pour configurer le proxy par app.",
     ),

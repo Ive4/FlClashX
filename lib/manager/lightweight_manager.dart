@@ -47,15 +47,18 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
     _schedule();
   }
 
-  void _schedule() {
+  void _schedule({bool retry = false}) {
     _revision++;
     _timer?.cancel();
     _timer = null;
     final minutes = ref.read(appSettingProvider).autoLightweightMinutes;
-    if (_entering || _visible || minutes <= 0) {
+    if (_entering || _visible || minutes < 0) {
       return;
     }
-    _timer = Timer(Duration(minutes: minutes), _enter);
+    final delay = retry && minutes == 0
+        ? const Duration(seconds: 5)
+        : Duration(minutes: minutes);
+    _timer = Timer(delay, _enter);
   }
 
   Future<void> _enter() async {
@@ -79,7 +82,7 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
     } finally {
       _entering = false;
       if (mounted) {
-        _schedule();
+        _schedule(retry: revision == _revision);
       }
     }
   }

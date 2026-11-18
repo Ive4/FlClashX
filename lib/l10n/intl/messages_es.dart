@@ -477,13 +477,13 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("Inicio automático"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "Introduce un entero de 0 a 1440. 0 desactiva la función.",
+      "Introduce un entero de -1 a 1440. Usa 0 para entrar de inmediato o -1 para desactivar.",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage(
       "Modo ligero automático (minutos)",
     ),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "Cerrar la interfaz y mantener el proxy tras este tiempo con la ventana minimizada u oculta. Introduce 0 para desactivar. Las páginas, diálogos y actualizaciones locales posponen el cambio. Las actualizaciones de suscripciones se pausan hasta volver a abrir la interfaz.",
+      "Cerrar la interfaz y mantener el proxy tras este tiempo con la ventana minimizada u oculta. Usa 0 para entrar de inmediato o -1 para desactivar el modo automático. Las páginas, diálogos y actualizaciones locales posponen el cambio. Las actualizaciones de suscripciones se pausan hasta volver a abrir la interfaz.",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("Ejecución automática"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(
@@ -1150,9 +1150,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Introduce el contenido de la regla",
     ),
-    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
-      "Se denegó el permiso de lista de apps, por lo que no se pueden mostrar las apps instaladas. Concédelo manualmente en los ajustes del sistema.",
-    ),
+    "installedAppsPermissionDeniedMessage":
+        MessageLookupByLibrary.simpleMessage(
+          "Se denegó el permiso de lista de apps, por lo que no se pueden mostrar las apps instaladas. Concédelo manualmente en los ajustes del sistema.",
+        ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Este sistema oculta la lista de apps instaladas hasta que se concede el permiso. Autorízalo para configurar el proxy por app.",
     ),

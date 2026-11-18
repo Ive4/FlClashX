@@ -24,7 +24,7 @@ class SystemAction extends _$SystemAction {
     if (shouldContinue?.call() == false ||
         !ref.mounted ||
         (shouldContinue == null && ref.read(appVisibleProvider)) ||
-        ref.read(appSettingProvider).autoLightweightMinutes <= 0 ||
+        ref.read(appSettingProvider).autoLightweightMinutes < 0 ||
         ref.read(excludeSSIDsProvider).isNotEmpty ||
         ref.read(coreStatusProvider) != CoreStatus.connected ||
         _exitCoordinator != null) {

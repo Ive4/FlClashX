@@ -84,9 +84,22 @@ void main() {
     );
   }
 
-  testWidgets('defaults to five minutes and can be disabled', (tester) async {
-    expect(const AppSettingProps().autoLightweightMinutes, 5);
-    setMinutes(0);
+  testWidgets('defaults to immediate entry after a desktop window is hidden', (
+    tester,
+  ) async {
+    expect(const AppSettingProps().autoLightweightMinutes, 0);
+    await mount(tester, isDesktop: true);
+    await tester.pump();
+    expect(action.entries, 0);
+    desktopWindow.listeners.last.onWindowHide();
+    await tester.pump(Duration.zero);
+    expect(action.entries, 1);
+    expect(action.automaticEntry, isTrue);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('minus one disables automatic entry', (tester) async {
+    setMinutes(-1);
     await mount(tester);
     setVisible(false);
     await tester.pump(const Duration(hours: 2));
@@ -185,12 +198,27 @@ void main() {
     setMinutes(3);
     await tester.pump(const Duration(minutes: 2));
     expect(action.entries, 0);
-    setMinutes(0);
+    setMinutes(-1);
     await tester.pump(const Duration(minutes: 5));
     expect(action.entries, 0);
     setMinutes(1);
     await tester.pump(const Duration(minutes: 1));
     expect(action.entries, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('zero retries a failed handoff without spinning', (tester) async {
+    setMinutes(0);
+    setVisible(false);
+    action.fail = true;
+    await mount(tester);
+    await tester.pump(Duration.zero);
+    expect(action.entries, 1);
+    await tester.pump(const Duration(seconds: 4));
+    expect(action.entries, 1);
+    action.fail = false;
+    await tester.pump(const Duration(seconds: 1));
+    expect(action.entries, 2);
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -466,13 +466,13 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("Автозапуск"),
     "autoLightweightMinutesInvalid": MessageLookupByLibrary.simpleMessage(
-      "Введите целое число от 0 до 1440. 0 отключает функцию.",
+      "Введите целое число от -1 до 1440. 0 включает режим сразу, -1 отключает автоматический переход.",
     ),
     "autoLightweightMode": MessageLookupByLibrary.simpleMessage(
       "Автоматический лёгкий режим (минуты)",
     ),
     "autoLightweightModeDesc": MessageLookupByLibrary.simpleMessage(
-      "Закрывать интерфейс, сохраняя прокси, через указанное число минут после сворачивания или скрытия окна. 0 отключает функцию. Открытые страницы, диалоги и локальные обновления откладывают переход. Обновления подписок приостанавливаются до открытия интерфейса.",
+      "Закрывать интерфейс, сохраняя прокси, через указанное число минут после сворачивания или скрытия окна. 0 включает режим сразу, -1 отключает автоматический переход. Открытые страницы, диалоги и локальные обновления откладывают переход. Обновления подписок приостанавливаются до открытия интерфейса.",
     ),
     "autoRun": MessageLookupByLibrary.simpleMessage("Автовключение"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage(
@@ -1117,9 +1117,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Введите содержимое правила",
     ),
-    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
-      "Разрешение на список приложений отклонено, поэтому установленные приложения недоступны. Предоставьте его вручную в системных настройках.",
-    ),
+    "installedAppsPermissionDeniedMessage":
+        MessageLookupByLibrary.simpleMessage(
+          "Разрешение на список приложений отклонено, поэтому установленные приложения недоступны. Предоставьте его вручную в системных настройках.",
+        ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Эта система не выдаёт список установленных приложений без разрешения. Предоставьте его, чтобы настроить прокси для отдельных приложений.",
     ),
