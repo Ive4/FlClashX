@@ -3,9 +3,13 @@ import 'package:fl_clash/models/models.dart';
 import 'package:path/path.dart' as p;
 
 const _versionNumber =
-    r'[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][a-zA-Z0-9.-]+)*';
-final _versionDirectory = RegExp('^(v|app-)?$_versionNumber\$');
-final _versionSlot = RegExp(r'^(v|app-)?\*$');
+    r'[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][a-zA-Z0-9._-]+)*';
+const _versionPrefix = r'(v|[a-zA-Z][a-zA-Z0-9._-]*-)?';
+final _versionDirectory = RegExp('^$_versionPrefix$_versionNumber\$');
+final _versionSlot = RegExp(
+  '^$_versionPrefix'
+  r'\*$',
+);
 
 class ApplicationIdentity {
   const ApplicationIdentity({

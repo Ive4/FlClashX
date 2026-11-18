@@ -92,6 +92,30 @@ void main() {
     },
   );
 
+  test('groups version folders with distribution and architecture labels', () {
+    const access = AccessControlProps(
+      enable: true,
+      rejectList: [
+        r'windows:PROCESS-PATH:C:\Runtimes\zulu-21.52.203.0\bin\java.exe',
+        r'windows:PROCESS-PATH:C:\Runtimes\zulu-21.54.109.0\bin\java.exe',
+        r'windows:PROCESS-PATH:C:\Runtimes\cpython-3.14.10-windows-x86_64-none\python.exe',
+        r'windows:PROCESS-PATH:C:\Runtimes\cpython-3.13.18-windows-x86_64-none\python.exe',
+        r'windows:PROCESS-PATH:D:\Runtimes\zulu-21.54.109.0\bin\java.exe',
+      ],
+    );
+    final grouped = groupVersionedApplications(access, windows: true);
+    expect(grouped.rejectList, [
+      r'windows:PROCESS-PATH-REGEX:c:\runtimes\zulu-*\bin\java.exe',
+      r'windows:PROCESS-PATH-REGEX:c:\runtimes\cpython-*\python.exe',
+      r'windows:PROCESS-PATH-REGEX:d:\runtimes\zulu-*\bin\java.exe',
+    ]);
+    expect(groupVersionedApplications(grouped, windows: true), grouped);
+    expect(
+      applicationAccessRules(grouped, windows: true),
+      applicationAccessRules(access, windows: true),
+    );
+  });
+
   test('routing projection ignores display preferences and inactive lists', () {
     const original = AccessControlProps(enable: true, rejectList: ['chosen']);
     final changed = original.copyWith(

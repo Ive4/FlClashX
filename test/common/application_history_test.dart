@@ -191,6 +191,47 @@ void main() {
     },
   );
 
+  test('Windows history combines a bare name with its unique path', () async {
+    final history = ApplicationHistory(
+      read: () async => null,
+      write: (_) async {},
+    );
+    addTearDown(history.dispose);
+    final first = DateTime.utc(2026, 1);
+    final last = DateTime.utc(2026, 2);
+    const nameKey = 'windows:PROCESS-NAME:browser.exe';
+    const path = r'C:\Apps\Browser.exe';
+    const pathKey = r'windows:PROCESS-PATH:c:\apps\browser.exe';
+    await history.record([connection(path)], true, first);
+    await history.record([connection('', process: 'BROWSER.exe')], true, last);
+
+    final merged = history.packages(const AccessControlProps(), windows: true);
+    expect(merged.single.packageName, pathKey);
+    expect(merged.single.applicationPath, path);
+    expect(merged.single.lastUpdateTime, last.millisecondsSinceEpoch);
+    expect(
+      history
+          .packages(
+            const AccessControlProps(acceptList: [nameKey]),
+            windows: true,
+          )
+          .map((package) => package.packageName),
+      unorderedEquals([nameKey, pathKey]),
+    );
+
+    await history.record([connection(r'D:\Other\Browser.exe')], true, last);
+    expect(
+      history
+          .packages(const AccessControlProps(), windows: true)
+          .map((package) => package.packageName),
+      unorderedEquals([
+        nameKey,
+        pathKey,
+        r'windows:PROCESS-PATH:d:\other\browser.exe',
+      ]),
+    );
+  });
+
   test(
     'damaged history rows do not discard legacy names or valid paths',
     () async {

@@ -115,10 +115,37 @@ class ApplicationHistory extends ChangeNotifier {
       for (final MapEntry(:key, :value) in entries.entries)
         if (value.identity.windows == windows) key: value.identity,
     };
+    final selected = <String>{};
     for (final key in {...access.acceptList, ...access.rejectList}) {
       final identity = ApplicationIdentity.fromSelection(key, windows: windows);
       if (identity == null) continue;
-      identities.putIfAbsent(identity.forRouting.selectionKey, () => identity);
+      final routingKey = identity.forRouting.selectionKey;
+      selected.add(routingKey);
+      identities.putIfAbsent(routingKey, () => identity);
+    }
+    final lastSeen = <String, DateTime>{};
+    if (windows) {
+      final pathsByName = <String, String?>{};
+      for (final MapEntry(:key, :value) in identities.entries) {
+        if (value.action == RuleAction.PROCESS_NAME) continue;
+        final name = value.name.toLowerCase();
+        pathsByName[name] = pathsByName.containsKey(name) ? null : key;
+      }
+      for (final MapEntry(:key, :value) in entries.entries) {
+        final identity = value.identity;
+        if (!identity.windows ||
+            identity.action != RuleAction.PROCESS_NAME ||
+            selected.contains(key)) {
+          continue;
+        }
+        final pathKey = pathsByName[identity.name.toLowerCase()];
+        if (pathKey == null) continue;
+        identities.remove(key);
+        final pathLastSeen = entries[pathKey]?.lastSeen;
+        if (pathLastSeen == null || value.lastSeen.isAfter(pathLastSeen)) {
+          lastSeen[pathKey] = value.lastSeen;
+        }
+      }
     }
     return [
       for (final MapEntry(key: key, value: identity) in identities.entries)
@@ -127,7 +154,10 @@ class ApplicationHistory extends ChangeNotifier {
           label: identity.name,
           system: false,
           internet: true,
-          lastUpdateTime: entries[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
+          lastUpdateTime:
+              (lastSeen[key] ?? entries[key]?.lastSeen)
+                  ?.millisecondsSinceEpoch ??
+              0,
           applicationPath: identity.action == RuleAction.PROCESS_PATH
               ? identity.content
               : null,
