@@ -1,0 +1,257 @@
+name: FlClashX stable artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Tag for the prepared release (vX.Y.Z or vX.Y.Z-buildN)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.47.6'
+  GO_VERSION: '1.27.1'
+  RUST_VERSION: '1.99.1'
+  FLCLASHX_UPDATE_REPOSITORY: ${{ github.repository }}
+
+jobs:
+  version:
+    if: github.repository == 'Ive4/FlClashX'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build: ${{ steps.version.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - id: version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          source = Path("pubspec.yaml").read_text(encoding="utf-8")
+          match = re.search(r"^version: (\d+\.\d+\.\d+)\+([1-9]\d*)$", source, re.M)
+          if not match:
+              raise SystemExit("Expected version+build in pubspec.yaml")
+          version, build = match.groups()
+          if os.environ["RELEASE_TAG"] not in (f"v{version}", f"v{version}-build{build}"):
+              raise SystemExit("Release tag does not match pubspec.yaml")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\nbuild={build}\n")
+          PY
+
+  windows:
+    needs: version
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: windows-2022
+            channel: stable
+          - arch: arm64
+            os: windows-11-arm
+            channel: master
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Install Rust on Windows ARM64
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://win.rustup.rs/aarch64 -OutFile rustup-init.exe
+          .\rustup-init.exe -y --default-toolchain none
+          "$env:USERPROFILE/.cargo/bin" >> $env:GITHUB_PATH
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - uses: ilammy/setup-nasm@v1
+        if: matrix.arch == 'amd64'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ matrix.channel }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install native dependencies
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:ProgramFiles/LLVM/bin/libclang.dll")) { choco install llvm -y --no-progress }
+          "LIBCLANG_PATH=$env:ProgramFiles/LLVM/bin" >> $env:GITHUB_ENV
+          $innoDirectory = "${env:ProgramFiles(x86)}/Inno Setup 6"
+          if (!(Test-Path "$innoDirectory/ISCC.exe")) { choco install innosetup -y --no-progress }
+          $innoDirectory >> $env:GITHUB_PATH
+
+      - name: Build Windows installer
+        env:
+          FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
+          FLCLASHX_GITEE_OAUTH_URL: ${{ vars.FLCLASHX_GITEE_OAUTH_URL }}
+        run: |
+          git config core.longpaths true
+          flutter pub get
+          dart setup.dart windows --env stable --targets exe
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: dist/FlClashX-*.exe
+          if-no-files-found: error
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: armv7-linux-androideabi,aarch64-linux-android,x86_64-linux-android
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r28c
+          link-to-sdk: true
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang libclang-dev nasm pkg-config
+          flutter pub get
+
+      - name: Build signed APKs
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          FLCLASHX_ANDROID_UPDATER: 'true'
+          FLCLASHX_KEYSTORE: ${{ secrets.KEYSTORE }}
+          FLCLASHX_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          FLCLASHX_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          FLCLASHX_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
+          FLCLASHX_GITEE_OAUTH_URL: ${{ vars.FLCLASHX_GITEE_OAUTH_URL }}
+        run: |
+          if [[ -z "$FLCLASHX_KEYSTORE" || -z "$FLCLASHX_KEY_ALIAS" || -z "$FLCLASHX_STORE_PASSWORD" || -z "$FLCLASHX_KEY_PASSWORD" ]]; then
+            echo 'Android release signing secrets are required' >&2
+            exit 1
+          fi
+          umask 077
+          trap 'rm -f android/app/keystore.jks' EXIT
+          printf '%s' "$FLCLASHX_KEYSTORE" | base64 --decode > android/app/keystore.jks
+          unset FLCLASHX_KEYSTORE
+          flutter build apk --release --split-per-abi \
+            --dart-define=APP_ENV=stable \
+            --dart-define=FLCLASHX_UPDATE_REPOSITORY="$FLCLASHX_UPDATE_REPOSITORY" \
+            --dart-define=FLCLASHX_GITHUB_CLIENT_ID="$FLCLASHX_GITHUB_CLIENT_ID" \
+            --dart-define=FLCLASHX_GITEE_OAUTH_URL="$FLCLASHX_GITEE_OAUTH_URL"
+
+      - name: Verify signed APKs
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          BUILD: ${{ needs.version.outputs.build }}
+        run: |
+          build_tools="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          test -n "$build_tools"
+          build_tools="$(dirname "$build_tools")"
+          mkdir -p dist
+          signer=''
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            case "$abi" in
+              armeabi-v7a) version_code=$((BUILD + 1000)) ;;
+              arm64-v8a) version_code=$((BUILD + 2000)) ;;
+              x86_64) version_code=$((BUILD + 4000)) ;;
+            esac
+            apk="build/app/outputs/flutter-apk/app-$abi-release.apk"
+            badging="$("$build_tools/aapt" dump badging "$apk")"
+            grep -Fq "package: name='com.follow.clash' versionCode='$version_code' versionName='$VERSION'" <<< "$badging"
+            grep -Fxq "native-code: '$abi'" <<< "$badging"
+            grep -Fq "uses-permission: name='android.permission.REQUEST_INSTALL_PACKAGES'" <<< "$badging"
+            certificate="$("$build_tools/apksigner" verify --print-certs "$apk")"
+            digest="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certificate")"
+            test -n "$digest"
+            if [[ -n "$signer" && "$signer" != "$digest" ]]; then
+              echo 'APK signing certificates differ across ABIs' >&2
+              exit 1
+            fi
+            signer="$digest"
+            cp "$apk" "dist/FlClashX-$VERSION-android-$abi.apk"
+          done
+
+      - name: Upload verified APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: dist/*.apk
+          if-no-files-found: error
+
+  manifest:
+    needs: [version, windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Generate and check update manifest
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python3 -B -m unittest discover -s tool -p test_create_update_manifest.py
+          mkdir -p dist
+          cp release-assets/windows-amd64/*.exe release-assets/windows-arm64/*.exe dist/
+          cp release-assets/android-apks/*.apk dist/
+          python3 tool/create_update_manifest.py \
+            --repository "$FLCLASHX_UPDATE_REPOSITORY" --tag "$RELEASE_TAG" \
+            --windows-amd64 release-assets/windows-amd64/*.exe \
+            --windows-arm64 release-assets/windows-arm64/*.exe \
+            --android-armeabi-v7a "dist/FlClashX-$VERSION-android-armeabi-v7a.apk" \
+            --android-arm64-v8a "dist/FlClashX-$VERSION-android-arm64-v8a.apk" \
+            --android-x86_64 "dist/FlClashX-$VERSION-android-x86_64.apk"
+
+      - name: Upload stable release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: flclashx-stable-release-assets
+          path: dist/
+          if-no-files-found: error

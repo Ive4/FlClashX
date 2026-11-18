@@ -1,5 +1,5 @@
-import 'package:fl_clash/ui/ui.dart';
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:fl_clash/common/app_update.dart';
 import 'package:fl_clash/common/common.dart';
@@ -27,9 +27,15 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       final file = await appUpdater.download(widget.release, _cancel, (value) {
         if (mounted) setState(() => _progress = value);
       });
-      if (mounted) Navigator.pop<File>(context, file);
+      if (mounted &&
+          !_cancel.isCancelled &&
+          ModalRoute.of(context)!.isCurrent) {
+        Navigator.pop<File>(context, file);
+      } else {
+        await discardDownloadedUpdate(file);
+      }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
       Navigator.pop(context);
       dialogs.showNotifier(error.toString(), level: MessageLevel.error);
     }
@@ -44,14 +50,31 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.appLocalizations;
-    return AlertDialog(
-      title: Text(l.updateDownloadInstall),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(_progress == null ? l.updateVerifying : '${(_progress! * 100).floor()}%'),
-        const SizedBox(height: 12),
-        LinearProgressIndicator(value: _progress),
-      ]),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(l.cancel))],
+    return PopScope<File>(
+      onPopInvokedWithResult: (didPop, file) {
+        if (didPop && file == null) _cancel.cancel();
+      },
+      child: AlertDialog(
+        title: Text(l.updateDownloadInstall),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _progress == null
+                  ? l.updateVerifying
+                  : '${(_progress! * 100).floor()}%',
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(value: _progress),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l.cancel),
+          ),
+        ],
+      ),
     );
   }
 }

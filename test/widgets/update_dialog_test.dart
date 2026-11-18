@@ -28,12 +28,21 @@ const _bulletsOnly =
 String _bodyWith(String payload) =>
     '$_bulletsOnly\n<!-- flclash:changelog:json\n$payload\n-->\n';
 
-AppUpdateRelease release(String? body) => AppUpdateRelease(
-  version: '0.8.96', build: 1, notes: body ?? '', size: 100,
-  url: Uri.parse('https://github.com/example/FlClashX/releases/download/v0.8.96/FlClashX-update.exe'),
+AppUpdateRelease release(
+  String? body, {
+  int? androidVersionCode,
+}) => AppUpdateRelease(
+  version: '0.8.96',
+  build: 1,
+  notes: body ?? '',
+  size: 100,
+  url: Uri.parse(
+    'https://github.com/example/FlClashX/releases/download/v0.8.96/'
+    '${androidVersionCode == null ? 'FlClashX-update.exe' : 'FlClashX-0.8.96-android-arm64-v8a.apk'}',
+  ),
   sha256Hex: '0' * 64,
+  androidVersionCode: androidVersionCode,
 );
-
 
 Future<ProviderContainer> pumpApp(WidgetTester tester, {Locale? locale}) async {
   final container = ProviderContainer();
@@ -90,6 +99,28 @@ void main() {
     expect(find.textContaining('Re-import backups'), findsOneWidget);
     expect(find.textContaining('Override scripts'), findsOneWidget);
     expect(find.textContaining('Breaking changes'), findsOneWidget);
+
+    await tapCancel(tester);
+    await shown;
+  });
+
+  testWidgets('Android updates explain system confirmation before download', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    final shown = container
+        .read(commonActionProvider.notifier)
+        .checkUpdateResultHandle(
+          data: release(null, androidVersionCode: 2001),
+          isUser: true,
+        );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Android will ask you to confirm'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Windows may request'), findsNothing);
 
     await tapCancel(tester);
     await shown;

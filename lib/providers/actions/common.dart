@@ -153,33 +153,53 @@ class CommonAction extends _$CommonAction {
       final context = globalState.navigatorKey.currentContext!;
       final l = currentAppLocalizations;
       if (data == null) {
-        if (isUser) await dialogs.showAlert(
-          title: l.checkUpdate, message: TextSpan(text: l.updateAlreadyCurrent));
+        if (isUser) {
+          await dialogs.showAlert(
+            title: l.checkUpdate,
+            message: TextSpan(text: l.updateAlreadyCurrent),
+          );
+        }
         return;
       }
       final result = await dialogs.showMessage(
         title: l.discoverNewVersion,
-        message: TextSpan(children: [
-          _releaseSpan(context, 'v${data.version}', data.notes),
-          TextSpan(text: '\n\n${l.updateRestartNotice}'),
-        ]),
+        message: TextSpan(
+          children: [
+            _releaseSpan(context, 'v${data.version}', data.notes),
+            TextSpan(
+              text:
+                  '\n\n${data.isAndroid ? l.updateAndroidInstallNotice : l.updateRestartNotice}',
+            ),
+          ],
+        ),
         confirmText: l.updateDownloadInstall,
         cancelText: isUser ? null : l.noLongerRemind,
       );
       if (result != true) {
         if (!isUser && result == false) {
-          ref.read(appSettingProvider.notifier).update(
-            (state) => state.copyWith(autoCheckUpdate: false));
+          ref
+              .read(appSettingProvider.notifier)
+              .update((state) => state.copyWith(autoCheckUpdate: false));
         }
         return;
       }
       if (!context.mounted) return;
-      final installer = await showDialog<File>(context: context,
+      final installer = await showDialog<File>(
+        context: context,
         barrierDismissible: false,
-        builder: (_) => AppUpdateDialog(release: data));
+        builder: (_) => AppUpdateDialog(release: data),
+      );
       if (installer == null) return;
-      // Persist before launching a worker; a failed save must not shut down the app.
-      await preferences.saveConfig(ref.read(configProvider));
+      try {
+        await preferences.saveConfig(ref.read(configProvider));
+      } catch (_) {
+        await discardDownloadedUpdate(installer);
+        rethrow;
+      }
+      if (data.isAndroid) {
+        await appUpdater.installAndroid(data, installer);
+        return;
+      }
       await preferences.setUpdateResume(ref.read(isStartProvider));
       try {
         await appUpdater.scheduleInstall(installer);

@@ -23,4 +23,6 @@ data class SetupParams(
     val selectedMap: Map<String, String>,
     @SerializedName("skip-cert-verify")
     val skipCertVerify: Boolean = false,
+    @SerializedName("delay-test-timeout")
+    val delayTestTimeout: Int? = null,
 )

@@ -1782,6 +1782,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage(
       "You are up to date.",
     ),
+    "updateAndroidInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "Android が更新をインストールできませんでした。",
+    ),
+    "updateAndroidInstallNotice": MessageLookupByLibrary.simpleMessage(
+      "検証後、Android がインストールの確認を求めます。システム設定で FlClashX に不明なアプリのインストールを許可する必要がある場合があります。",
+    ),
+    "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
+      "更新の署名鍵がインストール済みアプリの署名鍵と異なります。",
+    ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",
     ),
@@ -1791,14 +1800,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
       "The FlClashX update repository is not configured. Set FLCLASHX_UPDATE_REPOSITORY when building.",
     ),
+    "updateUnavailable": MessageLookupByLibrary.simpleMessage(
+      "このビルドまたはプラットフォームでは更新を自動インストールできません。",
+    ),
     "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
       "Update verification failed. Please download again.",
     ),
     "updateVerifying": MessageLookupByLibrary.simpleMessage(
       "Verifying installer…",
-    ),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
-      "Automatic update installation currently supports Windows only.",
     ),
     "upload": MessageLookupByLibrary.simpleMessage("アップロード"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage("アップロード帯域幅"),

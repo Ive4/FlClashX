@@ -1619,6 +1619,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "unpinWindow": MessageLookupByLibrary.simpleMessage("取消置顶"),
     "update": MessageLookupByLibrary.simpleMessage("更新"),
     "updateAlreadyCurrent": MessageLookupByLibrary.simpleMessage("当前已是最新版本。"),
+    "updateAndroidInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "Android 无法安装此更新。",
+    ),
+    "updateAndroidInstallNotice": MessageLookupByLibrary.simpleMessage(
+      "校验通过后，Android 会要求确认安装。你可能需要在系统设置中允许 FlClashX 安装未知应用。",
+    ),
+    "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
+      "更新包与已安装应用的签名密钥不同。",
+    ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("下载并安装更新"),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。",
@@ -1626,13 +1635,13 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateSourceMissing": MessageLookupByLibrary.simpleMessage(
       "尚未配置 FlClashX 专属更新仓库，请在构建时设置 FLCLASHX_UPDATE_REPOSITORY。",
     ),
+    "updateUnavailable": MessageLookupByLibrary.simpleMessage(
+      "当前版本或平台不支持自动安装更新。",
+    ),
     "updateVerificationFailed": MessageLookupByLibrary.simpleMessage(
       "更新包校验失败，请重新下载。",
     ),
     "updateVerifying": MessageLookupByLibrary.simpleMessage("正在校验安装包…"),
-    "updateWindowsOnly": MessageLookupByLibrary.simpleMessage(
-      "当前自动安装更新仅支持 Windows。",
-    ),
     "upload": MessageLookupByLibrary.simpleMessage("上传"),
     "uploadBandwidth": MessageLookupByLibrary.simpleMessage("上行带宽"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),

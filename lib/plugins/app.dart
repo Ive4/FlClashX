@@ -46,6 +46,19 @@ class App {
     return methodChannel.invokeMethod<bool>('moveTaskToBack');
   }
 
+  Future<bool> supportsAppUpdates() async {
+    return await methodChannel.invokeMethod<bool>('supportsAppUpdates') ??
+        false;
+  }
+
+  Future<void> installUpdateApk(String path, String version, int versionCode) {
+    return methodChannel.invokeMethod<void>('installUpdateApk', {
+      'path': path,
+      'version': version,
+      'versionCode': versionCode,
+    });
+  }
+
   Future<bool?> enterLightweightMode() async {
     return methodChannel.invokeMethod<bool>('enterLightweightMode');
   }

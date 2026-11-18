@@ -27,6 +27,29 @@ class ManifestTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             create_manifest("chen08209/FlClash", "v0.9.2", "0.9.2+1", {})
 
+    def test_android_and_windows_share_schema_one(self):
+        with tempfile.TemporaryDirectory() as folder:
+            android = Path(folder) / "FlClashX-0.9.3-android-arm64-v8a.apk"
+            windows = Path(folder) / "FlClashX-0.9.3-windows-arm64-setup.exe"
+            android.write_bytes(b"mock APK")
+            windows.write_bytes(b"mock installer")
+            result = create_manifest(
+                "Ive4/FlClashX", "v0.9.3-build2026111801", "0.9.3+2026111801",
+                {"android-arm64-v8a": android, "windows-arm64": windows},
+            )
+        self.assertEqual(result["schema"], 1)
+        self.assertEqual(result["assets"]["android-arm64-v8a"]["versionCode"], 2026113801)
+        self.assertEqual(result["assets"]["android-arm64-v8a"]["size"], len(b"mock APK"))
+        self.assertNotIn("versionCode", result["assets"]["windows-arm64"])
+
+    def test_rejects_wrong_abi_and_unknown_asset_keys(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = Path(folder) / "FlClashX-0.9.3-android-x86_64.apk"
+            package.write_bytes(b"mock APK")
+            for target in ["android-arm64-v8a", "android-x86", "windows-arm64"]:
+                with self.subTest(target=target), self.assertRaises(ValueError):
+                    create_manifest("Ive4/FlClashX", "v0.9.3", "0.9.3+1", {target: package})
+
     def test_requires_build_and_package(self):
         for version in ["0.9.2", "0.9.2+0", "0.9.2+1"]:
             with self.assertRaises(ValueError):

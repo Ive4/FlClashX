@@ -14,13 +14,15 @@ val localProperties = Properties().apply {
 }
 
 val releaseStoreFile = file("keystore.jks")
-val releaseStorePassword = localProperties.getProperty("storePassword")
-val releaseKeyAlias = localProperties.getProperty("keyAlias")
-val releaseKeyPassword = localProperties.getProperty("keyPassword")
+val releaseStorePassword = System.getenv("FLCLASHX_STORE_PASSWORD") ?: localProperties.getProperty("storePassword")
+val releaseKeyAlias = System.getenv("FLCLASHX_KEY_ALIAS") ?: localProperties.getProperty("keyAlias")
+val releaseKeyPassword = System.getenv("FLCLASHX_KEY_PASSWORD") ?: localProperties.getProperty("keyPassword")
 val hasReleaseSigning = releaseStoreFile.exists() &&
     releaseStorePassword != null &&
     releaseKeyAlias != null &&
     releaseKeyPassword != null
+val flClashXUpdater = System.getenv("FLCLASHX_ANDROID_UPDATER") == "true"
+require(!flClashXUpdater || hasReleaseSigning) { "FlClashX Android updates require release signing" }
 
 android {
     namespace = "com.follow.clash"
@@ -81,6 +83,9 @@ android {
     }
 
     sourceSets {
+        if (flClashXUpdater) {
+            getByName("release").manifest.srcFile("src/flclashx/AndroidManifest.xml")
+        }
         // Unit tests live under android/tests/ instead of each module's src/test.
         getByName("test").java.setSrcDirs(listOf("../tests/app"))
     }

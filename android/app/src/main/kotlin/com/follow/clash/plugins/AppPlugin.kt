@@ -23,6 +23,8 @@ import androidx.core.net.toUri
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.follow.clash.AndroidAppUpdate
+import com.follow.clash.AppUpdateException
 import com.follow.clash.R
 import com.follow.clash.common.Components
 import com.follow.clash.common.GlobalState
@@ -42,11 +44,13 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware {
 
@@ -71,6 +75,7 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
     private val requestInstalledAppsCallback = PendingCallback<Boolean>()
 
     private val requestLocalNetworkCallback = PendingCallback<Boolean>()
+    private var apkInstallResult: Result? = null
 
     private var isRequestingNotificationPermission = false
 
@@ -203,6 +208,12 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
                 result.success(openAppSettings())
             }
 
+            "supportsAppUpdates" -> reply(result) {
+                AndroidAppUpdate.isSupported(GlobalState.application)
+            }
+
+            "installUpdateApk" -> installUpdateApk(call, result)
+
             "getLastExitInfo" -> reply(result) {
                 GlobalState.lastExitInfo()
             }
@@ -216,6 +227,39 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
     private fun handleGetPackageIcon(call: MethodCall, result: Result) = reply(result) {
         val packageName = call.argument<String>("packageName") ?: ""
         GlobalState.application.packageManager.getPackageIconPath(packageName)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun installUpdateApk(call: MethodCall, result: Result) {
+        if (apkInstallResult != null) {
+            result.error("UPDATE_INSTALL_FAILED", null, null)
+            return
+        }
+        val path = call.argument<String>("path")
+        val version = call.argument<String>("version")
+        val versionCode = call.argument<Number>("versionCode")?.toLong()
+        if (path == null || version == null || versionCode == null) {
+            result.error("UPDATE_INVALID_APK", null, null)
+            return
+        }
+        apkInstallResult = result
+        scope.launch(Dispatchers.Main) {
+            try {
+                val intent = withContext(Dispatchers.IO) {
+                    AndroidAppUpdate.installerIntent(GlobalState.application, path, version, versionCode)
+                }
+                if (apkInstallResult !== result) return@launch
+                val host = checkNotNull(activity)
+                host.startActivityForResult(intent, APP_UPDATE_REQUEST_CODE)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (apkInstallResult === result) {
+                    apkInstallResult = null
+                    result.error((error as? AppUpdateException)?.code ?: "UPDATE_INSTALL_FAILED", null, null)
+                }
+            }
+        }
     }
 
     // A throw inside the plugin scope has no handler and ends the process;
@@ -438,6 +482,7 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
         invokeRequestNotificationCallback(false)
         invokeRequestLocalNetworkCallback(false)
         invokeRequestInstalledAppsCallback(false)
+        finishApkInstall(Activity.RESULT_CANCELED)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -495,14 +540,28 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
         invokeRequestNotificationCallback(false)
         invokeRequestLocalNetworkCallback(false)
         invokeRequestInstalledAppsCallback(false)
+        finishApkInstall(Activity.RESULT_CANCELED)
     }
 
     private fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode == APP_UPDATE_REQUEST_CODE) {
+            finishApkInstall(resultCode)
+            return true
+        }
         if (requestCode != VPN_PERMISSION_REQUEST_CODE) {
             return false
         }
         invokeVpnPrepareCallback(resultCode == Activity.RESULT_OK)
         return true
+    }
+
+    private fun finishApkInstall(resultCode: Int) {
+        val result = apkInstallResult ?: return
+        apkInstallResult = null
+        when (resultCode) {
+            Activity.RESULT_OK, Activity.RESULT_CANCELED -> result.success(null)
+            else -> result.error("UPDATE_INSTALL_FAILED", null, null)
+        }
     }
 
     private fun onRequestPermissionsResultListener(
@@ -542,5 +601,6 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
         const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1002
         const val INSTALLED_APPS_PERMISSION_REQUEST_CODE = 1003
         const val LOCAL_NETWORK_PERMISSION_REQUEST_CODE = 1004
+        const val APP_UPDATE_REQUEST_CODE = 1005
     }
 }

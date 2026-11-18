@@ -17,24 +17,26 @@ class SharedStateTest {
 
     @Test
     fun `setup params use the kebab-case spelling Flutter writes`() {
-        val json = """{"test-url":"https://example.test/204","selected-map":{"GLOBAL":"auto"},"skip-cert-verify":true}"""
+        val json = """{"test-url":"https://example.test/204","selected-map":{"GLOBAL":"auto"},"skip-cert-verify":true,"delay-test-timeout":2000}"""
 
         val params = gson.fromJson(json, SetupParams::class.java)
 
         assertEquals("https://example.test/204", params.testUrl)
         assertEquals(mapOf("GLOBAL" to "auto"), params.selectedMap)
         assertTrue(params.skipCertVerify)
+        assertEquals(2000, params.delayTestTimeout)
     }
 
     @Test
     fun `setup params serialize back to the same spelling`() {
         val encoded = gson.toJson(
-            SetupParams(testUrl = "https://example.test", selectedMap = emptyMap()),
+            SetupParams(testUrl = "https://example.test", selectedMap = emptyMap(), delayTestTimeout = 8000),
         )
 
         assertTrue(encoded.contains("\"test-url\""))
         assertTrue(encoded.contains("\"selected-map\""))
         assertTrue(encoded.contains("\"skip-cert-verify\""))
+        assertTrue(encoded.contains("\"delay-test-timeout\":8000"))
         assertTrue(!encoded.contains("testUrl"))
         assertTrue(!encoded.contains("selectedMap"))
     }

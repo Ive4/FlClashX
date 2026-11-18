@@ -8502,11 +8502,41 @@ class AppLocalizations {
     );
   }
 
-  /// `Automatic update installation currently supports Windows only.`
-  String get updateWindowsOnly {
+  /// `Automatic update installation is unavailable for this build or platform.`
+  String get updateUnavailable {
     return Intl.message(
-      'Automatic update installation currently supports Windows only.',
-      name: 'updateWindowsOnly',
+      'Automatic update installation is unavailable for this build or platform.',
+      name: 'updateUnavailable',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `After verification, Android will ask you to confirm installation. You may need to allow FlClashX to install unknown apps in system settings.`
+  String get updateAndroidInstallNotice {
+    return Intl.message(
+      'After verification, Android will ask you to confirm installation. You may need to allow FlClashX to install unknown apps in system settings.',
+      name: 'updateAndroidInstallNotice',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The update was signed with a different key than the installed app.`
+  String get updateAndroidSignatureMismatch {
+    return Intl.message(
+      'The update was signed with a different key than the installed app.',
+      name: 'updateAndroidSignatureMismatch',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Android could not install the update.`
+  String get updateAndroidInstallFailed {
+    return Intl.message(
+      'Android could not install the update.',
+      name: 'updateAndroidInstallFailed',
       desc: '',
       args: [],
     );
