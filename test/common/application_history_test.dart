@@ -99,6 +99,76 @@ void main() {
   );
 
   test(
+    'legacy versioned history is compacted once and stays grouped',
+    () async {
+      const old = r'C:\nvm\v20.19.0\node.exe';
+      const newer = r'C:\nvm\v22.14.0\node.exe';
+      const upgraded = r'C:\nvm\v24.3.0\node.exe';
+      const other = r'D:\nvm\v22.14.0\node.exe';
+      final first = DateTime.utc(2026, 1, 1);
+      final last = DateTime.utc(2026, 1, 2);
+      final upgradeTime = DateTime.utc(2026, 1, 3);
+
+      Map<String, Object> row(String path, DateTime at) => {
+        'path': true,
+        'content': path,
+        'windows': true,
+        'first': at.toIso8601String(),
+        'last': at.toIso8601String(),
+      };
+
+      var saved = jsonEncode({
+        'entries': [row(newer, last), row(old, first), row(other, last)],
+      });
+      var writes = 0;
+      ApplicationHistory store() => ApplicationHistory(
+        read: () async => saved,
+        write: (value) async {
+          writes++;
+          saved = value;
+        },
+      );
+
+      final history = store();
+      addTearDown(history.dispose);
+      const grouped = r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe';
+      await history.load();
+      expect(history.entries, hasLength(2));
+      expect(history.entries[grouped]?.identity.content, newer);
+      expect(history.entries[grouped]?.firstSeen, first);
+      expect(history.entries[grouped]?.lastSeen, last);
+      final packages = history.packages(
+        const AccessControlProps(
+          rejectList: [r'windows:PROCESS-PATH:C:\nvm\v20.19.0\node.exe'],
+        ),
+        windows: true,
+      );
+      expect(packages, hasLength(2));
+      expect(
+        packages
+            .singleWhere((app) => app.packageName == grouped)
+            .applicationPath,
+        newer,
+      );
+      expect(writes, 1);
+      final restored = store();
+      addTearDown(restored.dispose);
+      await restored.load();
+      expect(restored.entries, hasLength(2));
+      expect(restored.entries[grouped]?.firstSeen, first);
+      expect(writes, 1);
+
+      await restored.record([connection(upgraded)], true, upgradeTime);
+      await restored.record([connection(old)], true, last);
+      expect(restored.entries, hasLength(2));
+      expect(restored.entries[grouped]?.identity.content, upgraded);
+      expect(restored.entries[grouped]?.firstSeen, first);
+      expect(restored.entries[grouped]?.lastSeen, upgradeTime);
+      expect(writes, 2);
+    },
+  );
+
+  test(
     'saved selections remain available when no process is running',
     () async {
       final history = ApplicationHistory(

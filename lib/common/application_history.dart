@@ -31,6 +31,7 @@ class ApplicationHistory extends ChangeNotifier {
 
   Future<void> _load() async {
     final raw = await _read();
+    var merged = false;
     if (raw != null) {
       try {
         final data = jsonDecode(raw) as Map<String, dynamic>;
@@ -46,14 +47,7 @@ class ApplicationHistory extends ChangeNotifier {
             if (!identity.canRoute) continue;
             final first = DateTime.parse(row['first'] as String);
             final last = DateTime.parse(row['last'] as String);
-            final old = entries[identity.key];
-            entries[identity.key] = ApplicationHistoryEntry(
-              old?.identity ?? identity,
-              old != null && old.firstSeen.isBefore(first)
-                  ? old.firstSeen
-                  : first,
-              old != null && old.lastSeen.isAfter(last) ? old.lastSeen : last,
-            );
+            merged |= !_merge(ApplicationHistoryEntry(identity, first, last));
           } catch (_) {
             /* Skip a damaged entry, retaining the others. */
           }
@@ -63,6 +57,28 @@ class ApplicationHistory extends ChangeNotifier {
       }
     }
     notifyListeners();
+    if (merged) {
+      await _save().catchError((Object _) {});
+    }
+  }
+
+  bool _merge(ApplicationHistoryEntry entry) {
+    final key = entry.identity.forRouting.selectionKey;
+    final old = entries[key];
+    if (old == null) {
+      entries[key] = entry;
+      return true;
+    }
+    final latest = entry.lastSeen.isAfter(old.lastSeen) ? entry : old;
+    final first = entry.firstSeen.isBefore(old.firstSeen)
+        ? entry.firstSeen
+        : old.firstSeen;
+    entries[key] = ApplicationHistoryEntry(
+      latest.identity,
+      first,
+      latest.lastSeen,
+    );
+    return false;
   }
 
   Future<void> record(
@@ -82,14 +98,7 @@ class ApplicationHistory extends ChangeNotifier {
       );
       if (!identity.canRoute) continue;
       recorded = true;
-      final old = entries[identity.key];
-      if (old != null && old.lastSeen.isAfter(at)) continue;
-      added |= old == null;
-      entries[identity.key] = ApplicationHistoryEntry(
-        old?.identity ?? identity,
-        old?.firstSeen ?? at,
-        at,
-      );
+      added |= _merge(ApplicationHistoryEntry(identity, at, at));
     }
     if (!recorded) return;
     if (added ||
@@ -102,17 +111,10 @@ class ApplicationHistory extends ChangeNotifier {
   }
 
   List<Package> packages(AccessControlProps access, {required bool windows}) {
-    final known = <String, ApplicationHistoryEntry>{};
-    final identities = <String, ApplicationIdentity>{};
-    for (final entry in entries.values) {
-      final identity = entry.identity;
-      if (identity.windows != windows) continue;
-      final key = identity.forRouting.selectionKey;
-      final old = known[key];
-      if (old != null && !entry.lastSeen.isAfter(old.lastSeen)) continue;
-      known[key] = entry;
-      identities[key] = identity;
-    }
+    final identities = {
+      for (final MapEntry(:key, :value) in entries.entries)
+        if (value.identity.windows == windows) key: value.identity,
+    };
     for (final key in {...access.acceptList, ...access.rejectList}) {
       final identity = ApplicationIdentity.fromSelection(key, windows: windows);
       if (identity == null) continue;
@@ -125,7 +127,7 @@ class ApplicationHistory extends ChangeNotifier {
           label: identity.name,
           system: false,
           internet: true,
-          lastUpdateTime: known[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
+          lastUpdateTime: entries[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
           applicationPath: identity.action == RuleAction.PROCESS_PATH
               ? identity.content
               : null,
