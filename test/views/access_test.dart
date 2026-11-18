@@ -10,6 +10,7 @@ import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/access.dart';
 import 'package:fl_clash/widgets/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,8 +47,17 @@ class _TestSystemAction extends SystemAction {
   bool grantOnRequest = true;
   int requestCount = 0;
   int loadCount = 0;
+  int permissionCheckCount = 0;
   bool failLoading = false;
+  PlatformException? scanError;
+  List<String> chinaPackages = const [];
   List<Package> grantedPackages = const [];
+
+  @override
+  Future<List<String>> getChinaPackageNames() async {
+    if (scanError case final error?) throw error;
+    return chinaPackages;
+  }
 
   @override
   Future<List<Package>> getPackages() async {
@@ -60,8 +70,10 @@ class _TestSystemAction extends SystemAction {
   }
 
   @override
-  Future<bool> isInstalledAppsPermissionGranted() async =>
-      installedAppsPermissionGranted;
+  Future<bool> isInstalledAppsPermissionGranted() async {
+    permissionCheckCount++;
+    return installedAppsPermissionGranted;
+  }
 
   @override
   Future<bool> requestInstalledAppsPermission() async {
@@ -80,6 +92,11 @@ Future<void> openBarMenu(WidgetTester tester) async {
   );
   await tester.pumpAndSettle();
 }
+
+Finder accessMenuItem(String text) => find.descendant(
+  of: find.byType(CommonPopupMenu),
+  matching: find.text(text),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -121,7 +138,10 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: TestApp(child: AccessView(isOhos: isOhos, isDesktop: false)),
+        child: TestApp(
+          withStatusManager: true,
+          child: AccessView(isOhos: isOhos, isDesktop: false),
+        ),
       ),
     );
     await tester.pump();
@@ -130,6 +150,14 @@ void main() {
 
   Future<void> teardownView(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
+  }
+
+  Future<void> runMenuAction(WidgetTester tester, String label) async {
+    await openBarMenu(tester);
+    await tester.tap(accessMenuItem(AppLocalizations.current.action));
+    await tester.pumpAndSettle();
+    await tester.tap(accessMenuItem(label));
+    await tester.pumpAndSettle();
   }
 
   group('visible package list', () {
@@ -366,18 +394,28 @@ void main() {
       seedAccessControl(
         const AccessControlProps(
           enable: true,
-          rejectList: ['com.example.browser'],
+          rejectList: [
+            'com.example.browser',
+            'com.android.settings',
+            'com.example.offline',
+            'com.example.uninstalled',
+          ],
         ),
       );
       await pumpAccessView(tester);
       final l10n = AppLocalizations.current;
 
       expect(find.text(l10n.accessControlNotAllowDesc), findsOneWidget);
-      expect(find.text(l10n.accessControlSelectedCount(1)), findsOneWidget);
+      expect(find.text(l10n.accessControlSelectedCount(3)), findsOneWidget);
 
       await tester.tap(find.text('Chat'));
       await tester.pump();
-      expect(find.text(l10n.accessControlSelectedCount(2)), findsOneWidget);
+      expect(find.text(l10n.accessControlSelectedCount(4)), findsOneWidget);
+
+      container.read(queryProvider(QueryTag.access).notifier).value = 'chat';
+      await tester.pumpAndSettle();
+      expect(find.text('Browser'), findsNothing);
+      expect(find.text(l10n.accessControlSelectedCount(4)), findsOneWidget);
 
       container
           .read(accessControlStateProvider.notifier)
@@ -463,7 +501,10 @@ void main() {
     testWidgets('searching selects then clears only the matching apps', (
       tester,
     ) async {
-      seedAccessControl(const AccessControlProps(enable: true));
+      const hidden = ['com.example.browser', 'com.android.settings'];
+      seedAccessControl(
+        const AccessControlProps(enable: true, rejectList: hidden),
+      );
       await pumpAccessView(tester);
 
       await tester.tap(find.byTooltip('Search'));
@@ -474,12 +515,13 @@ void main() {
       await tester.tap(find.byTooltip('Select all'));
       await tester.pumpAndSettle();
       expect(container.read(accessControlStateProvider).currentList, [
+        ...hidden,
         'com.example.chat',
       ]);
 
       await tester.tap(find.byTooltip('Deselect all'));
       await tester.pumpAndSettle();
-      expect(container.read(accessControlStateProvider).currentList, isEmpty);
+      expect(container.read(accessControlStateProvider).currentList, hidden);
 
       await teardownView(tester);
     });
@@ -506,7 +548,7 @@ void main() {
     });
   });
 
-  testWidgets('asks the platform for the app list on every entry', (
+  testWidgets('asks for the app list and permission on every Android entry', (
     tester,
   ) async {
     systemAction.grantedPackages = [
@@ -518,12 +560,42 @@ void main() {
     await pumpAccessView(tester);
 
     expect(systemAction.loadCount, 1);
+    expect(systemAction.permissionCheckCount, 1);
     expect(find.text('Fresh'), findsOneWidget);
+    await teardownView(tester);
+
+    await pumpAccessView(tester);
+    expect(systemAction.loadCount, 2);
+    expect(systemAction.permissionCheckCount, 2);
 
     await teardownView(tester);
   });
 
   group('installed apps permission', () {
+    testWidgets('keeps known apps and choices while offering authorization', (
+      tester,
+    ) async {
+      systemAction.installedAppsPermissionGranted = false;
+      const props = AccessControlProps(
+        enable: true,
+        acceptList: ['com.example.uninstalled'],
+        rejectList: ['com.example.browser', 'com.android.settings'],
+      );
+      seedAccessControl(props);
+      await pumpAccessView(tester);
+
+      expect(find.text('Browser'), findsOneWidget);
+      expect(find.text('App list permission required'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TonalButton, 'Authorize'));
+      await tester.pumpAndSettle();
+
+      expect(systemAction.requestCount, 1);
+      expect(find.text('Authorize'), findsNothing);
+      expect(container.read(accessControlStateProvider), props);
+      expect(container.read(vpnSettingProvider).accessControlProps, props);
+      await teardownView(tester);
+    });
+
     testWidgets('prompts for the permission when the app list is empty', (
       tester,
     ) async {
@@ -611,13 +683,17 @@ void main() {
       await teardownView(tester);
     });
 
-    testWidgets('drops hidden packages and sorts what it persists', (
+    testWidgets('keeps hidden packages and sorts what it persists', (
       tester,
     ) async {
       seedAccessControl(
         const AccessControlProps(
           enable: true,
-          rejectList: ['com.android.settings'],
+          rejectList: [
+            'com.example.uninstalled',
+            'com.example.offline',
+            'com.android.settings',
+          ],
         ),
       );
       await pumpAccessView(tester);
@@ -634,9 +710,155 @@ void main() {
           .read(vpnSettingProvider)
           .accessControlProps
           .rejectList;
-      expect(saved, ['com.example.browser', 'com.example.chat']);
+      expect(saved, [
+        'com.android.settings',
+        'com.example.browser',
+        'com.example.chat',
+        'com.example.offline',
+        'com.example.uninstalled',
+      ]);
 
       await teardownView(tester);
     });
+
+    testWidgets('saving a display filter preserves both lists as saved', (
+      tester,
+    ) async {
+      const props = AccessControlProps(
+        enable: true,
+        isFilterSystemApp: false,
+        acceptList: ['com.example.offline', 'com.example.browser'],
+        rejectList: ['com.example.chat', 'com.android.settings'],
+      );
+      seedAccessControl(props);
+      await pumpAccessView(tester);
+
+      await openBarMenu(tester);
+      await tester.tap(accessMenuItem(AppLocalizations.current.settings));
+      await tester.pumpAndSettle();
+      await tester.tap(accessMenuItem(AppLocalizations.current.systemApp));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Save'));
+      await tester.pumpAndSettle();
+
+      final saved = container.read(vpnSettingProvider).accessControlProps;
+      expect(saved, props.copyWith(isFilterSystemApp: true));
+      expect(saved.forRouting, props.forRouting);
+      await teardownView(tester);
+    });
+  });
+
+  group('smart selection', () {
+    testWidgets('preserves both lists when the platform scan fails', (
+      tester,
+    ) async {
+      systemAction.scanError = PlatformException(code: 'scan-failed');
+      const props = AccessControlProps(
+        enable: true,
+        acceptList: ['com.example.chat'],
+        rejectList: ['com.example.browser', 'com.example.uninstalled'],
+      );
+      seedAccessControl(props);
+      await pumpAccessView(tester);
+
+      await runMenuAction(tester, AppLocalizations.current.intelligentSelected);
+
+      expect(container.read(accessControlStateProvider), props);
+      await teardownView(tester);
+    });
+
+    testWidgets('only reassigns packages visible through search and filters', (
+      tester,
+    ) async {
+      systemAction.chinaPackages = [
+        'com.example.chat',
+        'com.android.settings',
+        'com.example.offline',
+      ];
+      seedAccessControl(
+        const AccessControlProps(
+          enable: true,
+          acceptList: ['com.example.chat', 'com.android.settings'],
+          rejectList: [
+            'com.example.browser',
+            'com.example.offline',
+            'com.example.uninstalled',
+          ],
+        ),
+      );
+      await pumpAccessView(tester);
+      container.read(queryProvider(QueryTag.access).notifier).value = 'chat';
+      await tester.pump();
+
+      await runMenuAction(tester, AppLocalizations.current.intelligentSelected);
+
+      final state = container.read(accessControlStateProvider);
+      expect(state.acceptList, ['com.android.settings']);
+      expect(
+        state.rejectList,
+        unorderedEquals([
+          'com.example.browser',
+          'com.example.chat',
+          'com.example.offline',
+          'com.example.uninstalled',
+        ]),
+      );
+      await teardownView(tester);
+    });
+  });
+
+  group('Android clipboard import', () {
+    Future<void> importText(WidgetTester tester, String? text) async {
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        return call.method == 'Clipboard.getData' && text != null
+            ? {'text': text}
+            : null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await runMenuAction(tester, AppLocalizations.current.clipboardImport);
+    }
+
+    testWidgets('trims and deduplicates valid installed and unknown names', (
+      tester,
+    ) async {
+      await pumpAccessView(tester);
+      await importText(
+        tester,
+        ' com.example.chat \r\nnot a package\ncom.example.chat\n'
+        'com.example.A_2\ncom.2invalid\ncom.example.chat.\n',
+      );
+
+      expect(container.read(accessControlStateProvider).rejectList, [
+        'com.example.chat',
+        'com.example.A_2',
+      ]);
+      await teardownView(tester);
+    });
+
+    for (final (label, text) in [
+      ('invalid', 'com.1invalid\nno spaces allowed'),
+      ('empty', ' \r\n'),
+      ('missing', null),
+    ]) {
+      testWidgets('reports $label clipboard data and keeps the list', (
+        tester,
+      ) async {
+        const props = AccessControlProps(rejectList: ['com.example.chat']);
+        seedAccessControl(props);
+        await pumpAccessView(tester);
+
+        await importText(tester, text);
+
+        expect(
+          find.text('No package names found in the clipboard'),
+          findsOneWidget,
+        );
+        expect(container.read(accessControlStateProvider), props);
+        await teardownView(tester);
+      });
+    }
   });
 }

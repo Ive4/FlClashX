@@ -183,6 +183,9 @@ class SystemAction extends _$SystemAction {
     return await app?.requestInstalledAppsPermission() ?? false;
   }
 
+  Future<List<String>?> getChinaPackageNames() async =>
+      app?.getChinaPackageNames();
+
   Future<void> handleExit([bool needSave = true]) {
     final coordinator = _exitCoordinator ??= SystemExitCoordinator(
       watchdogDuration: exitWatchdogDuration,

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/common/application_history.dart';
 import 'package:fl_clash/common/application_proxy.dart';
@@ -13,6 +15,8 @@ import 'package:fl_clash/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final _androidPackageNamePattern = RegExp(r'^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$');
 
 class AccessView extends ConsumerStatefulWidget {
   const AccessView({super.key, this.isOhos, this.isDesktop, this.isWindows});
@@ -72,12 +76,26 @@ class _AccessViewState extends ConsumerState<AccessView>
 
   Future<void> _loadPackages() async {
     final action = ref.read(systemActionProvider.notifier);
-    final packages = _isDesktop
-        ? await action.getDesktopPackages(windows: _isWindows)
-        : await action.getPackages();
-    if (_isDesktop) return;
-    final granted =
-        packages.isNotEmpty || await action.isInstalledAppsPermissionGranted();
+    if (_isDesktop) {
+      await action.getDesktopPackages(windows: _isWindows);
+      return;
+    }
+    if (_isOhos) {
+      final packages = await action.getPackages();
+      _updateInstalledAppsPermission(
+        packages.isNotEmpty || await action.isInstalledAppsPermissionGranted(),
+      );
+      return;
+    }
+    await Future.wait<void>([
+      action.getPackages(),
+      action.isInstalledAppsPermissionGranted().then(
+        _updateInstalledAppsPermission,
+      ),
+    ]);
+  }
+
+  void _updateInstalledAppsPermission(bool granted) {
     if (!mounted || granted == _installedAppsPermissionGranted) {
       return;
     }
@@ -138,16 +156,16 @@ class _AccessViewState extends ConsumerState<AccessView>
 
   IconButtonData _buildSelectAllAction({
     required bool isSelectedAll,
-    required List<String> allValueList,
+    required Set<String> visibleNames,
   }) {
     void onPressed() {
       ref.read(accessControlStateProvider.notifier).update((state) {
         final newSet = Set<String>.from(state.currentList);
-        final isSelectedAll = newSet.containsAll(allValueList);
+        final isSelectedAll = newSet.containsAll(visibleNames);
         if (isSelectedAll) {
-          newSet.removeAll(allValueList);
+          newSet.removeAll(visibleNames);
         } else {
-          newSet.addAll(allValueList);
+          newSet.addAll(visibleNames);
         }
         return state.copyWithNewList(newSet.toList());
       });
@@ -167,30 +185,35 @@ class _AccessViewState extends ConsumerState<AccessView>
           );
   }
 
-  Future<void> _intelligentSelected() async {
-    final packageNames = ref.read(
-      packagesProvider.select((state) => state.map((item) => item.packageName)),
-    );
-    if (packageNames.isEmpty) {
+  Future<void> _intelligentSelected(Set<String> visibleNames) async {
+    if (visibleNames.isEmpty || ref.read(loadingProvider(LoadingTag.access))) {
       return;
     }
-    final selectedPackageNames =
-        (await globalState.loadingRun<List<String>>(() async {
-          return await app?.getChinaPackageNames() ?? [];
-        }, tag: LoadingTag.access))?.toSet() ??
-        {};
-    final acceptList = packageNames
-        .where((item) => !selectedPackageNames.contains(item))
-        .toList();
-    final rejectList = packageNames
-        .where((item) => selectedPackageNames.contains(item))
-        .toList();
-    ref
-        .read(accessControlStateProvider.notifier)
-        .update(
-          (state) =>
-              state.copyWith(acceptList: acceptList, rejectList: rejectList),
-        );
+    final action = ref.read(systemActionProvider.notifier);
+    final chinaPackageNames = await globalState.loadingRun(
+      action.getChinaPackageNames,
+      tag: LoadingTag.access,
+    );
+    if (!mounted || chinaPackageNames == null) return;
+    final china = chinaPackageNames.toSet();
+
+    List<String> replaceVisible(
+      List<String> list,
+      bool Function(String) test,
+    ) => [
+      ...list.where((name) => !visibleNames.contains(name)),
+      ...visibleNames.where(test),
+    ];
+
+    _update(
+      (state) => state.copyWith(
+        acceptList: replaceVisible(
+          state.acceptList,
+          (name) => !china.contains(name),
+        ),
+        rejectList: replaceVisible(state.rejectList, china.contains),
+      ),
+    );
   }
 
   void _handleSelected(String packageName) {
@@ -218,28 +241,26 @@ class _AccessViewState extends ConsumerState<AccessView>
     }
   }
 
-  AccessControlProps _getRealAccessControlProps(
-    AccessControlProps accessControl,
+  AccessControlProps _accessControlForSave(
+    AccessControlProps draft,
+    AccessControlProps saved,
   ) {
     if (_isDesktop) {
-      return groupVersionedApplications(accessControl, windows: _isWindows);
+      return groupVersionedApplications(draft, windows: _isWindows);
     }
-    final packages = ref.read(packagesProvider);
-    if (packages.isEmpty || _isOhos) {
-      return accessControl;
+    if (_isOhos || identical(draft, saved)) {
+      return draft;
     }
-    final viewPackageNames = packages
-        .whereVisible(
-          isFilterSystemApp: accessControl.isFilterSystemApp,
-          isFilterNonInternetApp: accessControl.isFilterNonInternetApp,
-        )
-        .map((item) => item.packageName)
-        .toSet();
-    return accessControl.copyWithNewList(
-      accessControl.currentList
-          .where((item) => viewPackageNames.contains(item))
-          .toList()
-        ..sort(),
+
+    List<String> sortChangedList(List<String> list, List<String> previous) =>
+        const ListEquality<String>().equals(list, previous) ||
+            const UnorderedIterableEquality<String>().equals(list, previous)
+        ? previous
+        : ([...list]..sort());
+
+    return draft.copyWith(
+      acceptList: sortChangedList(draft.acceptList, saved.acceptList),
+      rejectList: sortChangedList(draft.rejectList, saved.rejectList),
     );
   }
 
@@ -249,7 +270,10 @@ class _AccessViewState extends ConsumerState<AccessView>
         .read(vpnSettingProvider.notifier)
         .update(
           (state) => state.copyWith(
-            accessControlProps: _getRealAccessControlProps(accessControl),
+            accessControlProps: _accessControlForSave(
+              accessControl,
+              state.accessControlProps,
+            ),
           ),
         );
   }
@@ -263,14 +287,29 @@ class _AccessViewState extends ConsumerState<AccessView>
     });
   }
 
-  Future<void> _importFormClipboard() async {
+  Future<void> _importFromClipboard() async {
     await globalState.safeRun(() async {
-      final data = await Clipboard.getData('text/plain');
-      final text = data?.text;
-      if (text == null) return;
-      final list = text.split('\n');
-      ref.read(accessControlStateProvider.notifier).update((state) {
-        final updated = state.copyWithNewList(list.toSet().toList());
+      final text = (await Clipboard.getData('text/plain'))?.text;
+      if (!mounted) return;
+      final List<String> list;
+      if (_isDesktop || _isOhos) {
+        if (text == null) return;
+        list = text.split('\n').toSet().toList();
+      } else {
+        list = const LineSplitter()
+            .convert(text ?? '')
+            .map((line) => line.trim())
+            .where(_androidPackageNamePattern.hasMatch)
+            .toSet()
+            .toList();
+        if (list.isEmpty) {
+          throw MessageException(
+            context.appLocalizations.clipboardNoPackageNames,
+          );
+        }
+      }
+      _update((state) {
+        final updated = state.copyWithNewList(list);
         return _isDesktop
             ? groupVersionedApplications(updated, windows: _isWindows)
             : updated;
@@ -282,6 +321,7 @@ class _AccessViewState extends ConsumerState<AccessView>
   List<CommonPopupMenuItem> _buildMenuItems(
     BuildContext context,
     AccessControlProps accessControl,
+    Set<String> visibleNames,
   ) {
     final appLocalizations = context.appLocalizations;
     String modeText(AccessControlMode mode) => switch (mode) {
@@ -365,7 +405,7 @@ class _AccessViewState extends ConsumerState<AccessView>
             CommonPopupMenuItem(
               glyph: AppGlyphs.sparkle,
               label: appLocalizations.intelligentSelected,
-              onPressed: _intelligentSelected,
+              onPressed: () => _intelligentSelected(visibleNames),
             ),
           CommonPopupMenuItem(
             glyph: AppGlyphs.copy,
@@ -375,7 +415,7 @@ class _AccessViewState extends ConsumerState<AccessView>
           CommonPopupMenuItem(
             glyph: AppGlyphs.paste,
             label: appLocalizations.clipboardImport,
-            onPressed: _importFormClipboard,
+            onPressed: _importFromClipboard,
           ),
         ],
       ),
@@ -509,27 +549,30 @@ class _AccessViewState extends ConsumerState<AccessView>
           ],
         )
         .toList();
-    final currentList = accessControl.currentList;
-    final viewPackageNameList = viewPackages.map((e) => e.packageName).toList();
-    final valueList = currentList.intersection(viewPackageNameList);
+    final selected = accessControl.currentList.toSet();
+    final visibleNames = viewPackages
+        .map((package) => package.packageName)
+        .toSet();
+    final countableNames = _isDesktop || _isOhos
+        ? visibleNames
+        : packages.map((package) => package.packageName).toSet();
     final needsInstalledAppsPermission =
         packages.isEmpty && !_installedAppsPermissionGranted;
     final selectAllAction =
         accessControl.enable &&
             !needsInstalledAppsPermission &&
-            viewPackageNameList.isNotEmpty
+            visibleNames.isNotEmpty
         ? _buildSelectAllAction(
-            isSelectedAll: valueList.length == viewPackageNameList.length,
-            allValueList: viewPackageNameList,
+            isSelectedAll: selected.containsAll(visibleNames),
+            visibleNames: visibleNames,
           )
         : null;
-    final hasChanges = ref.watch(
-      vpnSettingProvider.select(
-        (state) =>
-            _getRealAccessControlProps(state.accessControlProps) !=
-            _getRealAccessControlProps(accessControl),
-      ),
+    final saved = ref.watch(
+      vpnSettingProvider.select((state) => state.accessControlProps),
     );
+    final hasChanges =
+        _accessControlForSave(accessControl, saved) !=
+        _accessControlForSave(saved, saved);
     return CommonPopScope(
       onPop: hasChanges
           ? (_) {
@@ -551,7 +594,7 @@ class _AccessViewState extends ConsumerState<AccessView>
               )
             : null,
         iconActions: [?selectAllAction],
-        menuItems: _buildMenuItems(context, accessControl),
+        menuItems: _buildMenuItems(context, accessControl, visibleNames),
         body: needsInstalledAppsPermission
             ? _buildInstalledAppsPermissionStatus()
             : FloatingFootBar(
@@ -563,7 +606,10 @@ class _AccessViewState extends ConsumerState<AccessView>
                     ),
                   ),
                   accessControl: accessControl,
-                  selectedCount: valueList.length,
+                  selectedCount: selected.intersection(countableNames).length,
+                  onAuthorize: _installedAppsPermissionGranted
+                      ? null
+                      : _handleGrantInstalledAppsPermission,
                   onEnable: () =>
                       _update((state) => state.copyWith(enable: true)),
                 ),
@@ -571,7 +617,7 @@ class _AccessViewState extends ConsumerState<AccessView>
                   status: !accessControl.enable,
                   child: _buildContent(
                     packages: viewPackages,
-                    selected: valueList.toSet(),
+                    selected: selected,
                     isSearching: query.isNotEmpty,
                   ),
                 ),
@@ -586,6 +632,7 @@ class _AccessStatus extends StatelessWidget {
     required this.accessControl,
     required this.selectedCount,
     required this.onEnable,
+    this.onAuthorize,
     this.desktop = false,
     this.desktopReady = true,
   });
@@ -593,6 +640,7 @@ class _AccessStatus extends StatelessWidget {
   final AccessControlProps accessControl;
   final int selectedCount;
   final VoidCallback onEnable;
+  final VoidCallback? onAuthorize;
   final bool desktop;
   final bool desktopReady;
 
@@ -601,7 +649,10 @@ class _AccessStatus extends StatelessWidget {
     final appLocalizations = context.appLocalizations;
     final colorScheme = context.colorScheme;
     final enabled = accessControl.enable;
-    final description = desktop && enabled
+    final showsSelectedCount = enabled && onAuthorize == null;
+    final description = onAuthorize != null
+        ? appLocalizations.installedAppsPermissionRequired
+        : desktop && enabled
         ? desktopReady
               ? appLocalizations.desktopAccessDirectDesc
               : appLocalizations.desktopAccessRequiresTun
@@ -614,12 +665,17 @@ class _AccessStatus extends StatelessWidget {
           }
         : appLocalizations.accessControlDisabledDesc;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(16, 6, enabled ? 16 : 8, 6),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        16,
+        6,
+        showsSelectedCount ? 16 : 8,
+        6,
+      ),
       child: Row(
         spacing: 12,
         children: [
           GlyphIcon(
-            enabled ? AppGlyphs.appsList : AppGlyphs.info,
+            showsSelectedCount ? AppGlyphs.appsList : AppGlyphs.info,
             size: 20,
             color: colorScheme.onSurfaceVariant,
           ),
@@ -633,7 +689,13 @@ class _AccessStatus extends StatelessWidget {
                   .copyWith(color: colorScheme.onSurface),
             ),
           ),
-          if (enabled)
+          if (onAuthorize case final authorize?)
+            TonalButton(
+              size: TonalButtonSize.compact,
+              label: appLocalizations.authorize,
+              onPressed: authorize,
+            )
+          else if (enabled)
             TonalChip(
               label: appLocalizations.accessControlSelectedCount(selectedCount),
               color: colorScheme.primary.opacity15,
