@@ -119,6 +119,7 @@ impl Engine {
         proxy_refresh.reconcile(&proxy_providers, config.raw.proxy_providers.as_ref());
         tunnel.reconcile_health_checks(&meow_config::extract_health_check_specs(
             config.raw.proxy_groups.as_deref().unwrap_or(&[]),
+            config.raw.default_delay_timeout(),
         ));
         let state = Arc::new(AppState {
             tunnel,
@@ -545,6 +546,42 @@ impl Engine {
             }
         }
         bail!("Proxy {name:?} is not part of the applied configuration")
+    }
+
+    pub fn configured_delay_timeout(&self, name: &str, url: &str) -> Option<u64> {
+        let url = url.trim();
+        let provider_timeout = self
+            .state
+            .proxy_providers
+            .iter()
+            .filter_map(|provider| {
+                let health = provider.health_check.as_ref()?;
+                let timeout = health.timeout.filter(|timeout| *timeout > 0)?;
+                (health.url.trim() == url
+                    && provider.proxies().iter().any(|proxy| proxy.name() == name))
+                .then_some(timeout)
+            })
+            .max();
+        let raw = self.state.raw_config.read();
+        let group_timeout = raw
+            .proxy_groups
+            .iter()
+            .flatten()
+            .filter_map(|group| {
+                let timeout = group.timeout.filter(|timeout| *timeout > 0)?;
+                if !group.checks_members() {
+                    return None;
+                }
+                let proxy = self.state.tunnel.proxy(&group.name)?;
+                (proxy.test_url().map(str::trim) == Some(url)
+                    && proxy
+                        .member_proxies()?
+                        .iter()
+                        .any(|member| member.name() == name))
+                .then_some(timeout)
+            })
+            .max();
+        provider_timeout.max(group_timeout)
     }
 
     pub fn selections(&self) -> HashMap<String, String> {

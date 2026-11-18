@@ -11,6 +11,8 @@ abstract class SetupParams with _$SetupParams {
     @JsonKey(name: 'selected-map') required Map<String, String> selectedMap,
     @JsonKey(name: 'test-url') required String testUrl,
     @Default(false) @JsonKey(name: 'skip-cert-verify') bool skipCertVerify,
+    @JsonKey(name: 'delay-test-timeout', includeIfNull: false)
+    int? delayTestTimeout,
     @JsonKey(includeIfNull: false) SetupBase? base,
   }) = _SetupParams;
 

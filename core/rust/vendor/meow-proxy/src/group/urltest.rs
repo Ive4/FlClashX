@@ -186,7 +186,10 @@ impl UrlTestGroup {
         }
 
         if let Some(bp) = best_proxy.as_ref() {
-            if best_delay.saturating_add(self.tolerance) < current_delay || !current_alive {
+            if !current_alive
+                || current_delay == 0
+                || best_delay.saturating_add(self.tolerance) < current_delay
+            {
                 *self.fastest.write() = Some(SmolStr::from(bp.name()));
                 return Some(Arc::clone(bp));
             }

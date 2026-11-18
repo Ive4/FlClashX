@@ -254,13 +254,11 @@ behavioral requirements in the Rust implementation. Current compatibility limits
   mutual exclusion against each other and against `patchSelectGroup` — but not against a whole config apply, which is
   what `configMu` made a proxy switch wait for, provider downloads included. `patchSelectGroup` takes `selectMu` under
   `configMu`, fixing the order as `configMu` → `selectMu`.
-- Queueing for the delay-test semaphore and probing the node each get the full timeout in `handleTestDelay`. With one
-  shared deadline, a node that waited behind a saturated semaphore reached `URLTest` with almost nothing left, so a bulk
-  test of a large subscription reported whatever sat at the back of the queue as unreachable.
-- A delay test that the Core does not answer is a fault of the Core or the channel, never a verdict on the proxy:
-  `handleTestDelay` returns within its two timeouts on every path. `asyncTestDelay` therefore returns null instead of a
-  `-1` delay, and `ProxiesAction` leaves the last measurement in place and abandons the rest of the run. Writing a
-  timeout there is what made a reachable node read as unreachable whenever the host deadline beat the Core's.
+- The Rust probe shares one deadline across its Core semaphore and request. Report measured latency from the start of the
+  request. A delay test that expires while waiting for a Core slot returns null and leaves the last measurement in place.
+  A request that runs out of its remaining budget returns `-1`. The IPC guard outlasts the Core's maximum supported budget.
+  The manual test uses the longest explicit timeout from checks covering that member and URL, or its requested timeout
+  when no explicit check matches. Group and provider checks without an explicit timeout inherit the app setting on setup.
 - Delay-test progress lives in `pendingDelayTestsProvider`, not as a sentinel value in `DelayDataSource`. A delay of 0
   used to mean "testing", which let a result and the state of a test overwrite each other and left cards spinning
   forever when the Core restarted. The run owns its keys and releases them in a `finally`, so nothing depends on a

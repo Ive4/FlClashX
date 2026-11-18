@@ -152,6 +152,177 @@ async fn probe_timeout_is_a_real_timeout_result() {
 }
 
 #[tokio::test]
+async fn delay_uses_the_longest_matching_configured_budget() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let url = format!("http://{address}/delay");
+    let other_url = format!("{url}/other");
+    let server = tokio::spawn(async move {
+        loop {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            tokio::spawn(async move {
+                let mut request = [0; 4096];
+                let mut size = stream.read(&mut request).await.unwrap();
+                if request[..size].starts_with(b"CONNECT ") {
+                    let connected = b"HTTP/1.1 200 Connection Established\r\n\r\n";
+                    if stream.write_all(connected).await.is_err() {
+                        return;
+                    }
+                    size = stream.read(&mut request).await.unwrap_or(0);
+                }
+                if size > 0 {
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                    let _ = stream
+                        .write_all(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+                        .await;
+                }
+            });
+        }
+    });
+    let provider_path = home().join("delay-timeouts-provider.yaml");
+    std::fs::write(
+        &provider_path,
+        format!(
+            "proxies:\n - {{name: feed-node, type: http, server: 127.0.0.1, port: {}}}\n",
+            address.port()
+        ),
+    )
+    .unwrap();
+    let core = configured(json!({
+        "dns":{"enable":false},
+        "delay-test-timeout":1500,
+        "proxy-providers":{"feed":{
+            "type":"file","path":provider_path,"health-check":{"url":url,"timeout":1000}
+        }},
+        "proxy-groups":[
+            {"name":"shorter","type":"url-test","use":["feed"],"proxies":["DIRECT"],"url":url,"interval":0,"timeout":1},
+            {"name":"eager","type":"fallback","proxies":["REJECT"],"url":url,"lazy":true,"timeout":2000},
+            {"name":"inherited","type":"url-test","use":["feed"],"url":other_url,"lazy":true,"timeout":0}
+        ],
+        "rules":["MATCH,DIRECT"]
+    }))
+    .await;
+    let engine = core.active().unwrap();
+    assert_eq!(
+        engine.configured_delay_timeout("feed-node", &url),
+        Some(1000)
+    );
+    assert_eq!(engine.configured_delay_timeout("DIRECT", &url), Some(1));
+    assert_eq!(
+        engine.configured_delay_timeout("feed-node", &other_url),
+        None
+    );
+    let raw = engine.state.raw_config.read().clone();
+    let checks = meow_config::extract_health_check_specs(
+        raw.proxy_groups.as_deref().unwrap(),
+        raw.default_delay_timeout(),
+    );
+    assert_eq!(
+        checks
+            .iter()
+            .map(|check| (check.group_name.as_str(), check.timeout_ms))
+            .collect::<Vec<_>>(),
+        vec![("eager", 2000), ("inherited", 1500)]
+    );
+
+    let test = |name: &str, url: &str, timeout: u64| {
+        invoke(
+            &core,
+            "asyncTestDelay",
+            json!({"proxy-name":name,"test-url":url,"timeout":timeout}),
+        )
+    };
+    assert!(
+        test("feed-node", &url, 1).await["result"]["value"]
+            .as_i64()
+            .unwrap()
+            > 0
+    );
+    assert_eq!(test("DIRECT", &url, 1000).await["result"]["value"], -1);
+    assert_eq!(
+        test("feed-node", &other_url, 1).await["result"]["value"],
+        -1
+    );
+    assert!(
+        test("feed-node", &other_url, 0).await["result"]["value"]
+            .as_i64()
+            .unwrap()
+            > 0
+    );
+    server.abort();
+    core.shutdown().await;
+}
+
+#[tokio::test]
+async fn dashboard_probe_leaves_an_unmeasured_cold_pick() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let url = format!("http://{address}/");
+    let server = tokio::spawn(async move {
+        loop {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            stream.read(&mut request).await.unwrap();
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\nConnection: close\r\n\r\n203.0.113.1")
+                .await
+                .unwrap();
+        }
+    });
+    let core = configured(json!({
+        "dns":{"enable":false},
+        "proxy-groups":[{
+            "name":"auto","type":"url-test","proxies":["REJECT","DIRECT"],
+            "url":url,"interval":0,"tolerance":50
+        }],
+        "rules":["MATCH,auto"]
+    }))
+    .await;
+    let engine = core.active().unwrap();
+    let arguments = json!({"urls":[url],"timeout":1000});
+    let initial = invoke(&core, "outboundIp", arguments.clone()).await;
+    assert_eq!(initial["result"]["error"], "failed", "{initial}");
+    let notice = engine.proxy("REJECT").unwrap();
+    assert!(
+        notice.alive(),
+        "the dashboard's direct leaf probe leaves an unknown member"
+    );
+
+    let usable = engine.proxy("DIRECT").unwrap();
+    meow_proxy::health::probe_and_record(&usable, &url, None, std::time::Duration::from_secs(1))
+        .await
+        .unwrap();
+    let result = invoke(&core, "outboundIp", arguments.clone()).await;
+    assert_eq!(
+        result["result"]["chains"],
+        json!(["DIRECT", "auto"]),
+        "{result}"
+    );
+    assert_eq!(result["result"]["body"], "203.0.113.1");
+
+    let group = engine.proxy("auto").unwrap();
+    usable.health().record_delay(60);
+    notice.health().record_delay(20);
+    let within_tolerance = invoke(&core, "outboundIp", arguments.clone()).await;
+    assert_eq!(
+        within_tolerance["result"]["chains"],
+        json!(["DIRECT", "auto"])
+    );
+    group.selection().unwrap().set("REJECT").await.unwrap();
+    let pinned = invoke(&core, "outboundIp", arguments.clone()).await;
+    assert_eq!(pinned["result"]["error"], "failed");
+    group.selection().unwrap().force_set(None);
+    usable.health().record_delay(100);
+    assert_eq!(group.current().as_deref(), Some("DIRECT"));
+    let beyond_tolerance = invoke(&core, "outboundIp", arguments).await;
+    assert_eq!(beyond_tolerance["result"]["error"], "failed");
+    assert_eq!(group.current().as_deref(), Some("REJECT"));
+
+    server.abort();
+    core.shutdown().await;
+}
+
+#[tokio::test]
 async fn side_loaded_provider_rebuilds_groups_without_replacing_mobile_tunnel() {
     let path = home().join("method-provider.yaml");
     std::fs::write(

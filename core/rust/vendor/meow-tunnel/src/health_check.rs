@@ -6,8 +6,6 @@ use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
-const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
-
 /// Owns the set of running health-check tasks, keyed by group name.
 /// `reconcile` is called on every config commit (startup, `PUT /configs`,
 /// section mutations, subscription refresh): new groups get a task, removed
@@ -155,7 +153,7 @@ async fn run_health_check_loop(inner: Weak<TunnelInner>, spec: HealthCheckSpec) 
             &fronts,
             &spec.url,
             expected_status,
-            PROBE_TIMEOUT,
+            Duration::from_millis(spec.timeout_ms),
             meow_proxy::health::PROVIDER_HEALTHCHECK_CONCURRENCY,
             hold,
         )
@@ -224,7 +222,7 @@ async fn probe_chain_targets(
             &owner,
             &spec.url,
             expected_status,
-            PROBE_TIMEOUT,
+            Duration::from_millis(spec.timeout_ms),
             hold,
         )
         .await;
@@ -260,8 +258,8 @@ fn resolve_owner(proxies: &HashMap<SmolStr, Arc<dyn Proxy>>, name: &str) -> Opti
 mod tests {
     use super::*;
     use crate::Tunnel;
+    use meow_common::health_check::DEFAULT_DELAY_TEST_TIMEOUT_MS;
     use meow_common::{Metadata, Proxy, ProxyAdapter};
-    use meow_config::extract_health_check_specs as extract_specs;
 
     fn stub_tunnel() -> Tunnel {
         let resolver = std::sync::Arc::new(meow_dns::Resolver::new(
@@ -288,6 +286,10 @@ mod tests {
         }
     }
 
+    fn extract_specs(groups: &[meow_config::raw::RawProxyGroup]) -> Vec<HealthCheckSpec> {
+        meow_config::extract_health_check_specs(groups, DEFAULT_DELAY_TEST_TIMEOUT_MS)
+    }
+
     /// Issue #648 review: `PUT /configs?force=true` persists raw intervals
     /// that never passed `build_proxy_layer` — the consumer-side clamp in
     /// `run_health_check_loop` must keep a `u64::MAX` spec from panicking
@@ -299,6 +301,7 @@ mod tests {
             group_name: "x".into(),
             url: "http://probe.test/204".into(),
             interval_secs: u64::MAX,
+            timeout_ms: DEFAULT_DELAY_TEST_TIMEOUT_MS,
             lazy: false,
         };
         let dead: Weak<TunnelInner> = Weak::new();
@@ -731,6 +734,7 @@ mod tests {
             group_name: "lazy-fb".into(),
             url: "http://probe.test/204".into(),
             interval_secs: 1,
+            timeout_ms: DEFAULT_DELAY_TEST_TIMEOUT_MS,
             lazy: true,
         };
         let task = tokio::spawn(run_health_check_loop(Arc::downgrade(tunnel.inner()), spec));
@@ -812,6 +816,7 @@ mod tests {
             group_name: "lazy-fb".into(),
             url: "http://probe.test/204".into(),
             interval_secs: 1,
+            timeout_ms: DEFAULT_DELAY_TEST_TIMEOUT_MS,
             lazy: false,
         };
         let task = tokio::spawn(run_health_check_loop(Arc::downgrade(tunnel.inner()), spec));
@@ -855,6 +860,7 @@ mod tests {
             group_name: "lb".into(),
             url: "http://probe.test/204".into(),
             interval_secs: 1,
+            timeout_ms: DEFAULT_DELAY_TEST_TIMEOUT_MS,
             lazy: false,
         };
         let task = tokio::spawn(run_health_check_loop(Arc::downgrade(tunnel.inner()), spec));
@@ -909,6 +915,7 @@ mod tests {
             group_name: "use-fb".into(),
             url: "http://probe.test/204".into(),
             interval_secs: 1,
+            timeout_ms: DEFAULT_DELAY_TEST_TIMEOUT_MS,
             lazy: false,
         };
         let task = tokio::spawn(run_health_check_loop(Arc::downgrade(tunnel.inner()), spec));

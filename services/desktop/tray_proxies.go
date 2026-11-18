@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const trayDelayResponseTimeout = 185 * time.Second
+
 type trayActionRequest struct {
 	Action string `json:"action"`
 	Group  string `json:"group,omitempty"`
@@ -260,7 +262,7 @@ func (h *host) testTrayProxies(core net.Conn, session string, generation uint64,
 			return
 		}
 		key := jobs[index]
-		data, err := h.coreInvokeOn(core, "asyncTestDelay", map[string]any{"proxy-name": key.name, "test-url": key.url, "timeout": timeout}, 2*time.Duration(timeout)*time.Millisecond+2*time.Second)
+		data, err := h.coreInvokeOn(core, "asyncTestDelay", map[string]any{"proxy-name": key.name, "test-url": key.url, "timeout": timeout}, trayDelayResponseTimeout)
 		var result struct {
 			Name  string `json:"name"`
 			Value *int   `json:"value"`

@@ -1,3 +1,6 @@
+pub const DEFAULT_DELAY_TEST_TIMEOUT_MS: u64 = 5_000;
+pub const MAX_DELAY_TEST_TIMEOUT_MS: u64 = 180_000;
+
 /// Periodic health-check descriptor for one fallback / url-test /
 /// load-balance proxy group. Extracted from `RawProxyGroup` by
 /// `meow_config::extract_health_check_specs`; the tunnel's
@@ -8,5 +11,6 @@ pub struct HealthCheckSpec {
     pub group_name: String,
     pub url: String,
     pub interval_secs: u64,
+    pub timeout_ms: u64,
     pub lazy: bool,
 }

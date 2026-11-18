@@ -661,6 +661,13 @@ impl Core {
                     Some(value) => protocol::string(value)?,
                 };
                 document["skip-cert-verify"] = json!(skip);
+                let positive_timeout = |value: &Value| value.as_u64().filter(|value| *value > 0);
+                if let Some(timeout) = positive_timeout(&a["delay-test-timeout"])
+                    .or_else(|| positive_timeout(&document["delay-test-timeout"]))
+                    .or_else(|| positive_timeout(&state.document["delay-test-timeout"]))
+                {
+                    document["delay-test-timeout"] = json!(timeout);
+                }
                 self.apply(&mut state, document).await?;
                 self.skip_certificates.store(skip, Ordering::Release);
                 if !url.is_empty() {
@@ -950,10 +957,21 @@ impl Core {
                     .filter(|s| !s.is_empty())
                     .unwrap_or(&fallback);
                 let name = protocol::field(a, "proxy-name")?;
+                let engine = self.active()?;
+                let timeout = engine
+                    .configured_delay_timeout(name, url)
+                    .unwrap_or_else(|| {
+                        a["timeout"]
+                            .as_u64()
+                            .filter(|value| *value > 0)
+                            .unwrap_or_else(|| {
+                                engine.state.raw_config.read().default_delay_timeout()
+                            })
+                    });
                 let arguments = self.probe_arguments(
-                    &json!({"url":url,"proxy-name":name,"timeout":a["timeout"].as_u64().filter(|value|*value>0).unwrap_or(5000),"max-body":0}),
+                    &json!({"url":url,"proxy-name":name,"timeout":timeout,"max-body":0}),
                 );
-                let result = probe::delay(self.active()?, &arguments).await;
+                let result = probe::delay(engine, &arguments).await;
                 let value = match result {
                     Err(error) if error.to_string().contains("queue timed out") => {
                         return Ok(Value::Null)

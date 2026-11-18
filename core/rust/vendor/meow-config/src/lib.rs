@@ -9128,6 +9128,7 @@ rules:
 /// must NOT emit a spec.
 pub fn extract_health_check_specs(
     raw_groups: &[raw::RawProxyGroup],
+    default_timeout: u64,
 ) -> Vec<meow_common::HealthCheckSpec> {
     const DEFAULT_URL: &str = "https://www.gstatic.com/generate_204";
     const DEFAULT_INTERVAL_SECS: u64 = 300;
@@ -9141,12 +9142,7 @@ pub fn extract_health_check_specs(
         }
     }
     last.iter()
-        .filter(|g| {
-            matches!(
-                g.group_type.as_str(),
-                "fallback" | "url-test" | "load-balance"
-            )
-        })
+        .filter(|g| g.checks_members())
         .filter_map(|g| {
             // Upstream `HealthCheck.auto()` is `interval != 0`: an explicit
             // `interval: 0` DISABLES periodic checks (manual/on-demand
@@ -9161,6 +9157,11 @@ pub fn extract_health_check_specs(
                 group_name: g.name.clone(),
                 url: g.url.as_deref().unwrap_or(DEFAULT_URL).to_string(),
                 interval_secs,
+                timeout_ms: g
+                    .timeout
+                    .filter(|timeout| *timeout > 0)
+                    .unwrap_or(default_timeout)
+                    .min(meow_common::health_check::MAX_DELAY_TEST_TIMEOUT_MS),
                 // Upstream defaults `lazy: true`
                 // (`GroupCommonOption{Lazy: true}`, parser.go) — groups
                 // probe only after first use.  We default `false`: eager

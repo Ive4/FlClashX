@@ -11,11 +11,13 @@ void main() {
         'selected-map': {'G1': 'P1'},
         'test-url': 'http://test.com',
         'skip-cert-verify': true,
+        'delay-test-timeout': 2000,
       };
       final params = SetupParams.fromJson(json);
       expect(params.selectedMap, {'G1': 'P1'});
       expect(params.testUrl, 'http://test.com');
       expect(params.skipCertVerify, isTrue);
+      expect(params.delayTestTimeout, 2000);
     });
 
     test('toJson uses snake-case keys', () {
@@ -27,6 +29,11 @@ void main() {
       expect(json['selected-map'], {'G1': 'P1'});
       expect(json['test-url'], 'http://t.com');
       expect(json['skip-cert-verify'], isFalse);
+      expect(json, isNot(contains('delay-test-timeout')));
+      expect(
+        params.copyWith(delayTestTimeout: 8000).toJson()['delay-test-timeout'],
+        8000,
+      );
     });
   });
 

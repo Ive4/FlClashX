@@ -10,6 +10,7 @@ _SetupParams _$SetupParamsFromJson(Map<String, dynamic> json) => _SetupParams(
   selectedMap: Map<String, String>.from(json['selected-map'] as Map),
   testUrl: json['test-url'] as String,
   skipCertVerify: json['skip-cert-verify'] as bool? ?? false,
+  delayTestTimeout: (json['delay-test-timeout'] as num?)?.toInt(),
   base: json['base'] == null
       ? null
       : SetupBase.fromJson(json['base'] as Map<String, dynamic>),
@@ -20,6 +21,7 @@ Map<String, dynamic> _$SetupParamsToJson(_SetupParams instance) =>
       'selected-map': instance.selectedMap,
       'test-url': instance.testUrl,
       'skip-cert-verify': instance.skipCertVerify,
+      'delay-test-timeout': ?instance.delayTestTimeout,
       'base': ?instance.base,
     };
 

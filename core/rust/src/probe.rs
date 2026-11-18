@@ -8,6 +8,7 @@ use meow_transport::tls::{TlsConfig, TlsLayer};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
+    future::Future,
     sync::{Arc, OnceLock},
     time::{Duration, Instant},
 };
@@ -25,7 +26,7 @@ pub fn budget(arguments: &Value) -> Duration {
             .as_u64()
             .filter(|value| *value > 0)
             .unwrap_or(10_000)
-            .min(180_000),
+            .min(meow_common::health_check::MAX_DELAY_TEST_TIMEOUT_MS),
     )
 }
 
@@ -56,11 +57,8 @@ async fn request_using(engine: Arc<Engine>, arguments: &Value, delay: bool) -> R
     } else {
         SLOTS.get_or_init(|| Semaphore::new(8))
     };
-    let _slot = tokio::time::timeout(timeout, slots.acquire())
-        .await
-        .context("Probe queue timed out")??;
-    let start = Instant::now();
     let operation = async {
+        let start = Instant::now();
         let mut url = Url::parse(arguments["url"].as_str().context("Missing probe URL")?)?;
         let name = arguments["proxy-name"].as_str().unwrap_or("");
         let limit = arguments["max-body"]
@@ -175,7 +173,22 @@ async fn request_using(engine: Arc<Engine>, arguments: &Value, delay: bool) -> R
         }
         bail!("Too many redirects")
     };
-    tokio::time::timeout(timeout, operation)
+    with_probe_slot(slots, timeout, operation).await
+}
+
+async fn with_probe_slot<T>(
+    slots: &Semaphore,
+    timeout: Duration,
+    operation: impl Future<Output = Result<T>>,
+) -> Result<T> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    let _slot = tokio::time::timeout_at(deadline, slots.acquire())
+        .await
+        .context("Probe queue timed out")??;
+    if tokio::time::Instant::now() >= deadline {
+        bail!("Probe queue timed out");
+    }
+    tokio::time::timeout_at(deadline, operation)
         .await
         .context("Probe timed out")?
 }
@@ -374,5 +387,31 @@ pub fn error_kind(error: &anyhow::Error) -> &'static str {
         "timeout"
     } else {
         "failed"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test(start_paused = true)]
+    async fn queue_and_probe_share_one_deadline() {
+        let slots = Semaphore::new(1);
+        let occupied = slots.acquire().await.unwrap();
+        let timeout = Duration::from_secs(10);
+        let start = tokio::time::Instant::now();
+        let (_, result) = tokio::join!(
+            async {
+                tokio::time::sleep(Duration::from_secs(8)).await;
+                drop(occupied);
+            },
+            with_probe_slot(&slots, timeout, async {
+                tokio::time::sleep(Duration::from_secs(4)).await;
+                Ok(())
+            }),
+        );
+        assert_eq!(result.unwrap_err().to_string(), "Probe timed out");
+        assert_eq!(start.elapsed(), timeout);
+        assert_eq!(slots.available_permits(), 1);
     }
 }

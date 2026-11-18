@@ -48,14 +48,13 @@ double systemTextScaleOf(BuildContext context) {
   return WidgetsBinding.instance.platformDispatcher.textScaleFactor;
 }
 
-/// How long, in milliseconds, the Core may spend on one manual delay test. It
-/// spends this twice in the worst case - once queueing for a slot, once on the
-/// probe itself - so the guard below has to outlast twice the longest option.
+/// The fallback budget in milliseconds for a delay test with no profile override.
 const delayTestTimeoutOptions = [500, 1000, 2000, 5000, 8000];
 
 const defaultDelayTestTimeout = 8000;
 
-const delayTestGuardDuration = Duration(seconds: 30);
+/// Outlasts the Core's 180-second cap even when a profile overrides the budget.
+const delayTestGuardDuration = Duration(seconds: 185);
 
 const delayTimedOutValue = -1;
 
@@ -79,13 +78,13 @@ const downloadTimeoutDuration = Duration(seconds: 20);
 /// A healthy source answers within a second; past this the outbound is down.
 const outboundIpTimeoutDuration = Duration(seconds: 6);
 
-/// The Core may spend a method's own timeout twice, once queueing for a probe
-/// slot and once on the request, before the transport is considered
-/// unresponsive. [budgetFactor] covers methods that spend it more than once.
+/// Gives the Core time to deliver its reply after the method's own budget.
+/// [budgetFactor] covers methods that spend the budget more than once.
 Duration coreGuardFor(int timeout, {int budgetFactor = 2}) =>
     Duration(milliseconds: timeout * budgetFactor) + const Duration(seconds: 5);
 
-Duration probeGuardDuration(ProbeParams params) => coreGuardFor(params.timeout);
+Duration probeGuardDuration(ProbeParams params) =>
+    coreGuardFor(params.timeout, budgetFactor: 1);
 
 /// Kept in step with serviceSweepBudgetFactor in core/service_check.go.
 const serviceSweepBudgetFactor = 6;

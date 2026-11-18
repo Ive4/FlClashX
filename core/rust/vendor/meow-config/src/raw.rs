@@ -207,6 +207,7 @@ pub struct RawConfig {
     pub proxies: Option<Vec<HashMap<String, serde_json::Value>>>,
     pub proxy_groups: Option<Vec<RawProxyGroup>>,
     pub proxy_providers: Option<HashMap<String, RawProxyProvider>>,
+    pub delay_test_timeout: Option<u64>,
     pub rules: Option<Vec<String>>,
     pub rule_providers: Option<HashMap<String, RawRuleProvider>>,
     /// Named sub-rule blocks. Each key is a block name; each value is a
@@ -286,6 +287,13 @@ pub struct RawConfig {
 }
 
 impl RawConfig {
+    pub fn default_delay_timeout(&self) -> u64 {
+        self.delay_test_timeout
+            .filter(|timeout| *timeout > 0)
+            .unwrap_or(meow_common::health_check::DEFAULT_DELAY_TEST_TIMEOUT_MS)
+            .min(meow_common::health_check::MAX_DELAY_TEST_TIMEOUT_MS)
+    }
+
     /// `dns.fake-ip-range`, which also sets the TUN device's default
     /// address ([`crate::parse_tun_config`]).
     pub fn fake_ip_range(&self) -> Option<&str> {
@@ -556,6 +564,8 @@ pub struct RawProxyGroup {
     pub proxies: Option<Vec<String>>,
     pub url: Option<String>,
     pub interval: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
     pub tolerance: Option<u16>,
     #[serde(
         default,
@@ -589,6 +599,15 @@ pub struct RawProxyGroup {
     /// it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
+}
+
+impl RawProxyGroup {
+    pub fn checks_members(&self) -> bool {
+        matches!(
+            self.group_type.as_str(),
+            "fallback" | "url-test" | "load-balance"
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -3108,6 +3108,7 @@ async fn swap_config_and_reconcile_tun(
         // deep clone of the group section (issue #514 review).
         let specs = meow_config::extract_health_check_specs(
             candidate.proxy_groups.as_deref().unwrap_or(&[]),
+            candidate.default_delay_timeout(),
         );
         // Same for `log-level`: a full-config PUT commits raw.log_level
         // (GET /configs echoes it) — apply it so reported and effective
@@ -4291,7 +4292,11 @@ async fn provider_healthcheck(
     let Some(health) = provider.health_check.as_ref() else {
         return StatusCode::NO_CONTENT.into_response();
     };
-    let timeout = Duration::from_millis(health.timeout.max(1));
+    let timeout = Duration::from_millis(
+        health
+            .timeout
+            .unwrap_or_else(|| state.raw_config.read().default_delay_timeout()),
+    );
     let url = health.url.clone();
     let expected = (!health.expected_status.is_empty()).then(|| health.expected_status.clone());
 
