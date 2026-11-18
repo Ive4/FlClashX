@@ -311,6 +311,8 @@
   "healthCheck": "Проверка состояния",
   "discardChanges": "Отменить изменения?",
   "quickEdit": "Быстрое редактирование",
+  "quickEditListInvalid": "Введите список YAML из непустых строк.",
+  "quickEditMapInvalid": "Введите словарь YAML с непустыми строковыми ключами и значениями.",
   "status": "Статус",
   "statusDesc": "При отключённом DNS используется системный DNS.",
   "respectRules": "Соблюдать правила",

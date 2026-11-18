@@ -1308,6 +1308,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "quickActions": MessageLookupByLibrary.simpleMessage("빠른 작업"),
     "quickEdit": MessageLookupByLibrary.simpleMessage("빠른 편집"),
+    "quickEditListInvalid": MessageLookupByLibrary.simpleMessage(
+      "비어 있지 않은 문자열의 YAML 목록을 입력하세요.",
+    ),
+    "quickEditMapInvalid": MessageLookupByLibrary.simpleMessage(
+      "키와 값이 비어 있지 않은 문자열인 YAML 맵을 입력하세요.",
+    ),
     "recentRequests": MessageLookupByLibrary.simpleMessage("최근 요청"),
     "recommendedIcons": MessageLookupByLibrary.simpleMessage("추천"),
     "recordType": MessageLookupByLibrary.simpleMessage("레코드 유형"),

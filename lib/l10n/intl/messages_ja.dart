@@ -1329,6 +1329,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "quickActions": MessageLookupByLibrary.simpleMessage("クイック操作"),
     "quickEdit": MessageLookupByLibrary.simpleMessage("クイック編集"),
+    "quickEditListInvalid": MessageLookupByLibrary.simpleMessage(
+      "空でない文字列の YAML リストを入力してください。",
+    ),
+    "quickEditMapInvalid": MessageLookupByLibrary.simpleMessage(
+      "キーと値が空でない文字列の YAML マップを入力してください。",
+    ),
     "recentRequests": MessageLookupByLibrary.simpleMessage("最近のリクエスト"),
     "recommendedIcons": MessageLookupByLibrary.simpleMessage("おすすめ"),
     "recordType": MessageLookupByLibrary.simpleMessage("レコードタイプ"),

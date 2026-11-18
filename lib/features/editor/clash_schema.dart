@@ -90,6 +90,8 @@ enum EditorSchema {
   proxy(_proxy),
   proxyGroup(_customProxyGroup, 'proxy-groups'),
   rules(_rules),
+  stringList(_strList),
+  stringMap(YamlSchema.dict(_str)),
   shareLinks(_str),
   provider(_providerFile);
 

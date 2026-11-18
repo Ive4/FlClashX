@@ -12,6 +12,7 @@ import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yaml/yaml.dart' show loadYaml;
 
 import 'quick_edit.dart';
 
@@ -1586,6 +1587,38 @@ class _ProxyValuesView extends ConsumerWidget {
   List<String> _valuesOf(WidgetRef ref) =>
       ref.read(customProxyProvider).stringsOf(path);
 
+  Future<void> _handleQuickEdit(BuildContext context, WidgetRef ref) {
+    final localizations = context.appLocalizations;
+    return showCustomQuickEdit(
+      context,
+      title: title,
+      content: yaml.encode(_valuesOf(ref)),
+      schema: EditorSchema.stringList,
+      invalidMessage: localizations.quickEditListInvalid,
+      apply: (content) {
+        final document = content.trim().isEmpty ? const [] : loadYaml(content);
+        if (document is! List) {
+          throw const FormatException();
+        }
+        final values = <String>{};
+        for (final value in document) {
+          if (value is! String || value.trim().isEmpty) {
+            throw const FormatException();
+          }
+          if (value.length > itemMaxLength) {
+            throw MessageException(
+              localizations.maxLengthTip(localizations.value, itemMaxLength),
+            );
+          }
+          if (!values.add(value)) {
+            throw MessageException(localizations.existsTip(value));
+          }
+        }
+        _save(ref, values.toList());
+      },
+    );
+  }
+
   void _save(WidgetRef ref, List<String> values) {
     ref
         .read(customProxyProvider.notifier)
@@ -1645,6 +1678,7 @@ class _ProxyValuesView extends ConsumerWidget {
       onReorder: (oldIndex, newIndex) =>
           _save(ref, _valuesOf(ref).copyAndReorder(oldIndex, newIndex)),
       onAdd: () => _handleAddOrUpdate(context, ref),
+      onQuickEdit: () => _handleQuickEdit(context, ref),
       onDelete: (values) => _save(ref, [
         for (final value in _valuesOf(ref))
           if (!values.contains(value)) value,
@@ -1664,6 +1698,51 @@ class _ProxyEntriesView extends ConsumerWidget {
 
   Map<String, String> _entriesOf(WidgetRef ref) =>
       ref.read(customProxyProvider).stringMapOf(field);
+
+  Future<void> _handleQuickEdit(BuildContext context, WidgetRef ref) {
+    final localizations = context.appLocalizations;
+    return showCustomQuickEdit(
+      context,
+      title: title,
+      content: yaml.encode(_entriesOf(ref)),
+      schema: EditorSchema.stringMap,
+      invalidMessage: localizations.quickEditMapInvalid,
+      apply: (content) {
+        final document = content.trim().isEmpty ? const {} : loadYaml(content);
+        if (document is! Map) {
+          throw const FormatException();
+        }
+        final entries = <MapEntry<String, String>>[];
+        final seen = <String>{};
+        for (final MapEntry(:key, :value) in document.entries) {
+          if (key is! String ||
+              value is! String ||
+              key.trim().isEmpty ||
+              value.trim().isEmpty) {
+            throw const FormatException();
+          }
+          if (key.length > TextInputLimits.name) {
+            throw MessageException(
+              localizations.maxLengthTip(
+                localizations.key,
+                TextInputLimits.name,
+              ),
+            );
+          }
+          if (value.length > field.maxLength) {
+            throw MessageException(
+              localizations.maxLengthTip(localizations.value, field.maxLength),
+            );
+          }
+          if (!seen.add(key.toLowerCase())) {
+            throw MessageException(localizations.existsTip(key));
+          }
+          entries.add(MapEntry(key, value));
+        }
+        _save(ref, entries);
+      },
+    );
+  }
 
   void _save(WidgetRef ref, Iterable<MapEntry<String, String>> entries) {
     ref
@@ -1736,6 +1815,9 @@ class _ProxyEntriesView extends ConsumerWidget {
         _entriesOf(ref).entries.toList().copyAndReorder(oldIndex, newIndex),
       ),
       onAdd: () => _handleAddOrUpdate(context, ref),
+      onQuickEdit: ref.read(customProxyProvider).ownedKeysOf(field).isEmpty
+          ? () => _handleQuickEdit(context, ref)
+          : null,
       onDelete: (keys) => _save(ref, [
         for (final entry in _entriesOf(ref).entries)
           if (!keys.contains(entry.key)) entry,

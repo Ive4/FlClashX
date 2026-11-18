@@ -1562,6 +1562,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.add));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.descendant(
         of: find.byType(EntryDialog<String>),
@@ -1572,6 +1574,30 @@ void main() {
     await tester.tap(find.text(l10n.confirm));
     await tester.pumpAndSettle();
     expect(find.text('tcp://peer.example.com:11010'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ListEditorPage<String, String>),
+        matching: find.byTooltip(l10n.add),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.quickEdit));
+    await tester.pumpAndSettle();
+    final editorFinder = find.byType(EditorPage);
+    final editor = tester.widget<EditorPage>(editorFinder);
+    final editorContext = tester.element(editorFinder);
+    expect(editor.content, contains('tcp://peer.example.com:11010'));
+    expect(
+      await editor.onPop!(
+        editorContext,
+        editor.title,
+        const EditorContent.text('- "tcp://new.example.com:11010"'),
+      ),
+      isTrue,
+    );
+    Navigator.of(editorContext).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('tcp://new.example.com:11010'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
@@ -1592,7 +1618,7 @@ void main() {
       'type': 'easytier',
       'network-name': 'home',
       'network-secret': 'secret',
-      'peers': ['tcp://peer.example.com:11010'],
+      'peers': ['tcp://new.example.com:11010'],
     });
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1670,18 +1696,62 @@ void main() {
     await tester.tap(row(l10n.requestHeaders));
     await tester.pumpAndSettle();
     expect(find.text('origin.example.com:443'), findsOneWidget);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(ListEditorPage<MapEntry<String, String>, String>),
-        matching: find.byTooltip(l10n.add),
-      ),
+    final headersPage = find.byType(
+      ListEditorPage<MapEntry<String, String>, String>,
     );
+    final formContainer = ProviderScope.containerOf(
+      tester.element(headersPage),
+    );
+    await tester.tap(
+      find.descendant(of: headersPage, matching: find.byTooltip(l10n.add)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.quickEdit), findsOneWidget);
+    await tester.tap(find.text(l10n.add));
     await tester.pumpAndSettle();
     await tester.enterText(fieldIn(l10n.key), 'X-Auth-Token');
     await tester.enterText(fieldIn(l10n.value), 'example-token');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(find.text('example-token'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: headersPage, matching: find.byTooltip(l10n.add)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.quickEdit));
+    await tester.pumpAndSettle();
+    final editorFinder = find.byType(EditorPage);
+    final editor = tester.widget<EditorPage>(editorFinder);
+    final editorContext = tester.element(editorFinder);
+    expect(editor.content, contains('origin.example.com:443'));
+    final invalid = editor.onPop!(
+      editorContext,
+      editor.title,
+      const EditorContent.text('X-Auth-Token: changed\nEmpty: null'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+    expect(await invalid, isFalse);
+    expect(
+      formContainer.read(customProxyProvider).stringMapOf(ProxyField.headers),
+      {'Host': 'origin.example.com:443', 'X-Auth-Token': 'example-token'},
+    );
+    expect(
+      await editor.onPop!(
+        editorContext,
+        editor.title,
+        const EditorContent.text(
+          'Host: "origin.example.com:443"\nX-Auth-Token: replacement',
+        ),
+      ),
+      isTrue,
+    );
+    Navigator.of(editorContext).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('replacement'), findsOneWidget);
+
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
@@ -1699,7 +1769,7 @@ void main() {
 
     expect(proxies.saved.single.definition['headers'], {
       'Host': 'origin.example.com:443',
-      'X-Auth-Token': 'example-token',
+      'X-Auth-Token': 'replacement',
     });
 
     await tester.pumpWidget(const SizedBox.shrink());

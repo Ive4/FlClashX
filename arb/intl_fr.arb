@@ -311,6 +311,8 @@
   "healthCheck": "Contrôle d’état",
   "discardChanges": "Abandonner les modifications ?",
   "quickEdit": "Modification rapide",
+  "quickEditListInvalid": "Saisissez une liste YAML de valeurs de texte non vides.",
+  "quickEditMapInvalid": "Saisissez une table YAML dont les clés et les valeurs sont des textes non vides.",
   "status": "État",
   "statusDesc": "Si DNS est désactivé, le DNS du système est utilisé.",
   "respectRules": "Respecter les règles",

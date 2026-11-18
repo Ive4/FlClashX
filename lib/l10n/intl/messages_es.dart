@@ -1648,6 +1648,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "quickActions": MessageLookupByLibrary.simpleMessage("Acciones rápidas"),
     "quickEdit": MessageLookupByLibrary.simpleMessage("Edición rápida"),
+    "quickEditListInvalid": MessageLookupByLibrary.simpleMessage(
+      "Introduce una lista YAML de textos no vacíos.",
+    ),
+    "quickEditMapInvalid": MessageLookupByLibrary.simpleMessage(
+      "Introduce un mapa YAML con claves y valores de texto no vacíos.",
+    ),
     "recentRequests": MessageLookupByLibrary.simpleMessage(
       "Solicitudes recientes",
     ),

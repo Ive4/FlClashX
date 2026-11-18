@@ -311,6 +311,8 @@
   "healthCheck": "상태 확인",
   "discardChanges": "변경 사항을 취소하시겠습니까?",
   "quickEdit": "빠른 편집",
+  "quickEditListInvalid": "비어 있지 않은 문자열의 YAML 목록을 입력하세요.",
+  "quickEditMapInvalid": "키와 값이 비어 있지 않은 문자열인 YAML 맵을 입력하세요.",
   "status": "상태",
   "statusDesc": "DNS를 끄면 시스템 DNS를 사용합니다.",
   "respectRules": "규칙 준수",

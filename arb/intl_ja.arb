@@ -311,6 +311,8 @@
   "healthCheck": "ヘルスチェック",
   "discardChanges": "変更を破棄しますか？",
   "quickEdit": "クイック編集",
+  "quickEditListInvalid": "空でない文字列の YAML リストを入力してください。",
+  "quickEditMapInvalid": "キーと値が空でない文字列の YAML マップを入力してください。",
   "status": "状態",
   "statusDesc": "DNS を無効にすると、システム DNS を使用します。",
   "respectRules": "ルールに従う",

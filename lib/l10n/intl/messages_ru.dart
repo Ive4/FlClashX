@@ -1601,6 +1601,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "quickActions": MessageLookupByLibrary.simpleMessage("Быстрые действия"),
     "quickEdit": MessageLookupByLibrary.simpleMessage("Быстрое редактирование"),
+    "quickEditListInvalid": MessageLookupByLibrary.simpleMessage(
+      "Введите список YAML из непустых строк.",
+    ),
+    "quickEditMapInvalid": MessageLookupByLibrary.simpleMessage(
+      "Введите словарь YAML с непустыми строковыми ключами и значениями.",
+    ),
     "recentRequests": MessageLookupByLibrary.simpleMessage("Последние запросы"),
     "recommendedIcons": MessageLookupByLibrary.simpleMessage("Рекомендуемые"),
     "recordType": MessageLookupByLibrary.simpleMessage("Тип записи"),

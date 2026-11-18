@@ -1214,6 +1214,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "quickActions": MessageLookupByLibrary.simpleMessage("快捷操作"),
     "quickEdit": MessageLookupByLibrary.simpleMessage("快速编辑"),
+    "quickEditListInvalid": MessageLookupByLibrary.simpleMessage(
+      "请输入由非空字符串组成的 YAML 列表。",
+    ),
+    "quickEditMapInvalid": MessageLookupByLibrary.simpleMessage(
+      "请输入键和值均为非空字符串的 YAML 映射。",
+    ),
     "recentRequests": MessageLookupByLibrary.simpleMessage("最近请求"),
     "recommendedIcons": MessageLookupByLibrary.simpleMessage("推荐"),
     "recordType": MessageLookupByLibrary.simpleMessage("记录类型"),

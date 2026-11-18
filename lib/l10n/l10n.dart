@@ -2521,6 +2521,26 @@ class AppLocalizations {
     return Intl.message('Quick edit', name: 'quickEdit', desc: '', args: []);
   }
 
+  /// `Enter a YAML list of non-empty text values.`
+  String get quickEditListInvalid {
+    return Intl.message(
+      'Enter a YAML list of non-empty text values.',
+      name: 'quickEditListInvalid',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enter a YAML map with non-empty text keys and values.`
+  String get quickEditMapInvalid {
+    return Intl.message(
+      'Enter a YAML map with non-empty text keys and values.',
+      name: 'quickEditMapInvalid',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Status`
   String get status {
     return Intl.message('Status', name: 'status', desc: '', args: []);

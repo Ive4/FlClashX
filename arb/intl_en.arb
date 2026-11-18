@@ -311,6 +311,8 @@
   "healthCheck": "Health check",
   "discardChanges": "Discard the changes?",
   "quickEdit": "Quick edit",
+  "quickEditListInvalid": "Enter a YAML list of non-empty text values.",
+  "quickEditMapInvalid": "Enter a YAML map with non-empty text keys and values.",
   "status": "Status",
   "statusDesc": "With DNS off, the system DNS is used.",
   "respectRules": "Respect rules",
