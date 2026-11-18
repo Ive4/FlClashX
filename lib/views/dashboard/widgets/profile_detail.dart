@@ -109,6 +109,8 @@ mixin ConfigCountsWatch<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     var failed = false;
     try {
       counts = await _loadCounts();
+    } on PathNotFoundException {
+      failed = true;
     } catch (error) {
       commonPrint.log('read applied config error: $error');
       failed = true;
