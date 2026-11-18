@@ -2,6 +2,11 @@ import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:path/path.dart' as p;
 
+const _versionNumber =
+    r'[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][a-zA-Z0-9.-]+)*';
+final _versionDirectory = RegExp('^(v|app-)?$_versionNumber\$');
+final _versionSlot = RegExp(r'^(v|app-)?\*$');
+
 class ApplicationIdentity {
   const ApplicationIdentity({
     required this.action,
@@ -41,16 +46,62 @@ class ApplicationIdentity {
   final String content;
   final bool windows;
 
-  String get key =>
-      '${action.value}:${windows ? p.windows.normalize(content).toLowerCase() : content}';
+  String get _normalizedContent =>
+      windows ? p.windows.normalize(content).toLowerCase() : content;
+  String get _separator => windows ? r'\' : '/';
+  String get key => '${action.value}:$_normalizedContent';
   String get selectionKey => '${windows ? 'windows' : 'macos'}:$key';
-  String get name => action == RuleAction.PROCESS_PATH
-      ? (windows ? p.windows : p.posix).basename(content)
-      : content;
+  String get name => action == RuleAction.PROCESS_NAME
+      ? content
+      : (windows ? p.windows : p.posix).basename(content);
+
+  ApplicationIdentity get forRouting {
+    if (action != RuleAction.PROCESS_PATH) return this;
+    final parts = _normalizedContent.split(_separator);
+    if (parts.length < 4 || parts.any(_versionSlot.hasMatch)) return this;
+    final index = parts.lastIndexWhere(
+      _versionDirectory.hasMatch,
+      parts.length - 2,
+    );
+    if (index < 2) return this;
+    final prefix = _versionDirectory.firstMatch(parts[index])!.group(1) ?? '';
+    parts[index] = '$prefix*';
+    return ApplicationIdentity(
+      action: RuleAction.PROCESS_PATH_REGEX,
+      content: parts.join(_separator),
+      windows: windows,
+    );
+  }
+
   bool get canRoute =>
       content.trim().isNotEmpty &&
       !RegExp(r'[\x00\r\n]').hasMatch(content) &&
-      (action == RuleAction.PROCESS_NAME || action == RuleAction.PROCESS_PATH);
+      (action == RuleAction.PROCESS_NAME ||
+          action == RuleAction.PROCESS_PATH ||
+          (action == RuleAction.PROCESS_PATH_REGEX && _versionSlotIndex >= 2));
+
+  int get _versionSlotIndex {
+    final parts = _normalizedContent.split(_separator);
+    if (parts.length < 4) return -1;
+    return parts.lastIndexWhere(_versionSlot.hasMatch, parts.length - 2);
+  }
+
+  String get _rulePattern {
+    final bundle =
+        !windows &&
+        action != RuleAction.PROCESS_NAME &&
+        content.endsWith('.app');
+    var pattern = _escapeRuleRegex(content);
+    if (action == RuleAction.PROCESS_PATH_REGEX) {
+      final parts = _normalizedContent.split(_separator);
+      final index = _versionSlotIndex;
+      final prefix = _versionSlot.firstMatch(parts[index])!.group(1) ?? '';
+      final escaped = parts.map(_escapeRuleRegex).toList();
+      escaped[index] = '$prefix$_versionNumber';
+      pattern = escaped.join(_escapeRuleRegex(_separator));
+    }
+    return '${windows ? '(?i)' : ''}^$pattern${bundle ? '/Contents/' : r'$'}';
+  }
 
   static ApplicationIdentity? fromSelection(
     String value, {
@@ -59,7 +110,11 @@ class ApplicationIdentity {
     final prefix = windows ? 'windows:' : 'macos:';
     if (!value.startsWith(prefix)) return null;
     final key = value.substring(prefix.length);
-    for (final action in [RuleAction.PROCESS_PATH, RuleAction.PROCESS_NAME]) {
+    for (final action in [
+      RuleAction.PROCESS_PATH,
+      RuleAction.PROCESS_NAME,
+      RuleAction.PROCESS_PATH_REGEX,
+    ]) {
       final marker = '${action.value}:';
       if (!key.startsWith(marker)) continue;
       final identity = ApplicationIdentity(
@@ -71,6 +126,29 @@ class ApplicationIdentity {
     }
     return null;
   }
+}
+
+String _escapeRuleRegex(String value) => RegExp.escape(value)
+    .replaceAll(r'\(', r'\x28')
+    .replaceAll(r'\)', r'\x29')
+    .replaceAll(',', r'\x2c');
+
+AccessControlProps groupVersionedApplications(
+  AccessControlProps access, {
+  required bool windows,
+}) {
+  List<String> group(List<String> values) => {
+    for (final value in values)
+      ApplicationIdentity.fromSelection(
+            value,
+            windows: windows,
+          )?.forRouting.selectionKey ??
+          value,
+  }.toList();
+  return access.copyWith(
+    acceptList: group(access.acceptList),
+    rejectList: group(access.rejectList),
+  );
 }
 
 typedef ApplicationConnection = ({
@@ -105,22 +183,15 @@ List<String> applicationAccessRules(
   if (!access.enable) return const [];
   final conditions = <String>{};
   for (final value in access.currentList) {
-    final identity = ApplicationIdentity.fromSelection(value, windows: windows);
+    final identity = ApplicationIdentity.fromSelection(
+      value,
+      windows: windows,
+    )?.forRouting;
     if (identity == null) continue;
-    var pattern = RegExp.escape(identity.content)
-        .replaceAll(r'\(', r'\x28')
-        .replaceAll(r'\)', r'\x29')
-        .replaceAll(',', r'\x2c');
-    final bundle =
-        !windows &&
-        identity.action == RuleAction.PROCESS_PATH &&
-        identity.content.endsWith('.app');
-    pattern =
-        '${windows ? '(?i)' : ''}^$pattern${bundle ? '/Contents/' : r'$'}';
-    final action = identity.action == RuleAction.PROCESS_PATH
-        ? RuleAction.PROCESS_PATH_REGEX
-        : RuleAction.PROCESS_NAME_REGEX;
-    conditions.add('(${action.value},$pattern)');
+    final action = identity.action == RuleAction.PROCESS_NAME
+        ? RuleAction.PROCESS_NAME_REGEX
+        : RuleAction.PROCESS_PATH_REGEX;
+    conditions.add('(${action.value},${identity._rulePattern})');
   }
   final whitelist = access.mode == AccessControlMode.acceptSelected;
   if (conditions.isEmpty) {

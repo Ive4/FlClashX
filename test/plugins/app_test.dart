@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:fl_clash/common/boot_record.dart';
 import 'package:fl_clash/common/constant.dart';
 import 'package:fl_clash/plugins/app.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +24,27 @@ void main() {
         .setMockMethodCallHandler(channel, null);
     App().clearPackageIconCache();
   });
+
+  test('Windows reads a visible icon from an executable', () async {
+    final windows = Platform.environment['WINDIR'];
+    final icon = await App().getPackageIcon(
+      '$windows\\explorer.exe',
+      desktop: true,
+    );
+    expect(icon, isA<MemoryImage>());
+    final codec = await ui.instantiateImageCodec((icon as MemoryImage).bytes);
+    addTearDown(codec.dispose);
+    final frame = await codec.getNextFrame();
+    addTearDown(frame.image.dispose);
+    final pixels = (await frame.image.toByteData())!;
+    expect(
+      Iterable<int>.generate(
+        pixels.lengthInBytes ~/ 4,
+        (index) => pixels.getUint8(index * 4 + 3),
+      ),
+      anyElement(greaterThan(0)),
+    );
+  }, skip: !Platform.isWindows);
 
   test('requests every package icon from Android only once', () async {
     var iconCallCount = 0;

@@ -44,6 +44,33 @@ void main() {
   });
 
   test(
+    'saved paths cover future versions under the same installation root',
+    () {
+      const old = r'windows:PROCESS-PATH:C:\nvm\v20.19.0\node.exe';
+      const newer = r'windows:PROCESS-PATH:C:\nvm\v22.14.0\node.exe';
+      const access = AccessControlProps(enable: true, rejectList: [old, newer]);
+      final grouped = groupVersionedApplications(access, windows: true);
+      expect(grouped.rejectList, [
+        r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe',
+      ]);
+      final rule = applicationAccessRules(access, windows: true).single;
+      expect(applicationAccessRules(grouped, windows: true), [rule]);
+      const prefix = 'AND,((IN-TYPE,TUN),(PROCESS-PATH-REGEX,(?i)';
+      const suffix = ')),DIRECT';
+      expect(rule, startsWith(prefix));
+      expect(rule, endsWith(suffix));
+      final pattern = RegExp(
+        rule.substring(prefix.length, rule.length - suffix.length),
+        caseSensitive: false,
+      );
+      expect(pattern.hasMatch(r'C:\nvm\v24.3.0-rc.1\node.exe'), isTrue);
+      expect(pattern.hasMatch(r'D:\nvm\v24.3.0\node.exe'), isFalse);
+      expect(pattern.hasMatch(r'C:\nvm\backup\node.exe'), isFalse);
+      expect(pattern.hasMatch(r'C:\nvm\v24.3.0\other.exe'), isFalse);
+    },
+  );
+
+  test(
     'whitelist uses NOT around all selected apps and ignores foreign IDs',
     () {
       final rules = applicationAccessRules(

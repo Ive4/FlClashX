@@ -12,6 +12,7 @@ _Package _$PackageFromJson(Map<String, dynamic> json) => _Package(
   system: json['system'] as bool,
   internet: json['internet'] as bool,
   lastUpdateTime: (json['lastUpdateTime'] as num).toInt(),
+  applicationPath: json['applicationPath'] as String?,
 );
 
 Map<String, dynamic> _$PackageToJson(_Package instance) => <String, dynamic>{
@@ -20,6 +21,7 @@ Map<String, dynamic> _$PackageToJson(_Package instance) => <String, dynamic>{
   'system': instance.system,
   'internet': instance.internet,
   'lastUpdateTime': instance.lastUpdateTime,
+  'applicationPath': instance.applicationPath,
 };
 
 _Metadata _$MetadataFromJson(Map<String, dynamic> json) => _Metadata(

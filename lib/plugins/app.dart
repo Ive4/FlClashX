@@ -8,6 +8,8 @@ import 'package:fl_clash/models/models.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
+import 'windows_application_icon.dart';
+
 const _platformProbeTimeout = Duration(seconds: 2);
 
 class App {
@@ -100,16 +102,25 @@ class App {
     return _packageIcons[packageName];
   }
 
-  Future<ImageProvider?> getPackageIcon(String packageName) {
+  Future<ImageProvider?> getPackageIcon(
+    String packageName, {
+    bool desktop = false,
+  }) {
     if (_packageIcons.containsKey(packageName)) {
       return Future.value(_packageIcons[packageName]);
     }
-    return _packageIconTasks[packageName] ??= _loadPackageIcon(packageName);
+    return _packageIconTasks[packageName] ??= _loadPackageIcon(
+      packageName,
+      desktop,
+    );
   }
 
-  Future<ImageProvider?> _loadPackageIcon(String packageName) async {
-    var icon = await _requestPackageIcon(packageName);
-    if (icon == null && packageName.isNotEmpty) {
+  Future<ImageProvider?> _loadPackageIcon(
+    String packageName,
+    bool desktop,
+  ) async {
+    var icon = await _requestPackageIcon(packageName, desktop);
+    if (icon == null && !desktop && packageName.isNotEmpty) {
       icon = await getPackageIcon('');
     }
     _packageIcons[packageName] = icon;
@@ -117,8 +128,22 @@ class App {
     return icon;
   }
 
-  Future<ImageProvider?> _requestPackageIcon(String packageName) async {
+  Future<ImageProvider?> _requestPackageIcon(
+    String packageName,
+    bool desktop,
+  ) async {
     try {
+      if (desktop) {
+        final bytes = await _packageIconPool.run(
+          () => Platform.isWindows
+              ? loadWindowsApplicationIcon(packageName)
+              : methodChannel.invokeMethod<Uint8List>(
+                  'getApplicationIcon',
+                  packageName,
+                ),
+        );
+        return bytes == null || bytes.isEmpty ? null : MemoryImage(bytes);
+      }
       final path = await _packageIconPool.run(
         () => methodChannel.invokeMethod<String>('getPackageIcon', {
           'packageName': packageName,

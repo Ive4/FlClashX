@@ -50,7 +50,9 @@ class _AccessViewState extends ConsumerState<AccessView>
       if (!mounted) {
         return;
       }
-      ref.read(accessControlStateProvider.notifier).value = accessControl;
+      ref.read(accessControlStateProvider.notifier).value = _isDesktop
+          ? groupVersionedApplications(accessControl, windows: _isWindows)
+          : accessControl;
       _isInit = true;
       _pinList();
     });
@@ -219,8 +221,11 @@ class _AccessViewState extends ConsumerState<AccessView>
   AccessControlProps _getRealAccessControlProps(
     AccessControlProps accessControl,
   ) {
+    if (_isDesktop) {
+      return groupVersionedApplications(accessControl, windows: _isWindows);
+    }
     final packages = ref.read(packagesProvider);
-    if (packages.isEmpty || _isOhos || _isDesktop) {
+    if (packages.isEmpty || _isOhos) {
       return accessControl;
     }
     final viewPackageNames = packages
@@ -264,9 +269,12 @@ class _AccessViewState extends ConsumerState<AccessView>
       final text = data?.text;
       if (text == null) return;
       final list = text.split('\n');
-      ref
-          .read(accessControlStateProvider.notifier)
-          .update((state) => state.copyWithNewList(list.toSet().toList()));
+      ref.read(accessControlStateProvider.notifier).update((state) {
+        final updated = state.copyWithNewList(list.toSet().toList());
+        return _isDesktop
+            ? groupVersionedApplications(updated, windows: _isWindows)
+            : updated;
+      });
       if (_isDesktop) _historyChanged();
     });
   }
@@ -492,7 +500,14 @@ class _AccessViewState extends ConsumerState<AccessView>
               !_isDesktop && accessControl.isFilterNonInternetApp,
           isFilterSystemApp: !_isDesktop && accessControl.isFilterSystemApp,
         )
-        .whereMatches(query, (package) => [package.label, package.packageName])
+        .whereMatches(
+          query,
+          (package) => [
+            package.label,
+            package.packageName,
+            ?package.applicationPath,
+          ],
+        )
         .toList();
     final currentList = accessControl.currentList;
     final viewPackageNameList = viewPackages.map((e) => e.packageName).toList();
@@ -660,10 +675,17 @@ class PackageListItem extends StatelessWidget {
         : null;
     final subtitle = identity?.action == RuleAction.PROCESS_NAME
         ? context.appLocalizations.desktopAccessNameOnly(identity!.content)
-        : identity?.content ?? package.packageName;
+        : package.applicationPath ?? identity?.content ?? package.packageName;
     return ListItem.checkbox(
       leading: desktop
-          ? const GlyphIcon(AppGlyphs.appsList, size: 32)
+          ? switch (package.applicationPath) {
+              final path? => PackageIcon(
+                packageName: path,
+                size: 32,
+                desktop: true,
+              ),
+              null => const GlyphIcon(AppGlyphs.appsList, size: 32),
+            }
           : PackageIcon(packageName: package.packageName, size: 48),
       title: Text(
         package.label,

@@ -77,6 +77,42 @@ void main() {
   }
 
   testWidgets(
+    'an existing selection remains selected after a version upgrade',
+    (tester) async {
+      const old = r'C:\nvm\v20.19.0\node.exe';
+      const newer = r'C:\nvm\v22.14.0\node.exe';
+      container
+          .read(vpnSettingProvider.notifier)
+          .update(
+            (state) => state.copyWith(
+              accessControlProps: const AccessControlProps(
+                enable: true,
+                rejectList: [r'windows:PROCESS-PATH:c:\nvm\v20.19.0\node.exe'],
+              ),
+            ),
+          );
+      await tester.runAsync(() async {
+        await history.record([_connection(old)], true, DateTime.utc(2026));
+        await history.record([_connection(newer)], true, DateTime.utc(2026, 2));
+      });
+      await open(tester, windows: true);
+      final row = tester.widget<PackageListItem>(find.byType(PackageListItem));
+      expect(row.value, isTrue);
+      expect(row.package.applicationPath, newer);
+      expect(find.byTooltip('Save'), findsNothing);
+      await tester.tap(find.byType(PackageListItem));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Save'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(vpnSettingProvider).accessControlProps.rejectList,
+        isEmpty,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'Windows chooses remembered programs through the original blacklist',
     (tester) async {
       await tester.runAsync(

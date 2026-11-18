@@ -102,23 +102,34 @@ class ApplicationHistory extends ChangeNotifier {
   }
 
   List<Package> packages(AccessControlProps access, {required bool windows}) {
-    final known = <String, ApplicationHistoryEntry>{
-      for (final entry in entries.values)
-        if (entry.identity.windows == windows)
-          entry.identity.selectionKey: entry,
-    };
-    final keys = {...known.keys, ...access.acceptList, ...access.rejectList};
+    final known = <String, ApplicationHistoryEntry>{};
+    final identities = <String, ApplicationIdentity>{};
+    for (final entry in entries.values) {
+      final identity = entry.identity;
+      if (identity.windows != windows) continue;
+      final key = identity.forRouting.selectionKey;
+      final old = known[key];
+      if (old != null && !entry.lastSeen.isAfter(old.lastSeen)) continue;
+      known[key] = entry;
+      identities[key] = identity;
+    }
+    for (final key in {...access.acceptList, ...access.rejectList}) {
+      final identity = ApplicationIdentity.fromSelection(key, windows: windows);
+      if (identity == null) continue;
+      identities.putIfAbsent(identity.forRouting.selectionKey, () => identity);
+    }
     return [
-      for (final key in keys)
-        if (ApplicationIdentity.fromSelection(key, windows: windows)
-            case final identity?)
-          Package(
-            packageName: key,
-            label: known[key]?.identity.name ?? identity.name,
-            system: false,
-            internet: true,
-            lastUpdateTime: known[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
-          ),
+      for (final MapEntry(key: key, value: identity) in identities.entries)
+        Package(
+          packageName: key,
+          label: identity.name,
+          system: false,
+          internet: true,
+          lastUpdateTime: known[key]?.lastSeen.millisecondsSinceEpoch ?? 0,
+          applicationPath: identity.action == RuleAction.PROCESS_PATH
+              ? identity.content
+              : null,
+        ),
     ];
   }
 

@@ -35,6 +35,7 @@ abstract class Package with _$Package {
     required bool system,
     required bool internet,
     required int lastUpdateTime,
+    String? applicationPath,
   }) = _Package;
 
   factory Package.fromJson(Map<String, Object?> json) =>

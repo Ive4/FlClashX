@@ -399,8 +399,14 @@ class _ImageCacheWidgetState extends State<ImageCacheWidget> {
 class PackageIcon extends StatefulWidget {
   final String packageName;
   final double size;
+  final bool desktop;
 
-  const PackageIcon({super.key, required this.packageName, required this.size});
+  const PackageIcon({
+    super.key,
+    required this.packageName,
+    required this.size,
+    this.desktop = false,
+  });
 
   @override
   State<PackageIcon> createState() => _PackageIconState();
@@ -409,6 +415,7 @@ class PackageIcon extends StatefulWidget {
 class _PackageIconState extends State<PackageIcon> {
   ImageProvider? _icon;
   int _generation = 0;
+  App? get _source => widget.desktop ? App() : app;
 
   @override
   void initState() {
@@ -420,7 +427,8 @@ class _PackageIconState extends State<PackageIcon> {
   @override
   void didUpdateWidget(covariant PackageIcon oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.packageName != widget.packageName) {
+    if (oldWidget.packageName != widget.packageName ||
+        oldWidget.desktop != widget.desktop) {
       _showCachedIcon();
       _loadIcon();
     }
@@ -428,12 +436,14 @@ class _PackageIconState extends State<PackageIcon> {
 
   void _showCachedIcon() {
     _generation++;
-    _icon = app?.getCachedPackageIcon(widget.packageName);
+    _icon = _source?.getCachedPackageIcon(widget.packageName);
   }
 
   void _loadIcon() {
     final generation = _generation;
-    app?.getPackageIcon(widget.packageName).then((icon) {
+    _source?.getPackageIcon(widget.packageName, desktop: widget.desktop).then((
+      icon,
+    ) {
       if (!mounted ||
           generation != _generation ||
           icon == null ||
@@ -450,7 +460,9 @@ class _PackageIconState extends State<PackageIcon> {
   Widget build(BuildContext context) {
     final icon = _icon;
     if (icon == null) {
-      return SizedBox(width: widget.size, height: widget.size);
+      return widget.desktop
+          ? GlyphIcon(AppGlyphs.appsList, size: widget.size)
+          : SizedBox(width: widget.size, height: widget.size);
     }
     return Image(
       image: icon,
