@@ -21,10 +21,10 @@ void main() {
   setUpAll(() {
     titleViewSource = _resolveSource(
       'macos/tray/Sources/tray/TrayTitleView.swift',
-    ).readAsStringSync();
+    ).readAsLinesSync().join('\n');
     statusItemSource = _resolveSource(
       'macos/tray/Sources/tray/TrayStatusItem.swift',
-    ).readAsStringSync();
+    ).readAsLinesSync().join('\n');
   });
 
   test('macOS tray title is self-drawn instead of using NSTextField', () {
@@ -32,13 +32,26 @@ void main() {
     expect(titleViewSource, isNot(contains('NSTextField')));
   });
 
-  test('macOS tray title centres its cap-height block, right-aligned', () {
-    expect(titleViewSource, contains('override var isFlipped: Bool'));
-    expect(titleViewSource, contains('(bounds.height - blockHeight) / 2'));
-    expect(titleViewSource, contains('x: bounds.width - width'));
-  });
+  test(
+    'macOS tray title centres measured lines in the full menu bar height',
+    () {
+      expect(titleViewSource, contains('override var isFlipped: Bool'));
+      expect(titleViewSource, contains('monospacedDigitSystemFont'));
+      expect(titleViewSource, contains('min(lineHeight, bounds.height'));
+      expect(titleViewSource, contains('(bounds.height - blockHeight) / 2'));
+      expect(titleViewSource, contains('x = bounds.width - line.size().width'));
+      expect(titleViewSource, contains('line.draw(at: NSPoint'));
+      expect(
+        statusItemSource,
+        contains(
+          'titleView.heightAnchor.constraint(equalTo: stackView.heightAnchor)',
+        ),
+      );
+    },
+  );
 
   test('macOS tray title widens instead of clipping long speeds', () {
+    expect(titleViewSource, contains('8888 MB/s'));
     expect(titleViewSource, contains('invalidateIntrinsicContentSize'));
     expect(titleViewSource, contains('max(TrayTitleView.width, textWidth)'));
     expect(

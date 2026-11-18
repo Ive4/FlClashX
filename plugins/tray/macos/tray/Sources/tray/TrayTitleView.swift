@@ -1,10 +1,8 @@
 import AppKit
 
 final class TrayTitleView: NSView {
-    static let width: CGFloat = 42
-
-    private static let font = NSFont.systemFont(ofSize: 8.75)
-    private static let lineHeight: CGFloat = 9
+    private static let font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+    static let width = ceil(("8888 MB/s" as NSString).size(withAttributes: [.font: font]).width)
 
     private var lines: [NSAttributedString] = [] {
         didSet { needsDisplay = true }
@@ -45,24 +43,19 @@ final class TrayTitleView: NSView {
         return wasHidden != isHidden || widthChanged
     }
 
-    // Line boxes carry descender space, so centring them leaves the digits high.
     override func draw(_ dirtyRect: NSRect) {
         guard !lines.isEmpty else {
             return
         }
-        let capHeight = TrayTitleView.font.capHeight
-        let lineHeight = TrayTitleView.lineHeight
-        let blockHeight = capHeight + lineHeight * CGFloat(lines.count - 1)
+        let lineHeight = lines.map { $0.size().height }.max() ?? 0
+        let lineStep = min(lineHeight, bounds.height / CGFloat(lines.count))
+        let blockHeight = lineHeight + lineStep * CGFloat(lines.count - 1)
         let scale = window?.backingScaleFactor ?? 2
-        var baseline = ((bounds.height - blockHeight) / 2 + capHeight) * scale
-        baseline = baseline.rounded() / scale
+        var y = (bounds.height - blockHeight) / 2
         for line in lines {
-            let width = line.size().width
-            line.draw(
-                with: NSRect(x: bounds.width - width, y: baseline, width: width, height: 0),
-                options: []
-            )
-            baseline += lineHeight
+            let x = bounds.width - line.size().width
+            line.draw(at: NSPoint(x: x, y: (y * scale).rounded() / scale))
+            y += lineStep
         }
     }
 }

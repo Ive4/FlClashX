@@ -82,8 +82,8 @@ private final class TrayContentView: NSView {
         NSLayoutConstraint.activate([
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 2),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
 
         applyPosition("leading")
@@ -91,6 +91,7 @@ private final class TrayContentView: NSView {
         titleView.setContentHuggingPriority(.required, for: .horizontal)
         titleView.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
+            titleView.heightAnchor.constraint(equalTo: stackView.heightAnchor),
             titleView.widthAnchor.constraint(
                 greaterThanOrEqualToConstant: TrayTitleView.width
             ),
