@@ -13,6 +13,7 @@ OutputBaseFilename={{OUTPUT_BASE_FILENAME}}
 Compression=lzma
 SolidCompression=yes
 SetupIconFile={{SETUP_ICON_FILE}}
+SetupLogging=yes
 WizardStyle=modern
 PrivilegesRequired={{PRIVILEGES_REQUIRED}}
 ArchitecturesAllowed={{ARCH}}
@@ -25,7 +26,7 @@ var
   i: Integer;
   ResultCode: Integer;
 begin
-  Processes := ['FlClashX.exe', 'FlClash.exe', 'FlClashDesktop.exe', 'FlClashCore.exe', 'FlClashHelperService.exe'];
+  Processes := ['FlClashX.exe', 'FlClash.exe', 'FlClashDesktop.exe', 'FlClashCore.exe'];
 
   for i := 0 to GetArrayLength(Processes)-1 do
   begin
@@ -33,15 +34,25 @@ begin
   end;
 end;
 
-procedure UnregisterHelperService;
+function UnregisterHelperService: Boolean;
 var
   HelperPath: String;
   ResultCode: Integer;
 begin
   HelperPath := ExpandConstant('{app}\\FlClashHelperService.exe');
+  Result := True;
   if FileExists(HelperPath) then
   begin
-    Exec(HelperPath, 'uninstall', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    if not ExecAndLogOutput(HelperPath, 'uninstall', '', SW_HIDE, ewWaitUntilTerminated, ResultCode, nil) then
+    begin
+      Log('Could not run Helper uninstall: ' + SysErrorMessage(ResultCode));
+      Result := False;
+    end
+    else if ResultCode <> 0 then
+    begin
+      Log('Helper uninstall exited with code ' + IntToStr(ResultCode));
+      Result := False;
+    end;
   end;
 end;
 
@@ -88,7 +99,11 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
-  UnregisterHelperService;
+  if not UnregisterHelperService then
+  begin
+    Result := CustomMessage('HelperUninstallFailed');
+    Exit;
+  end;
   KillProcesses;
   Result := '';
 end;
@@ -103,10 +118,14 @@ end;
 
 function InitializeUninstall(): Boolean;
 begin
-  UnregisterHelperService;
+  Result := UnregisterHelperService;
+  if not Result then
+  begin
+    SuppressibleMsgBox(CustomMessage('HelperUninstallFailed'), mbError, MB_OK, IDOK);
+    Exit;
+  end;
   KillProcesses;
   ClearStaleProxy;
-  Result := True;
 end;
 
 // path_provider names these folders after CompanyName and ProductName in
@@ -163,6 +182,8 @@ Name: "chineseSimplified"; MessagesFile: {% if locale.file %}{{ locale.file }}{%
 {% endfor %}
 
 [CustomMessages]
+english.HelperUninstallFailed=Could not stop the FlClash Helper service. Restart Windows and try again.
+chineseSimplified.HelperUninstallFailed=无法停止 FlClash Helper 服务。请重启 Windows 后重试。
 english.RemoveUserData=Also delete your profiles and settings?
 
 [Tasks]
