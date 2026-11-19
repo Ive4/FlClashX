@@ -2,6 +2,113 @@
   "schemaVersion": 2,
   "versions": [
     {
+      "version": "0.9.3",
+      "tag": "v0.9.3",
+      "date": "2026-11-19",
+      "prerelease": false,
+      "groups": [
+        {
+          "type": "feat",
+          "entries": [
+            {
+              "id": "95f1f04",
+              "scope": "profiles",
+              "text": "Quick-edit proxy lists and maps in custom profiles"
+            },
+            {
+              "id": "2d69ade",
+              "scope": "records",
+              "text": "Switch between recent requests and live connections on the records page"
+            },
+            {
+              "id": "1e058eb",
+              "scope": "update",
+              "text": "Support signed Android updates and publish platform-specific stable packages"
+            },
+            {
+              "id": "cdb7f32",
+              "scope": "navigation",
+              "text": "Open access control from the desktop navigation"
+            },
+            {
+              "id": "6063234",
+              "scope": "core",
+              "text": "Support direct DNS, DoH3, and mobile TUN routing policies"
+            },
+            {
+              "id": "87681f7",
+              "text": "Migrate proxy core to Rust meow-rs"
+            },
+            {
+              "id": "4e875a1",
+              "scope": "ohos",
+              "text": "Support backup files and secure session storage"
+            },
+            {
+              "id": "e7b7b76",
+              "scope": "auth",
+              "text": "Support browser-based Gitee OAuth"
+            },
+            {
+              "id": "fee03f5",
+              "scope": "core",
+              "text": "Support OpenHarmony integration and Gitee snippets"
+            },
+            {
+              "id": "c771f2f",
+              "scope": "dashboard",
+              "text": "Add an application proxy page and related controls"
+            },
+            {
+              "id": "1407e12",
+              "scope": "dashboard",
+              "text": "Add application proxy controls and traffic statistics"
+            },
+            {
+              "id": "8aabf7b",
+              "scope": "dashboard",
+              "text": "Per-application proxy controls and traffic statistics"
+            },
+            {
+              "id": "c50a27e",
+              "scope": "dashboard",
+              "text": "Per-application proxy controls and traffic statistics"
+            }
+          ]
+        },
+        {
+          "type": "fix",
+          "entries": [
+            {
+              "id": "45b241e",
+              "scope": "windows",
+              "text": "Stop setup when Helper removal fails"
+            },
+            {
+              "id": "18f04a3",
+              "scope": "dashboard",
+              "text": "Treat missing runtime config as unavailable"
+            },
+            {
+              "id": "6fa60d0",
+              "scope": "access",
+              "text": "Merge duplicate Windows application history"
+            },
+            {
+              "id": "9f6aca0",
+              "scope": "access",
+              "text": "Retain access control selections while filtering or importing apps"
+            },
+            {
+              "id": "715d683",
+              "scope": "tunnel",
+              "text": "Fix system process lookup on OpenHarmony"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.9.2",
       "tag": "v0.9.2",
       "date": "2026-10-24",

@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.9.3 (2026-11-19)
+
+**Features**
+
+- **profiles** Quick-edit proxy lists and maps in custom profiles (95f1f04)
+- **records** Switch between recent requests and live connections on the records page (2d69ade)
+- **update** Support signed Android updates and publish platform-specific stable packages (1e058eb)
+- **navigation** Open access control from the desktop navigation (cdb7f32)
+- **core** Support direct DNS, DoH3, and mobile TUN routing policies (6063234)
+- Migrate proxy core to Rust meow-rs (87681f7)
+- **ohos** Support backup files and secure session storage (4e875a1)
+- **auth** Support browser-based Gitee OAuth (e7b7b76)
+- **core** Support OpenHarmony integration and Gitee snippets (fee03f5)
+- **dashboard** Add an application proxy page and related controls (c771f2f)
+- **dashboard** Add application proxy controls and traffic statistics (1407e12)
+- **dashboard** Per-application proxy controls and traffic statistics (8aabf7b)
+- **dashboard** Per-application proxy controls and traffic statistics (c50a27e)
+
+**Bug Fixes**
+
+- **windows** Stop setup when Helper removal fails (45b241e)
+- **dashboard** Treat missing runtime config as unavailable (18f04a3)
+- **access** Merge duplicate Windows application history (6fa60d0)
+- **access** Retain access control selections while filtering or importing apps (9f6aca0)
+- **tunnel** Fix system process lookup on OpenHarmony (715d683)
+
 ## v0.9.2 (2026-10-24)
 
 **Features**
