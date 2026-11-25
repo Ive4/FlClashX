@@ -91,9 +91,22 @@ Future<void> main(List<String> args) => build(args, (input, output) async {
     }
     _setCompiler(compiler, environment, output);
     if (os == 'darwin') {
-      final flags = '-mmacosx-version-min=${code.macOS.targetVersion}.0';
+      final result = await Process.run('/usr/bin/xcrun', [
+        '--sdk',
+        'macosx',
+        '--show-sdk-path',
+      ]);
+      final sdk = (result.stdout as String).trim();
+      if (result.exitCode != 0 || !Directory(sdk).existsSync()) {
+        throw StateError('Could not find the macOS SDK: ${result.stderr}');
+      }
+      environment['SDKROOT'] = sdk;
+      final flags =
+          '-isysroot "$sdk" -mmacosx-version-min=${code.macOS.targetVersion}.0';
       environment['CGO_CFLAGS'] = flags;
       environment['CGO_LDFLAGS'] = flags;
+      final settings = File(p.join(sdk, 'SDKSettings.json'));
+      if (settings.existsSync()) output.dependencies.add(settings.uri);
     }
   }
 
