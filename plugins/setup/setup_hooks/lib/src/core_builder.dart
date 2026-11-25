@@ -99,7 +99,7 @@ final class CoreBuilder implements Builder {
     if (code.cCompiler?.compiler.path.contains('openharmony') ?? false) {
       return null;
     }
-    // Android's :core Gradle module builds the Rust JNI library per ABI.
+    // Android's :core Gradle module builds the JNI library with gomobile.
     final platform = switch (code.targetOS) {
       OS.linux => 'linux',
       OS.macOS => 'macos',

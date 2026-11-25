@@ -277,10 +277,18 @@ class _CoreContainerState extends ConsumerState<CoreManager>
     if (ref.read(coreStatusProvider) != CoreStatus.connected) {
       return;
     }
+    final reason = _recovery == null
+        ? context.appLocalizations.coreConnectionLost(message)
+        : message;
     ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    _recovery?.request();
+    ref.read(coreStopReasonProvider.notifier).value = reason;
+    if (_recovery case final recovery?) {
+      recovery.request();
+    } else {
+      ref.read(setupActionProvider.notifier).onCoreLost();
+    }
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      context.showNotifier(message, level: MessageLevel.error);
+      context.showNotifier(reason, level: MessageLevel.error);
     }
     super.onCrash(message);
   }

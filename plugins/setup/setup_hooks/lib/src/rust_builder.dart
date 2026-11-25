@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'build_cache.dart';
 import 'fingerprint.dart';
 import 'options.dart';
-import 'rust_core_builder.dart';
+import 'rust_toolchain.dart';
 import 'target.dart';
 import 'util.dart';
 

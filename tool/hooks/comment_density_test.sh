@@ -117,28 +117,8 @@ expect_under 'generated plugin bindings are skipped' \
   "$repo/plugins/rust_api/lib/src/rust/frb_generated.io.dart" "$(dense 20 4)"
 expect_under 'the intl_utils localization class is skipped' "$repo/lib/l10n/l10n.dart" "$(dense 20 4)"
 expect_under 'a vendored upstream file is skipped' "$repo/Clash.Meta/hub.go" "$(dense 20 4)"
-expect_under 'vendored meow-listener comments are skipped' \
-  "$repo/core/rust/vendor/meow-listener/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-common comments are skipped' \
-  "$repo/core/rust/vendor/meow-common/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-anytls comments are skipped' \
-  "$repo/core/rust/vendor/meow-anytls/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-dns comments are skipped' \
-  "$repo/core/rust/vendor/meow-dns/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-config comments are skipped' \
-  "$repo/core/rust/vendor/meow-config/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-proxy comments are skipped' \
-  "$repo/core/rust/vendor/meow-proxy/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-api comments are skipped' \
-  "$repo/core/rust/vendor/meow-api/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-transport comments are skipped' \
-  "$repo/core/rust/vendor/meow-transport/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-rules comments are skipped' \
-  "$repo/core/rust/vendor/meow-rules/src/lib.rs" "$(dense 20 4)"
-expect_under 'vendored meow-tunnel comments are skipped' \
-  "$repo/core/rust/vendor/meow-tunnel/src/lib.rs" "$(dense 20 4)"
-expect_over 'first-party Rust Core comments are checked' \
-  "$repo/core/rust/src/lib.rs" "$(dense 8 24)"
+expect_over 'first-party Rust comments are checked' \
+  "$repo/services/helper/src/lib.rs" "$(dense 8 24)"
 expect_under 'a markdown file is skipped' "$repo/notes.md" "$(dense 20 4)"
 
 expect_over 'a dense change to a tracked file' "$repo/tracked.dart" "$(dense 8 24)"
@@ -204,7 +184,7 @@ rm -f \
   "$repo/dense.dart" \
   "$repo/block.kt" \
   "$repo/argv.dart" \
-  "$repo/core/rust/src/lib.rs" \
+  "$repo/services/helper/src/lib.rs" \
   "$repo/plugins/proxy/lib/dense.dart"
 run_stdin
 if [ "$status" -ne 0 ] || [ -s "$temp_dir/err" ]; then

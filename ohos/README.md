@@ -8,8 +8,8 @@ Cupertino and SQLite package copies, then restores ordinary dependency resolutio
 Do not run IDE dependency resolution concurrently with this build.
 
 Toolchains used: Harmony Flutter `3.47.7+ohos-0.0.1-pre`, DevEco Studio
-`26.0.0.851`, SDK `26.0.0.105`, Rust `1.99.0` with
-`aarch64-unknown-linux-ohos`. `OHOS_NDK_HOME` must point to the SDK native folder.
+`26.0.0.851`, SDK `26.0.0.105`, HarmonyOS Go, and Rust with
+`aarch64-unknown-linux-ohos` for the Rust API plugin. `OHOS_NDK_HOME` must point to the SDK native folder.
 SQLite 3.54.1 amalgamation is downloaded from sqlite.org and checked against its
 published SHA3-256 before compilation with the HarmonyOS NDK.
 
@@ -24,7 +24,7 @@ IDE sync after stock Flutter `pub get` fails with `undefined.filter`.
 
 Current boundaries:
 
-- Rust and SQLite build for HarmonyOS ARM64; desktop IPC and hotkeys are excluded.
+- Go, Rust and SQLite build for HarmonyOS ARM64; desktop IPC and hotkeys are excluded.
 - Directory, package and device metadata channels are implemented in EntryAbility.
 - Preferences use the existing atomic file store on HarmonyOS.
 - The build script cross-compiles the existing Go Core. The VPN extension owns
@@ -66,8 +66,7 @@ Current boundaries:
   it does not provide an unrestricted installed-app inventory with normal signing.
   The list combines query-visible apps, configured names, and names observed via
   the VPN-only `getConnectOwnerUid` API. Observed names are stored locally.
-- A one-line HarmonyOS branch in `core/Clash.Meta/tunnel/tunnel.go` routes process
-  lookup to the existing package-name hook. The HarmonyOS bridge resolves raw
+- The HarmonyOS-only Go build overlay routes process lookup to the existing package-name hook. The HarmonyOS bridge resolves raw
   connection tuples through NetworkKit, with at most 64 pending lookups and a
   500 ms timeout; unknown owners remain unknown. Real-device owner resolution
   and per-app routing still require validation.
@@ -98,20 +97,8 @@ subscriptions and traffic destinations are not recorded. Diagnostic error
 messages redact URLs and common credential fields. Export logs after a recurrence
 and note whether it followed background use, lockscreen or a network change.
 
-## Core fork and upstream updates
+## Core updates
 
-The submodule uses `https://github.com/Ive4/Clash.Meta.git`, branch `FlClash`.
-The original upstream is `https://github.com/chen08209/Clash.Meta.git`.
-The local submodule keeps that original address as the `upstream` remote.
-After a fresh clone, add it once before fetching updates:
-
-```sh
-git -C core/Clash.Meta remote add upstream https://github.com/chen08209/Clash.Meta.git
-git -C core/Clash.Meta fetch upstream
-git -C core/Clash.Meta switch FlClash
-git -C core/Clash.Meta merge upstream/FlClash
-```
-
-Resolve conflicts, run the relevant Core checks, push the updated `FlClash` branch
-to `origin`, and commit the new submodule revision in this repository. Keep the
-HarmonyOS package-owner hook when merging upstream changes.
+The submodule uses the same commit as official FlClash in
+[chen08209/Clash.Meta](https://github.com/chen08209/Clash.Meta). When updating that pin, verify the one-line
+overlay in `tool/build_go_ohos.ps1` against the new source and check VPN owner lookup on HarmonyOS.

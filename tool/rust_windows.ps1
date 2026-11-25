@@ -18,7 +18,6 @@ foreach ($entry in @{ 'ProgramFiles(x86)' = $programFilesX86; 'ProgramFiles' = $
     if (![Environment]::GetEnvironmentVariable($entry.Key, 'Process')) { [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process') }
 }
 if (!$env:PATHEXT) { $env:PATHEXT = '.COM;.EXE;.BAT;.CMD' }
-$rustTarget = if ($Architecture -eq 'arm64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
 $vsRoot = $null
 if ($env:FLCLASH_MSVC_COMPILER) {
     $directory = Get-Item -LiteralPath (Split-Path $env:FLCLASH_MSVC_COMPILER)
@@ -55,30 +54,12 @@ if ($LASTEXITCODE -ne 0) { throw "Install an MSVC Rust toolchain: rustup toolcha
 $env:RUSTUP_TOOLCHAIN = $toolchain
 $env:RUSTC = $rustc
 
-$cmakeBin = Join-Path $vsRoot 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin'
-$llvmCandidates = @(
-    $env:LIBCLANG_PATH,
-    $(if ($env:LLVM_HOME) { Join-Path $env:LLVM_HOME 'bin' }),
-    (Join-Path $programFiles 'LLVM/bin'),
-    (Join-Path $vsRoot 'VC/Tools/Llvm/x64/bin'),
-    (Join-Path $vsRoot 'VC/Tools/Llvm/bin')
-) + ($env:PATH -split ';')
-$libclang = $llvmCandidates | Where-Object { $_ -and (Test-Path -LiteralPath (Join-Path $_ 'libclang.dll')) } | Select-Object -First 1
-if (!$libclang) { throw 'Install LLVM with libclang.dll, or set LIBCLANG_PATH to the LLVM/Harmony SDK bin directory.' }
-$env:LIBCLANG_PATH = $libclang
-$env:PATH = "$cmakeBin;$libclang;" + $env:PATH
-foreach ($nativeTool in @('cmake', 'clang')) {
-    if (!(Get-Command $nativeTool -ErrorAction SilentlyContinue)) { throw "Install $nativeTool and add its bin directory to PATH." }
-}
-if ($Architecture -eq 'amd64' -and !(Get-Command nasm -ErrorAction SilentlyContinue)) { throw 'Install NASM and add its directory to PATH (BoringSSL x64 assembly requires it).' }
-$includeFlags = ($env:INCLUDE -split ';' | Where-Object { $_ } | ForEach-Object { '-isystem "' + $_ + '"' }) -join ' '
-[Environment]::SetEnvironmentVariable("BINDGEN_EXTRA_CLANG_ARGS_$($rustTarget.Replace('-', '_'))", "--target=$rustTarget -fms-extensions -fms-compatibility $includeFlags", 'Process')
-$env:CFLAGS = "$env:CFLAGS /utf-8".Trim()
-$env:CXXFLAGS = "$env:CXXFLAGS /utf-8".Trim()
-
 if ($PrintEnvironment) {
-    $names = @('PATH', 'PATHEXT', 'INCLUDE', 'LIB', 'LIBPATH', 'RUSTUP_TOOLCHAIN', 'RUSTC', 'LIBCLANG_PATH', 'CFLAGS', 'CXXFLAGS', 'SystemRoot', 'WINDIR', 'ComSpec', 'USERPROFILE', 'ProgramFiles', 'ProgramFiles(x86)', "BINDGEN_EXTRA_CLANG_ARGS_$($rustTarget.Replace('-', '_'))")
+    $names = @('PATH', 'PATHEXT', 'INCLUDE', 'LIB', 'LIBPATH', 'RUSTUP_TOOLCHAIN', 'RUSTC', 'SystemRoot', 'WINDIR', 'ComSpec', 'USERPROFILE', 'ProgramFiles', 'ProgramFiles(x86)')
     $values = @{}
-    foreach ($name in $names) { $values[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    foreach ($name in $names) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $value) { $values[$name] = $value }
+    }
     ConvertTo-Json -InputObject $values -Compress
 }

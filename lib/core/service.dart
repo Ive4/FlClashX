@@ -72,7 +72,7 @@ class CoreService extends CoreHandlerInterface {
       coreEventManager.sendEvent(
         CoreEvent(
           type: CoreEventType.crash,
-          data: failure.cause?.toString() ?? 'core done',
+          data: failure.cause?.toString() ?? failure.code,
         ),
       );
     });

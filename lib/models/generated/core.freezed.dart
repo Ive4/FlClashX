@@ -2395,7 +2395,7 @@ as bool,
 /// @nodoc
 mixin _$RouteSnapshot {
 
-@JsonKey(name: 'core-epoch') int get coreEpoch;@JsonKey(name: 'route-version') int get routeVersion;
+@JsonKey(name: 'core-epoch') int get coreEpoch;@JsonKey(name: 'route-version') int get routeVersion; bool? get running;
 /// Create a copy of RouteSnapshot
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2409,20 +2409,20 @@ $RouteSnapshotCopyWith<RouteSnapshot> get copyWith => _$RouteSnapshotCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as RouteSnapshot;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RouteSnapshot&&(identical(other.coreEpoch, _this.coreEpoch) || other.coreEpoch == _this.coreEpoch)&&(identical(other.routeVersion, _this.routeVersion) || other.routeVersion == _this.routeVersion));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RouteSnapshot&&(identical(other.coreEpoch, _this.coreEpoch) || other.coreEpoch == _this.coreEpoch)&&(identical(other.routeVersion, _this.routeVersion) || other.routeVersion == _this.routeVersion)&&(identical(other.running, _this.running) || other.running == _this.running));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as RouteSnapshot;
-  return Object.hash(runtimeType,_this.coreEpoch,_this.routeVersion);
+  return Object.hash(runtimeType,_this.coreEpoch,_this.routeVersion,_this.running);
 }
 
 @override
 String toString() {
   final _this = this as RouteSnapshot;
-  return 'RouteSnapshot(coreEpoch: ${_this.coreEpoch}, routeVersion: ${_this.routeVersion})';
+  return 'RouteSnapshot(coreEpoch: ${_this.coreEpoch}, routeVersion: ${_this.routeVersion}, running: ${_this.running})';
 }
 
 
@@ -2433,7 +2433,7 @@ abstract mixin class $RouteSnapshotCopyWith<$Res>  {
   factory $RouteSnapshotCopyWith(RouteSnapshot value, $Res Function(RouteSnapshot) _then) = _$RouteSnapshotCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'core-epoch') int coreEpoch,@JsonKey(name: 'route-version') int routeVersion
+@JsonKey(name: 'core-epoch') int coreEpoch,@JsonKey(name: 'route-version') int routeVersion, bool? running
 });
 
 
@@ -2450,11 +2450,12 @@ class _$RouteSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of RouteSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? coreEpoch = null,Object? routeVersion = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? coreEpoch = null,Object? routeVersion = null,Object? running = freezed,}) {
   return _then(RouteSnapshot(
 coreEpoch: null == coreEpoch ? _self.coreEpoch : coreEpoch // ignore: cast_nullable_to_non_nullable
 as int,routeVersion: null == routeVersion ? _self.routeVersion : routeVersion // ignore: cast_nullable_to_non_nullable
-as int,
+as int,running: freezed == running ? _self.running : running // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 
@@ -2539,10 +2540,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion,  bool? running)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RouteSnapshot() when $default != null:
-return $default(_that.coreEpoch,_that.routeVersion);case _:
+return $default(_that.coreEpoch,_that.routeVersion,_that.running);case _:
   return orElse();
 
 }
@@ -2560,10 +2561,10 @@ return $default(_that.coreEpoch,_that.routeVersion);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion,  bool? running)  $default,) {final _that = this;
 switch (_that) {
 case _RouteSnapshot():
-return $default(_that.coreEpoch,_that.routeVersion);case _:
+return $default(_that.coreEpoch,_that.routeVersion,_that.running);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2580,10 +2581,10 @@ return $default(_that.coreEpoch,_that.routeVersion);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'core-epoch')  int coreEpoch, @JsonKey(name: 'route-version')  int routeVersion,  bool? running)?  $default,) {final _that = this;
 switch (_that) {
 case _RouteSnapshot() when $default != null:
-return $default(_that.coreEpoch,_that.routeVersion);case _:
+return $default(_that.coreEpoch,_that.routeVersion,_that.running);case _:
   return null;
 
 }
@@ -2595,11 +2596,12 @@ return $default(_that.coreEpoch,_that.routeVersion);case _:
 @JsonSerializable()
 
 class _RouteSnapshot implements RouteSnapshot {
-  const _RouteSnapshot({@JsonKey(name: 'core-epoch') this.coreEpoch = 0, @JsonKey(name: 'route-version') this.routeVersion = 0});
+  const _RouteSnapshot({@JsonKey(name: 'core-epoch') this.coreEpoch = 0, @JsonKey(name: 'route-version') this.routeVersion = 0, this.running});
   factory _RouteSnapshot.fromJson(Map<String, dynamic> json) => _$RouteSnapshotFromJson(json);
 
 @override@JsonKey(name: 'core-epoch') final  int coreEpoch;
 @override@JsonKey(name: 'route-version') final  int routeVersion;
+@override final  bool? running;
 
 /// Create a copy of RouteSnapshot
 /// with the given fields replaced by the non-null parameter values.
@@ -2614,18 +2616,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RouteSnapshot&&(identical(other.coreEpoch, coreEpoch) || other.coreEpoch == coreEpoch)&&(identical(other.routeVersion, routeVersion) || other.routeVersion == routeVersion));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RouteSnapshot&&(identical(other.coreEpoch, coreEpoch) || other.coreEpoch == coreEpoch)&&(identical(other.routeVersion, routeVersion) || other.routeVersion == routeVersion)&&(identical(other.running, running) || other.running == running));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,coreEpoch,routeVersion);
+    return Object.hash(runtimeType,coreEpoch,routeVersion,running);
 }
 
 @override
 String toString() {
-    return 'RouteSnapshot(coreEpoch: $coreEpoch, routeVersion: $routeVersion)';
+    return 'RouteSnapshot(coreEpoch: $coreEpoch, routeVersion: $routeVersion, running: $running)';
 }
 
 
@@ -2636,7 +2638,7 @@ abstract mixin class _$RouteSnapshotCopyWith<$Res> implements $RouteSnapshotCopy
   factory _$RouteSnapshotCopyWith(_RouteSnapshot value, $Res Function(_RouteSnapshot) _then) = __$RouteSnapshotCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'core-epoch') int coreEpoch,@JsonKey(name: 'route-version') int routeVersion
+@JsonKey(name: 'core-epoch') int coreEpoch,@JsonKey(name: 'route-version') int routeVersion, bool? running
 });
 
 
@@ -2653,11 +2655,12 @@ class __$RouteSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of RouteSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? coreEpoch = null,Object? routeVersion = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? coreEpoch = null,Object? routeVersion = null,Object? running = freezed,}) {
   return _then(_RouteSnapshot(
 coreEpoch: null == coreEpoch ? _self.coreEpoch : coreEpoch // ignore: cast_nullable_to_non_nullable
 as int,routeVersion: null == routeVersion ? _self.routeVersion : routeVersion // ignore: cast_nullable_to_non_nullable
-as int,
+as int,running: freezed == running ? _self.running : running // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 

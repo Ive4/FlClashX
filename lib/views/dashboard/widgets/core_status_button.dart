@@ -71,7 +71,10 @@ class _CoreStatusButtonState extends ConsumerState<CoreStatusButton> {
     final tip = coreStatus == CoreStatus.connected
         ? context.appLocalizations.forceRestartCoreTip
         : context.appLocalizations.restartCoreTip;
-    final res = await dialogs.showMessage(message: TextSpan(text: tip));
+    final reason = ref.read(coreStopReasonProvider);
+    final res = await dialogs.showMessage(
+      message: TextSpan(text: reason == null ? tip : '$reason\n\n$tip'),
+    );
     if (res != true || !mounted) {
       return;
     }
@@ -84,6 +87,7 @@ class _CoreStatusButtonState extends ConsumerState<CoreStatusButton> {
 
   @override
   Widget build(BuildContext context) {
+    final reason = ref.watch(coreStopReasonProvider);
     final coreStatus = _holdTimer != null ? CoreStatus.connecting : _status;
     final appLocalizations = context.appLocalizations;
     final colorScheme = context.colorScheme;
@@ -120,7 +124,7 @@ class _CoreStatusButtonState extends ConsumerState<CoreStatusButton> {
       CoreStatus.disconnected => const GlyphIcon(AppGlyphs.refresh, fill: 1),
     };
     return Tooltip(
-      message: appLocalizations.coreStatus,
+      message: reason ?? appLocalizations.coreStatus,
       child: FadeScaleBox(
         alignment: Alignment.centerRight,
         child: iconOnly

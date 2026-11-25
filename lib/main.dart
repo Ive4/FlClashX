@@ -30,9 +30,9 @@ void main(List<String> args) {
       WidgetsFlutterBinding.ensureInitialized();
       LicenseRegistry.addLicense(() async* {
         final license = await rootBundle.loadString(
-          'assets/data/meow-rs-license.txt',
+          'assets/data/mihomo-license.txt',
         );
-        yield LicenseEntryWithLineBreaks(['meow-rs'], license);
+        yield LicenseEntryWithLineBreaks(['mihomo'], license);
       });
       if (Platform.isWindows || Platform.isLinux || system.isOhos) {
         SharedPreferencesStorePlatform.instance = AtomicFilePreferencesStore(

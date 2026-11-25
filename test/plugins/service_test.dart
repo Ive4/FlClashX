@@ -22,9 +22,16 @@ class _RecordingListener with ServiceListener {
 
 class _RecordingStopListener with ServiceListener {
   var stops = 0;
+  final failures = <String>[];
 
   @override
   void onServiceStopped() => stops++;
+
+  @override
+  void onServiceStartFailed(String reason) {
+    failures.add(reason);
+    onServiceStopped();
+  }
 }
 
 class _ThrowingListener with ServiceListener {
@@ -221,6 +228,20 @@ void main() {
       await reportStopped(stale);
 
       expect(listener.stops, 0);
+    });
+
+    test('only the active start can report a VPN failure reason', () async {
+      await Service().start();
+      final stale = lastRevision();
+      await Service().stop();
+      await Service().start();
+      await reportStopped({'revision': stale, 'failure': 'service'});
+      await reportStopped({
+        'revision': lastRevision(),
+        'failure': 'vpn_permission',
+      });
+      expect(listener.failures, ['vpn_permission']);
+      expect(listener.stops, 1);
     });
 
     test(

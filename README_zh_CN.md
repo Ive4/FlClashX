@@ -1,4 +1,4 @@
-FlClashX 基于 [FlClash](https://github.com/chen08209/FlClash) 持续进行功能增强与优化，并提供实验性的鸿蒙适配。公开版本跟随所基于的上游版本，以 `pubspec.yaml` 为版本来源。主仓库为 [Ive4/FlClashX](https://github.com/Ive4/FlClashX)，内核仓库为 [Ive4/Clash.Meta](https://github.com/Ive4/Clash.Meta)。同步方式见 [上游同步约定](UPSTREAM.md)。
+FlClashX 基于 [FlClash](https://github.com/chen08209/FlClash) 持续进行功能增强与优化，并提供实验性的鸿蒙适配。公开版本跟随所基于的上游版本，以 `pubspec.yaml` 为版本来源。主仓库为 [Ive4/FlClashX](https://github.com/Ive4/FlClashX)，内核仓库为 [chen08209/Clash.Meta](https://github.com/chen08209/Clash.Meta)。同步方式见 [上游同步约定](UPSTREAM.md)。
 
 <div align="center">
 
@@ -140,7 +140,7 @@ powershell -File tool/build_ohos.ps1 -HarmonyHome "D:\Java\Huawei"
 ```
 
 签名后的产物为 `build/ohos/hap/entry-default-signed.hap`。签名文件与原生构建产物已从 Git 排除。
-内核子模块使用 [Ive4/Clash.Meta](https://github.com/Ive4/Clash.Meta/tree/FlClash) 的 `FlClash` 分支，
+内核子模块使用 [chen08209/Clash.Meta](https://github.com/chen08209/Clash.Meta/tree/FlClash) 的 `FlClash` 分支，
 内核上游同步步骤见鸿蒙构建说明。
 
 ## 从源码构建

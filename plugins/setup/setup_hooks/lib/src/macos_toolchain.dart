@@ -1,12 +1,12 @@
 import 'error.dart';
-import 'rust_core_builder.dart';
+import 'rust_toolchain.dart';
 import 'target.dart';
 import 'util.dart';
 
 Map<String, String> macosBuildEnvironment(
   Target target, {
   Map<String, String> environment = const {},
-  RustCommand command = runCommand,
+  ToolchainCommand command = runCommand,
 }) {
   if (target.goos != 'darwin') return const {};
   var sdk = environment['SDKROOT'];

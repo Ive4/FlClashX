@@ -347,7 +347,7 @@
   "disclaimer": "免责声明",
   "disclaimerDesc": "在使用 FlClash（以下简称“本软件”）前，请仔细阅读并充分理解本声明的全部内容。点击“同意”即表示你已阅读、理解并接受以下全部条款；如不同意，请点击“退出”并停止使用本软件。",
   "disclaimerSoftwareTitle": "软件性质",
-  "disclaimerSoftwareContent": "本软件是基于 meow-rs内核的开源网络代理客户端，仅提供配置管理、规则分流与流量转发等本地工具功能。",
+  "disclaimerSoftwareContent": "本软件是基于 mihomo（Clash.Meta）内核的开源网络代理客户端，仅提供配置管理、规则分流与流量转发等本地工具功能。",
   "disclaimerNoServiceStatement": "本软件自身不提供任何代理服务器、节点、订阅、机场或网络接入服务，也不与任何此类服务的提供者存在合作、代理或担保关系。",
   "disclaimerUsageTitle": "使用限制",
   "disclaimerUsageContent": "本软件仅供学习交流、技术研究等非商业用途。严禁将本软件用于任何商业目的，包括但不限于付费分发、捆绑销售、作为商业服务的组成部分或以本软件名义开展经营活动；任何商业行为均与本软件及其开发者无关。\n\n严禁将本软件用于违反你所在国家或地区法律法规的活动，包括但不限于绕过依法设置的网络访问限制、传播违法信息、实施网络攻击或侵犯他人合法权益。",
@@ -362,7 +362,7 @@
   "disclaimerPrivacyTitle": "数据收集与隐私",
   "disclaimerPrivacyContent": "本软件不会收集或上传你的订阅地址、节点信息、配置内容、访问的网站、连接记录、流量内容和日志，这些数据仅保存在你的设备本地，开发者无法获取。\n\n本软件只会在你使用相应功能时访问外部网络，例如更新订阅时访问你提供的订阅地址、检查更新时访问 GitHub。\n\n本软件在所有平台上均未集成任何数据统计或崩溃上报服务。",
   "disclaimerLicenseTitle": "开源协议",
-  "disclaimerLicenseContent": "本软件以 GPL-3.0 协议开源。你可以在遵守该协议的前提下自由使用、修改和分发本软件，但须同样以 GPL-3.0 协议开源并保留原作者的版权声明。\n\n本软件包含的第三方组件（包括 meow-rs 内核）分别遵循其各自的开源协议。基于本软件修改或分发的版本所产生的任何问题，与原作者无关。",
+  "disclaimerLicenseContent": "本软件以 GPL-3.0 协议开源。你可以在遵守该协议的前提下自由使用、修改和分发本软件，但须同样以 GPL-3.0 协议开源并保留原作者的版权声明。\n\n本软件包含的第三方组件（包括 mihomo（Clash.Meta）内核）分别遵循其各自的开源协议。基于本软件修改或分发的版本所产生的任何问题，与原作者无关。",
   "disclaimerChangesTitle": "声明变更",
   "disclaimerChangesContent": "开发者有权随版本更新修改本声明，修改后的内容随新版本发布即生效。你在更新后继续使用本软件，即视为接受修改后的声明。",
   "disclaimerAcceptTitle": "接受声明",
@@ -1054,5 +1054,9 @@
   "desktopAccessHistoryDesc": "开启进程识别后，让需要的程序联网。识别到的程序会记在这里，退出后仍可选择。",
   "desktopAccessDirectDesc": "不参与代理的应用使用内核直连，流量仍经过 TUN。",
   "desktopAccessRequiresTun": "请开启 TUN 和规则模式，使应用黑白名单生效。",
-  "desktopAccessNameOnly": "按程序名称匹配：{name}"
+  "desktopAccessNameOnly": "按程序名称匹配：{name}",
+  "mixedPortReset": "混合端口不能是 {value}，已恢复为 {port}",
+  "vpnPermissionNotGranted": "未获得 VPN 权限，VPN 没有启动。其他应用设为始终开启的 VPN 时也会如此。",
+  "vpnServiceStartFailed": "VPN 服务无法启动。",
+  "coreConnectionLost": "内核连接已断开（{reason}）。"
 }

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'rust_core_builder.dart';
+import 'rust_toolchain.dart';
 import 'target.dart';
 import 'util.dart';
 
@@ -11,7 +11,7 @@ Map<String, String> windowsRustEnvironment(
   String rootDir,
   Target target, {
   Map<String, String> environment = const {},
-  RustCommand command = runCommand,
+  ToolchainCommand command = runCommand,
 }) {
   if (!Platform.isWindows || target.goos != 'windows') return const {};
   final result = command(

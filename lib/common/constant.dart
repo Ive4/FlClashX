@@ -72,6 +72,7 @@ const probeThrottleDuration = Duration(seconds: 5);
 /// Covers a start, which moves the route three times within about 150 ms
 /// (`proxied`, then the listeners, then the Android TUN).
 const probeMoveSettleDuration = Duration(milliseconds: 300);
+const probeConfirmDelay = Duration(seconds: 1);
 
 const downloadTimeoutDuration = Duration(seconds: 20);
 

@@ -1,3 +1,2 @@
+-keep class go.** { *; }
 -keep class com.follow.clash.core.mobile.** { *; }
--keepclassmembers class * implements com.follow.clash.core.mobile.TunHandler { *; }
--keepclassmembers class * implements com.follow.clash.core.mobile.ResultHandler { *; }

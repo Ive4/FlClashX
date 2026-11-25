@@ -87,7 +87,7 @@ void main() {
     );
     await pumpEventQueue();
 
-    expect(listener.messages, ['core done']);
+    expect(listener.messages.single, contains('unexpected_disconnect'));
     coreEventManager.removeListener(listener);
   });
 

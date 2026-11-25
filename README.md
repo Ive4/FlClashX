@@ -1,4 +1,4 @@
-FlClashX extends [FlClash](https://github.com/chen08209/FlClash) with additional features and experimental HarmonyOS support. Its public version follows the upstream base version; `pubspec.yaml` is the version source. The project is maintained in [Ive4/FlClashX](https://github.com/Ive4/FlClashX), with its Core fork in [Ive4/Clash.Meta](https://github.com/Ive4/Clash.Meta). See [upstream synchronization](UPSTREAM.md).
+FlClashX extends [FlClash](https://github.com/chen08209/FlClash) with additional features and experimental HarmonyOS support. Its public version follows the upstream base version; `pubspec.yaml` is the version source. The project is maintained in [Ive4/FlClashX](https://github.com/Ive4/FlClashX), with its Core fork in [chen08209/Clash.Meta](https://github.com/chen08209/Clash.Meta). See [upstream synchronization](UPSTREAM.md).
 
 <div align="center">
 
@@ -144,7 +144,7 @@ select a connected device, or `--csv` to export a spreadsheet. Updates merge by 
 entries collected from other devices. See the [catalog guide](tool/ohos_app_catalog.md).
 
 **Build:** the current build script runs on Windows and uses Harmony Flutter, Harmony Go, the DevEco API 26
-SDK and the HarmonyOS Rust target. Prepare the local toolchains and signing files as described in the
+SDK, HarmonyOS Go and the HarmonyOS Rust target. Prepare the local toolchains and signing files as described in the
 [HarmonyOS build guide](ohos/README.md), then run from the repository root:
 
 ```powershell
@@ -153,7 +153,7 @@ powershell -File tool/build_ohos.ps1 -HarmonyHome "D:\Java\Huawei"
 
 The signed output is `build/ohos/hap/entry-default-signed.hap`. Signing files and native build outputs
 are excluded from Git. The Core submodule uses the `FlClash` branch of
-[Ive4/Clash.Meta](https://github.com/Ive4/Clash.Meta/tree/FlClash); upstream update instructions are in the build guide.
+[chen08209/Clash.Meta](https://github.com/chen08209/Clash.Meta/tree/FlClash); upstream update instructions are in the build guide.
 
 ## Build from source
 

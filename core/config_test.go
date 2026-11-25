@@ -744,6 +744,21 @@ func TestLoadConfigReportsMalformedYaml(t *testing.T) {
 	}
 }
 
+func TestLoadConfigAcceptsSystemDNSForBootstrap(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	profile := "dns:\n  enable: true\n  default-nameserver: [system]\n  proxy-server-nameserver: [https://dns.example/dns-query]\n"
+	if err := os.WriteFile(path, []byte(profile), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if servers := cfg.DNS.DefaultNameserver; len(servers) != 1 || servers[0].Net != "system" {
+		t.Fatalf("default nameservers = %+v, want system DNS", servers)
+	}
+}
+
 func TestLoadConfigKeepsTheSystemTimeWriteOnlyWhereItIsAllowed(t *testing.T) {
 	previous := systemTimeWritable
 	t.Cleanup(func() { systemTimeWritable = previous })

@@ -5,14 +5,29 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"strconv"
 	"testing"
 
 	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/constant"
 	cp "github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/tunnel"
 )
+
+func TestMain(m *testing.M) {
+	home, err := os.MkdirTemp("", "flclash-core-test-")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(home)
+	constant.SetHomeDir(home)
+	if cache := cachefile.Cache(); cache.DB != nil {
+		defer cache.Close()
+	}
+	m.Run()
+}
 
 func TestDefaultSetupParams(t *testing.T) {
 	params := defaultSetupParams()

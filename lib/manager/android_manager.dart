@@ -85,6 +85,19 @@ class _AndroidContainerState extends ConsumerState<AndroidManager>
   }
 
   @override
+  void onServiceStartFailed(String reason) {
+    onServiceStopped();
+    final l = context.appLocalizations;
+    final message = reason == 'vpn_permission'
+        ? l.vpnPermissionNotGranted
+        : l.vpnServiceStartFailed;
+    ref.read(coreStopReasonProvider.notifier).value = message;
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      context.showNotifier(message, level: MessageLevel.error);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return widget.child;
   }

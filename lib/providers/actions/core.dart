@@ -15,8 +15,12 @@ class CoreAction extends _$CoreAction {
 
     final version = ref.read(versionProvider);
     if (!isInit) {
-      final res = await _core.init(version);
-      commonPrint.log('init result: $res');
+      if (!await _core.init(version)) {
+        throw const CoreMethodException(
+          code: 'init_failed',
+          message: 'Core did not complete initialization',
+        );
+      }
     } else {
       await ref.read(proxiesActionProvider.notifier).updateGroups();
       await ref.read(providersProvider.notifier).syncProviders();
@@ -24,13 +28,16 @@ class CoreAction extends _$CoreAction {
   }
 
   Future<void> startCore() async {
+    ref.read(coreStopReasonProvider.notifier).value = null;
     ref.read(coreStatusProvider.notifier).value = CoreStatus.connecting;
     try {
       final result = await startLifecycle();
       await _applyLifecycleResult(result);
     } catch (error) {
       ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-      dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+      final message = compactError(error);
+      ref.read(coreStopReasonProvider.notifier).value = message;
+      dialogs.showNotifier(message, level: MessageLevel.error);
     }
   }
 
@@ -108,6 +115,7 @@ class CoreAction extends _$CoreAction {
 
   Future<bool> _runRestartWorker() async {
     try {
+      ref.read(coreStopReasonProvider.notifier).value = null;
       ref.read(coreStatusProvider.notifier).value = CoreStatus.connecting;
       final result = await restartLifecycle();
       if (!await _applyLifecycleResult(result, statusFirst: true)) {
@@ -118,7 +126,7 @@ class CoreAction extends _$CoreAction {
       var applied = true;
       while (appliedRevision < _requestedRestartRevision) {
         final revision = _requestedRestartRevision;
-        if (ref.read(isStartProvider)) {
+        if (ref.read(setupActionProvider.notifier).wantsRunning) {
           applied = await ref
               .read(setupActionProvider.notifier)
               .setRunning(true, initialize: true);
@@ -130,8 +138,9 @@ class CoreAction extends _$CoreAction {
         appliedRevision = revision;
       }
       return applied;
-    } catch (_) {
+    } catch (error) {
       ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+      ref.read(coreStopReasonProvider.notifier).value = compactError(error);
       rethrow;
     } finally {
       _restartOperation = null;

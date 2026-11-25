@@ -2,7 +2,9 @@ package core
 
 import (
 	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/dns"
+	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
@@ -48,17 +50,45 @@ func handleResetConnections() bool {
 
 // A network change clears rather than waits out the TTLs: mihomo serves an
 // expired entry once more before it refreshes it.
-func handleClearDnsCache() {
+func handleNetworkChanged() {
 	configMu.Lock()
 	defer configMu.Unlock()
+	bumpRouteEpoch()
 	dns.ClearAll()
 }
 
 // A connection that went out over a network the device has left hangs until
 // TCP gives up on it, and so do the DNS clients' pooled connections.
 func handleResetNetwork() {
+	handleNetworkChanged()
 	handleCloseConnections()
-	handleClearDnsCache()
+	resetOutbounds()
+}
+
+type networkResetter interface{ ResetNetwork() }
+
+// AllProxies keeps one proxy per name; providers may each hold one by that name.
+func resetOutbounds() {
+	reset := make(map[networkResetter]struct{})
+	visit := func(proxy constant.Proxy) {
+		outbound, ok := proxy.Adapter().(networkResetter)
+		if !ok {
+			return
+		}
+		if _, done := reset[outbound]; done {
+			return
+		}
+		reset[outbound] = struct{}{}
+		outbound.ResetNetwork()
+	}
+	for _, proxy := range tunnel.AllProxies() {
+		visit(proxy)
+	}
+	for _, provider := range tunnel.ProvidersSnapshot() {
+		for _, proxy := range provider.Proxies() {
+			visit(proxy)
+		}
+	}
 }
 
 func handleCloseConnection(connectionId string) bool {

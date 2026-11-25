@@ -17,7 +17,7 @@ try {
     & "$PSScriptRoot/prepare_ohos.ps1"
     & $flutter pub get
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS pub get failed' }
-    & "$PSScriptRoot/build_rust_ohos.ps1" -NativeSdk $env:OHOS_NDK_HOME
+    & "$PSScriptRoot/build_go_ohos.ps1" -GoHome $env:HM_GO_HOME
     & $flutter build hap --release --target-platform ohos-arm64
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS HAP build failed; inspect the build output above' }
 } finally {

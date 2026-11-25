@@ -896,6 +896,9 @@ void main() {
 
   group('proxy fields follow the option structs of the core', () {
     const root = 'core/Clash.Meta/adapter';
+    String readSource(File file) =>
+        file.readAsStringSync().replaceAll('\r\n', '\n');
+
     final structs = {
       for (final file in Directory(
         '$root/outbound',
@@ -904,7 +907,7 @@ void main() {
           for (final match in RegExp(
             r'^type (\w+) struct \{\n([\s\S]*?)\n\}',
             multiLine: true,
-          ).allMatches(file.readAsStringSync()))
+          ).allMatches(readSource(file)))
             match.group(1)!: match.group(2)!,
     };
     final keyPattern = RegExp(r'proxy:"([^",]+)(,omitempty)?"');
@@ -917,7 +920,7 @@ void main() {
       for (final match in RegExp(
         r'^\tcase "([^"]+)":\n\t\t\w+ := &outbound\.(\w+)\{',
         multiLine: true,
-      ).allMatches(File('$root/parser.go').readAsStringSync()))
+      ).allMatches(readSource(File('$root/parser.go'))))
         match.group(1)!: [
           structs[match.group(2)]!,
           for (final embedded in embeddedPattern.allMatches(

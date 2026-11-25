@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 const directOutbound = 'DIRECT';
 const routedOutbound = '';
+const probeErrorTimeout = 'timeout';
 
 /// [id] must match the checker name registered in core/service_check.go.
 enum ServiceTarget {

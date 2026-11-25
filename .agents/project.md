@@ -1,11 +1,10 @@
 # Project Context
 
-FlClash is a multi-platform proxy client built with Flutter and a Rust meow-rs 0.28.0 Core. It supports Android, Windows, macOS, Linux, and HarmonyOS, using Material You from `material_ui` as the base with Apple's Human Interface interaction conventions layered on top.
+FlClash is a multi-platform proxy client built with Flutter and the Go mihomo v1.19.34 Core. It supports Android, Windows, macOS, Linux, and HarmonyOS, using Material You from `material_ui` as the base with Apple's Human Interface interaction conventions layered on top.
 
 ## Version Notes
 
-- Before changing the meow-rs pin, follow [meow-upgrade.md](meow-upgrade.md). It records the local compatibility
-  patches, pending gaps, regression checks and conditions for replacing a patch with an upstream implementation.
+- The Core pin follows official FlClash. Keep the `core/Clash.Meta` gitlink and `build_config.yaml` version in sync.
 - Flutter stays on the 3.47.x line. Release CI pins 3.47.6 and is the source
   of truth for release builds; `.fvmrc` and local SDKs may sit on another 3.47
   patch. The editor in `plugins/code_forge` came from `code_forge` 10.14.0, which
@@ -89,29 +88,11 @@ non-deprecated plugin accessor changes only that one function.
 
 ## Build Dependencies
 
-Linux:
-
-```bash
-sudo apt-get install libayatana-appindicator3-dev cmake ninja-build clang libclang-dev nasm pkg-config
-```
-
-Windows:
-
-- Visual Studio C++ Build Tools with the Windows SDK, an MSVC Rust toolchain, LLVM with libclang, CMake 3.22+, NASM
-  for x64 BoringSSL assembly, and Inno Setup. `tool/rust_windows.ps1` discovers the Visual Studio installation and
-  imports its environment; set `LIBCLANG_PATH` when LLVM is outside the standard installation locations.
-
-macOS:
-
-```bash
-brew install cmake llvm nasm
-export LIBCLANG_PATH="$(brew --prefix llvm)/lib"
-npm install -g appdmg
-```
-
-All desktop builds need Cargo/Rust and Go for the separate `services/desktop` background host. The Core itself never
-builds Go. Android needs the AGP-pinned NDK, CMake, Ninja, libclang and Rust targets `armv7-linux-androideabi`,
-`aarch64-linux-android`, and `x86_64-linux-android`; no gomobile toolchain is used. HarmonyOS uses the native SDK's
-clang, sysroot, CMake and Ninja with `aarch64-unknown-linux-ohos`; see `tool/build_rust_ohos.ps1`.
-Some NDK distributions omit host libclang; install LLVM separately and set `LIBCLANG_PATH` in that case. Android
-cross flags still always select the NDK's target triple and sysroot.
+- All Core builds use Go 1.27. Desktop also needs Rust for `rust_api` and the Windows or Linux Helper.
+- Linux needs the GTK 3, libsecret and Ayatana AppIndicator development packages, CMake, Ninja and pkg-config.
+- Windows needs Visual Studio C++ Build Tools, the Windows SDK and an MSVC Rust toolchain. Release packaging also
+  uses Inno Setup. `tool/rust_windows.ps1` imports the Visual Studio environment for the Helper build.
+- macOS needs Xcode and uses `appdmg` for DMG packaging.
+- Android needs JDK 17 and the AGP-pinned NDK for gomobile. The separate Rust API plugin needs the Android Rust
+  targets and LLVM/libclang for its NDK bindings.
+- HarmonyOS needs HarmonyOS Go with its SDK compiler wrapper, as well as the HarmonyOS Rust target for `rust_api`.

@@ -2,10 +2,10 @@
 
 ## Building
 
-The active Core crate lives in `core/rust/` and pins meow-rs 0.28.0 through Cargo.lock. `core/Clash.Meta/` and the
-remaining Go wrapper are inactive contract references; packaging does not compile them.
+The Go Core in `core/` uses the mihomo revision pinned by official FlClash v0.9.4. Initialize it with
+`git submodule update --init --recursive` before building.
 
-Full package build, including the Rust Core, Flutter, and packaging, runs through `setup.dart`:
+Full package build, including the Go Core, Flutter, and packaging, runs through `setup.dart`:
 
 ```bash
 dart setup.dart macos
@@ -16,8 +16,7 @@ dart setup.dart android
 
 Install the native prerequisites in `project.md` first. On Windows the setup hook calls `tool/rust_windows.ps1`
 to select MSVC and import Visual Studio's compiler/SDK environment. `FLCLASH_RUST_TOOLCHAIN` can select an installed
-MSVC Rust toolchain; `LIBCLANG_PATH` can point to LLVM or the Harmony SDK's directory containing `libclang.dll`.
-NASM must be on `PATH` for x64 builds.
+MSVC Rust toolchain for the Helper. Android and HarmonyOS also need libclang for the Rust API plugin.
 
 Flutter's hook runner forwards `PATH` and `LIBCLANG_PATH`, but strips arbitrary environment variables such as
 `FLCLASH_RUST_TOOLCHAIN`, `CARGO_BUILD_JOBS` and custom Rust flags. Pass those explicitly through the root
@@ -33,23 +32,16 @@ hooks:
         CARGO_BUILD_JOBS: '2'
 ```
 
-HarmonyOS packaging and an isolated Core build use:
+HarmonyOS builds the same Core in the VPN extension with a HarmonyOS Go toolchain. See [the build guide](../ohos/README.md).
 
-```powershell
-./tool/build_ohos.ps1
-./tool/build_rust_ohos.ps1 -NativeSdk $env:OHOS_NDK_HOME -TargetDirectory D:/Temp/flclash-ohos-core -OutputDirectory D:/Temp/flclash-ohos-libs
-```
+The desktop Go Core, Rust Helper and Go background host build automatically. Flutter runs
+`plugins/setup/hook/build.dart` on every `flutter build` and `flutter test`, and the setup hook builds the Core with
+`go build -tags=with_gvisor ./cmd/core` and stages the artifacts in `libclash/`.
 
-The desktop Rust Core, Rust Helper and Go background host build automatically: Flutter runs
-`plugins/setup/hook/build.dart` on every `flutter build` and `flutter test`,
-and the hook drives `CoreBuilder` from the `setup_hooks` package in
-`plugins/setup/setup_hooks/`. Artifacts land in `libclash/`. The Core command is `cargo build --locked --release
---bin FlClashCore --target <triple>`; Windows uses MSVC, Linux uses GNU, and macOS uses Apple Darwin targets, each
-for x64 and ARM64. `FLCLASH_CORE_TARGET_DIR` can isolate the Core's Cargo cache.
-Android's `:core` Gradle module cross-builds the Rust cdylib with `--locked --lib` for the requested Flutter ABIs,
-using AGP's NDK clang/sysroot and host libclang for bindgen. JNI declarations live in the module; generated
-`libflclash.so` and `libc++_shared.so` feed AGP's variant JNI sources without an intermediate AAR or Go.
-The hook reruns when Go background-host, Rust Core/Helper, or
+Android's `:core` Gradle module binds the Go library with the Go module's pinned gomobile toolchain and the AGP-pinned NDK.
+It stages the generated Java classes and the requested ABIs as `libclash.so`.
+
+The hook reruns when Go Core/background host, Rust Helper, or
 `setup_hooks` inputs change; the fingerprint cache lives in
 `.dart_tool/setup_build_cache/`. To force a rebuild, delete that directory:
 
@@ -62,8 +54,8 @@ not rebuilt read `.dart_tool/setup_build_cache/hook.log`; each invocation starts
 with a `===` line carrying its timestamp and target.
 
 The hook runs for `flutter test` and for `dart run` of any root-package script
-too, so a root Dart test run needs Go for the background host, plus Cargo/Rust and the native dependencies in
-`project.md` on every desktop. Core and Helper fingerprints query the Rust toolchain even on a cache hit.
+too, so a root Dart test run needs Go for the Core and background host, plus Cargo/Rust and the native dependencies in
+`project.md`. The Helper fingerprints query the Rust toolchain even on a cache hit.
 The hook protocol carries no build mode and no caller, so the only
 switch is the user-define in the root `pubspec.yaml`:
 
@@ -216,13 +208,14 @@ only analyzes and tests the Dart side.
 
 On `Ive4/FlClashX`, branch pushes and manual runs also build `windows-package` and the `macos-package` matrix
 independently of the check jobs. Windows x64 produces an installer and portable ZIP through
-`dart setup.dart windows --env stable --targets exe,zip` on `windows-2022`, uploaded as `windows-amd64`.
+`dart setup.dart windows --env stable --targets exe,zip` on `windows-2022`. Download the installer EXE, portable ZIP,
+and `windows-amd64-SHA256SUMS.txt` individually from the run's artifacts. Each expires after 14 days.
 macOS packages unsigned DMGs through `dart setup.dart macos --env stable --targets dmg`, with Intel on
 `macos-15-intel` and Apple Silicon on `macos-latest`. Download `macos-amd64` or `macos-arm64` from the run's artifacts;
 each includes `SHA256SUMS` and expires after 14 days. This does not create a GitHub Release.
 The package jobs select Xcode 26.3 (26.2 fallback), which provides the `NSGlassEffectView` API used by the window plugin.
-The setup hook resolves its macOS SDK with `xcrun` and forwards that SDK and Flutter's deployment target to both the
-Rust Core and the Go desktop background host. Both values participate in their build fingerprints.
+The setup hook resolves its macOS SDK with `xcrun` and forwards that SDK and Flutter's deployment target to the
+Go desktop background host. Both values participate in their build fingerprints.
 
 Root `flutter test` only discovers the root package's `test/` directory by default. Include bundled plugin Dart tests by passing paths explicitly, or run `flutter test` from that plugin package directory, or run `bash tool/check_plugins.sh` to analyze and test every plugin package the way CI does. Native plugin tests under platform folders are not run by `flutter test`.
 
@@ -251,17 +244,14 @@ What those suites own:
 
 ## Native Component Verification
 
-The active Rust Core and native background host checks are:
+The Go Core and native background host checks are:
 
 ```bash
-cargo test --locked --manifest-path core/rust/Cargo.toml -- --test-threads=1
+(cd core && go test -tags=with_gvisor ./... && go vet -tags=with_gvisor ./...)
 cd services/desktop
 go test ./...
 go vet ./...
 ```
-
-Core fixtures share process-level home, DNS and socket-policy state, so run independent Core tests serially.
-Concurrency exercised inside each Tokio test remains enabled. Helper and `rust_api` use their own test commands.
 
 The Windows Helper's loopback/session protocol tests are host-independent by default. Windows CI additionally enables its
 service implementation:
@@ -423,7 +413,7 @@ repository holds 10 GB before evicting the least recently used entries. Every re
 reads from, so `BRANCH_CACHE` turns caching off in tag runs: one release used to write about 9 GB of such entries and
 evict everything `dev` had saved. Release builds therefore start cold; branch runs, chiefly `dev`, keep the caches.
 
-- setup-go caches only the desktop background host module. Rust caches include `core/rust`, the Helper and
+- setup-go caches the Core and desktop background host modules. Rust caches include the Helper and
   `rust_api`; Android also caches its generated native Cargo directory under `build/core`.
 - setup-gradle writes only on the default branch unless told otherwise, so `android` lets `dev` write as well. Its
   entries are keyed by job, which is one more reason the release build gains nothing from caching.

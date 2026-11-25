@@ -216,7 +216,7 @@ var methodHandlers = map[CoreMethod]methodHandler{
 	getConnectionCountMethod:       withoutArguments(handleGetConnectionCount),
 	closeConnectionsMethod:         withoutArguments(handleCloseConnections),
 	resetConnectionsMethod:         withoutArguments(handleResetConnections),
-	clearDnsCacheMethod:            acknowledged(handleClearDnsCache),
+	clearDnsCacheMethod:            acknowledged(handleNetworkChanged),
 	closeConnectionMethod:          withArguments(handleCloseConnection),
 	getExternalProvidersMethod:     withoutArguments(handleGetExternalProviders),
 	getExternalProviderMethod:      withArguments(handleGetExternalProvider),

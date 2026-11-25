@@ -26,8 +26,7 @@ git merge v0.9.2
 发生冲突时保留 FlClashX 的品牌与增强功能，并结合上游改动解决；不要整文件选择 ours/theirs。完成后检查版本、本地化、测试和各平台打包。
 
 增强版发布仓库为 https://github.com/Ive4/FlClashX 。完成检查后推送到 `origin`，不要把增强提交推送到上游仓库。
-内核子模块使用 https://github.com/Ive4/Clash.Meta 的 `FlClash` 分支，原内核仓库地址及同步步骤见
-[鸿蒙构建说明](ohos/README.md#core-fork-and-upstream-updates)。
+内核子模块使用 https://github.com/chen08209/Clash.Meta，提交和版本应与选定的官方 FlClash 版本一致。鸿蒙构建补丁见[鸿蒙构建说明](ohos/README.md#core-updates)。
 
 ## 合并检查
 

@@ -28,7 +28,7 @@ IntelliJ and Zed run/debug configurations pass `--no-enable-impeller`, including
 settings above. HarmonyOS's `flutter run` can rewrite buildinfo; keep its flag false. The checked-in buildinfo
 was updated with the HM-Flutter SDK's `setImpellerEnableFlag` writer.
 
-Do not re-enable Impeller as part of a Flutter or meow-rs upgrade. Check that a candidate SDK retains the Skia paths;
+Do not re-enable Impeller as part of a Flutter or Core upgrade. Check that a candidate SDK retains the Skia paths;
 loss of a supported Skia path is an upgrade blocker under this policy. The upstream native controls are documented
 in [Flutter's renderer guide](https://docs.flutter.dev/perf/impeller). Skia uses the existing Liquid Glass fallback:
 frost, tint, blur and rim remain, with no shader-based refraction.
@@ -55,7 +55,7 @@ frost, tint, blur and rim remain, with no shader-based refraction.
 - **Memory regression:** On 2026-11-03, the same Windows Release frontend with the same private profile and window
   reproduced Impeller startup working-set peaks of 650–930 MiB and settled working sets around 420–460 MiB, versus
   around 210 MiB with Skia. The Flutter engine DLL is identical to the installed old version; that version forced
-  Skia. These process measurements exclude the separate Rust Core and do not establish a Dart heap leak.
+  Skia. These process measurements exclude the separate Go Core and do not establish a Dart heap leak.
 - **Selection:** the Windows project unconditionally selects Skia. Passing the former Impeller arguments must not
   enable Impeller or change the selected backend.
 - **Verification:** check normal startup and startup with the former enable argument in safe mode; neither may log

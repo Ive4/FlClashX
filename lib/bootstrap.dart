@@ -36,6 +36,7 @@ class Bootstrap {
   }
 
   BootDecision _bootDecision = const BootDecision();
+  Object? _resetMixedPort;
 
   Future<ProviderContainer> init(int version) async {
     globalState.appEnv = const String.fromEnvironment(
@@ -103,7 +104,12 @@ class Bootstrap {
   ) async {
     await _claimDataDirectory();
     globalState.packageInfo = await PackageInfo.fromPlatform();
+    final storedConfig = await preferences.getConfigMap();
+    _resetMixedPort = unusableMixedPort(storedConfig?['patchClashConfig']);
     var config = await migration.run();
+    if (_resetMixedPort != null && !safeModeBuild) {
+      await preferences.saveConfig(config);
+    }
     _bootDecision = await bootGuard.evaluate(
       profileId: config.currentProfileId,
     );
@@ -182,6 +188,15 @@ class Bootstrap {
       return;
     }
     await _showCrashRecoveryTip();
+    if (_resetMixedPort case final value?) {
+      dialogs.showNotifier(
+        currentAppLocalizations.mixedPortReset(
+          value,
+          _container.read(patchClashConfigProvider).mixedPort,
+        ),
+        level: MessageLevel.warning,
+      );
+    }
     await _container.read(coreActionProvider.notifier).startCore();
     if (!_bootDecision.isDegraded) {
       await _container.read(setupActionProvider.notifier).initStatus();

@@ -2821,10 +2821,10 @@ class AppLocalizations {
     );
   }
 
-  /// `The Software is an open-source network proxy client built on the meow-rs core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.`
+  /// `The Software is an open-source network proxy client built on the Clash.Meta (mihomo) core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.`
   String get disclaimerSoftwareContent {
     return Intl.message(
-      'The Software is an open-source network proxy client built on the meow-rs core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.',
+      'The Software is an open-source network proxy client built on the Clash.Meta (mihomo) core. It only provides local tooling such as configuration management, rule-based routing, and traffic forwarding.',
       name: 'disclaimerSoftwareContent',
       desc: '',
       args: [],
@@ -2971,10 +2971,10 @@ class AppLocalizations {
     );
   }
 
-  /// `The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the meow-rs core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.`
+  /// `The Software is open source under the GPL-3.0 license. Under that license you may run, study, modify, and distribute it; when you distribute the Software or a modified version, you must provide its source code under GPL-3.0 as well and keep the original copyright notices.\n\nThird-party components in the Software, including the Clash.Meta core, follow their own licenses. The original authors are not responsible for any problem arising from versions modified or distributed by others.`
   String get disclaimerLicenseContent {
     return Intl.message(
-      'The Software is open source under the GPL-3.0 license. You may use, modify, and distribute it freely as long as you comply with that license, which requires derivative works to be released under GPL-3.0 as well and the original copyright notices to be kept.\n\nThird-party components in the Software, including the meow-rs core, follow their own licenses. The original authors are not responsible for any issue arising from modified or redistributed versions.',
+      'The Software is open source under the GPL-3.0 license. Under that license you may run, study, modify, and distribute it; when you distribute the Software or a modified version, you must provide its source code under GPL-3.0 as well and keep the original copyright notices.\n\nThird-party components in the Software, including the Clash.Meta core, follow their own licenses. The original authors are not responsible for any problem arising from versions modified or distributed by others.',
       name: 'disclaimerLicenseContent',
       desc: '',
       args: [],
@@ -8949,6 +8949,46 @@ class AppLocalizations {
       name: 'desktopAccessNameOnly',
       desc: '',
       args: [name],
+    );
+  }
+
+  /// `The mixed port cannot be {value}, so it was set back to {port}`
+  String mixedPortReset(Object value, Object port) {
+    return Intl.message(
+      'The mixed port cannot be $value, so it was set back to $port',
+      name: 'mixedPortReset',
+      desc: '',
+      args: [value, port],
+    );
+  }
+
+  /// `VPN permission was not granted, so the VPN did not start. An always-on VPN set for another app also blocks it.`
+  String get vpnPermissionNotGranted {
+    return Intl.message(
+      'VPN permission was not granted, so the VPN did not start. An always-on VPN set for another app also blocks it.',
+      name: 'vpnPermissionNotGranted',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The VPN service could not start.`
+  String get vpnServiceStartFailed {
+    return Intl.message(
+      'The VPN service could not start.',
+      name: 'vpnServiceStartFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connection to the core was lost ({reason}).`
+  String coreConnectionLost(String reason) {
+    return Intl.message(
+      'Connection to the core was lost ($reason).',
+      name: 'coreConnectionLost',
+      desc: '',
+      args: [reason],
     );
   }
 }

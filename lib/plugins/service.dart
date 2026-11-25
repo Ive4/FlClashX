@@ -34,6 +34,8 @@ abstract mixin class ServiceListener {
   void onServiceEvent(CoreEvent event) {}
 
   void onServiceStopped() {}
+
+  void onServiceStartFailed(String reason) => onServiceStopped();
 }
 
 class Service {
@@ -70,12 +72,21 @@ class Service {
           }
           break;
         case 'stopped':
+          final payload = call.arguments;
+          final revision = payload is Map ? payload['revision'] : payload;
           // A report stamped before the newest command no longer describes it.
-          if (call.arguments != _commandRevision || !_startRequested) {
+          if (revision != _commandRevision || !_startRequested) {
             break;
           }
           _startRequested = false;
-          _dispatch('stop report', (listener) => listener.onServiceStopped());
+          final failure = payload is Map ? payload['failure'] : null;
+          _dispatch('stop report', (listener) {
+            if (failure is String) {
+              listener.onServiceStartFailed(failure);
+            } else {
+              listener.onServiceStopped();
+            }
+          });
           break;
         default:
           throw MissingPluginException();
