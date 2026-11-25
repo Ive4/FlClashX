@@ -7,7 +7,6 @@ import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:rust_api/editor.dart';
 
 import '../code_forge.dart';
 import 'clipboard.dart';

@@ -1,0 +1,13 @@
+name: go_api
+description: FlClash native Go library for scripts, the editor and desktop integration.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  code_assets: ^1.2.1
+  ffi: ^2.1.5
+  hooks: ^2.2.0
+  path: ^1.9.1

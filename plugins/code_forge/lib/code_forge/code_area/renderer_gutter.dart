@@ -201,7 +201,7 @@ extension _RendererGutter on _CodeFieldRenderer {
       );
 
       // Only the guide's x is reused: its end depends on the viewport, since
-      // guidesComputeViewport stops scanning just below it.
+      // The native scan stops just below it.
       final cachedBlocks = _indentGuideCache[startLine];
       final guideX = cachedBlocks != null && cachedBlocks.isNotEmpty
           ? cachedBlocks.first.guideX
@@ -234,14 +234,13 @@ extension _RendererGutter on _CodeFieldRenderer {
       }
     }
 
-    final rustBlocks = guidesComputeViewport(
-      rope: controller.rope.core,
-      firstVisible: BigInt.from(firstVisibleLine),
-      lastVisible: BigInt.from(lastVisibleLine),
-      tabSize: BigInt.from(tabSize),
+    final nativeBlocks = controller.rope.computeGuides(
+      firstVisibleLine,
+      lastVisibleLine,
+      tabSize,
     );
 
-    for (final b in rustBlocks) {
+    for (final b in nativeBlocks) {
       final lineText = _lineText(b.startLine);
 
       addBlock(

@@ -159,15 +159,15 @@ void main() {
             architecture: Architecture.x64,
             userDefines: {
               'environment': {
-                'FLCLASH_RUST_TOOLCHAIN': '1.99.1-msvc',
-                'LIBCLANG_PATH': 'C:/LLVM/bin',
+                'SDKROOT': '/sdk',
+                'MACOSX_DEPLOYMENT_TARGET': '11.0',
               },
             },
           ),
         )!;
         expect(request.environment, {
-          'FLCLASH_RUST_TOOLCHAIN': '1.99.1-msvc',
-          'LIBCLANG_PATH': 'C:/LLVM/bin',
+          'SDKROOT': '/sdk',
+          'MACOSX_DEPLOYMENT_TARGET': '11.0',
         });
         expect(
           () => const CoreBuilder().requestFor(
@@ -175,7 +175,7 @@ void main() {
               os: OS.windows,
               architecture: Architecture.x64,
               userDefines: {
-                'environment': {'CARGO_BUILD_JOBS': 2},
+                'environment': {'GOAMD64': 2},
               },
             ),
           ),

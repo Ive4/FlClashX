@@ -233,10 +233,7 @@ extension _RendererFolding on _CodeFieldRenderer {
     final version = controller.contentVersion;
 
     try {
-      final computed = await foldsComputeAll(
-        rope: controller.rope.core,
-        tabSize: BigInt.from(controller.tabSize),
-      );
+      final computed = await controller.rope.computeFolds(controller.tabSize);
       if (!attached) {
         _asyncFoldComputationPending = false;
         return;
@@ -276,7 +273,7 @@ extension _RendererFolding on _CodeFieldRenderer {
     }
   }
 
-  // Kept in step with `compute_all` in rust_api's editor/folds.rs.
+  // Kept in step with `computeFolds` in the Go editor.
   FoldRange? _computeFoldRangeForLine(int lineIndex) {
     final line = controller.getLineText(lineIndex);
     final bracketEnd = _bracketFoldEnd(lineIndex, line);
@@ -510,10 +507,7 @@ extension _RendererFolding on _CodeFieldRenderer {
       return null;
     }
 
-    final result = foldsFindMatchingBracket(
-      rope: controller.rope.core,
-      targetOffset: BigInt.from(pos),
-    )?.toInt();
+    final result = controller.rope.matchingBracket(pos);
 
     _bracketCache[pos] = result;
     return result;

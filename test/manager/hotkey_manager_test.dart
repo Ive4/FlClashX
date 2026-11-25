@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rust_api/rust_api.dart';
+import 'package:go_api/go_api.dart';
 
 void main() {
   group('KeyboardModifierExt', () {

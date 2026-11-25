@@ -143,8 +143,8 @@ On Windows, `python` can be used instead of `python3`. Use `--hdc` to specify th
 select a connected device, or `--csv` to export a spreadsheet. Updates merge by bundle name and retain
 entries collected from other devices. See the [catalog guide](tool/ohos_app_catalog.md).
 
-**Build:** the current build script runs on Windows and uses Harmony Flutter, Harmony Go, the DevEco API 26
-SDK, HarmonyOS Go and the HarmonyOS Rust target. Prepare the local toolchains and signing files as described in the
+**Build:** the current build script runs on Windows and uses Harmony Flutter, HarmonyOS Go and the DevEco API 26
+SDK. Prepare the local toolchains and signing files as described in the
 [HarmonyOS build guide](ohos/README.md), then run from the repository root:
 
 ```powershell
@@ -158,7 +158,7 @@ are excluded from Git. The Core submodule uses the `FlClash` branch of
 ## Build from source
 
 You need [Flutter](https://docs.flutter.dev/get-started/install) 3.47 (release builds use 3.47.6),
-[Go](https://go.dev/dl/) 1.27 and [Rust](https://rustup.rs/) installed through rustup. Each platform builds on its own
+[Go](https://go.dev/dl/) 1.27. Each platform builds on its own
 host, except Android, which builds anywhere. HarmonyOS uses the separate toolchains and script described above.
 
 ```bash
@@ -168,12 +168,12 @@ flutter pub get
 dart setup.dart android   # or windows, macos, linux
 ```
 
-Packages land in `dist/`. The Go core and the Rust libraries are compiled as part of the Flutter build.
+Packages land in `dist/`. Flutter builds the Go core and native components through the build hooks.
 
 | Platform | Also needed |
 | --- | --- |
 | Android | Android SDK with the NDK. Add `--arch arm64` to build a single ABI. |
-| Windows | GCC (MinGW-w64) for the core and [Inno Setup](https://jrsoftware.org/isinfo.php) 6 for the installer. |
+| Windows | Visual Studio C++ Build Tools and the Windows SDK for Flutter, LLVM MinGW for the native Go library, and [Inno Setup](https://jrsoftware.org/isinfo.php) 6 for the installer. In PowerShell, run `$compilerPath = ./tool/setup_windows_go_cgo.ps1`, then prepend it to PATH with `$env:PATH = "$compilerPath;$env:PATH"`. |
 | macOS | Xcode and Node.js. The script installs `appdmg` through npm. |
 | Linux | Debian or Ubuntu. The script installs the build packages with apt and downloads `appimagetool`. |
 

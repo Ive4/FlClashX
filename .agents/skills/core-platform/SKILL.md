@@ -19,7 +19,7 @@ build hooks, system proxy, tray, VPN, TUN, or platform-specific desktop/mobile b
 - `.agents/setting-changes.md`: a setting the Core or the Android VPN reads is patched live, re-applied with the
   profile, or left to a restart the user confirms; it says which, and what adding a setting to each path takes.
 - `.agents/architecture.md`: Core Integration, Lifecycle Ownership And Convergence, Core Protocol And Event Delivery,
-  Safe Mode, Build System, and Rust Helper Service describe the current mechanisms, including the Helper protocol,
+  Safe Mode, Build System, and Go Helper Service describe the current mechanisms, including the Helper protocol,
   the applied/coalesced/superseded outcomes, and the unconfirmed-exit lease.
 
 ## Owners
@@ -49,7 +49,7 @@ Focused tests live at the narrowest layer, and the matching commands are in `.ag
   `go test -tags=with_gvisor ./...`.
 - Provider/exit convergence: `test/providers/action_test.dart` and `test/providers/system_action_test.dart`.
 - Android Kotlin: compile each touched Gradle module with JDK 17.
-- Helper: `cargo fmt --check` and `cargo test`; the `windows-service` feature only builds on Windows.
+- Helper: `go test ./...` and `go vet ./...` in `services/helper` on Windows and Linux.
 
 State host gaps explicitly. Always-on VPN, VPN permission, system revoke, named-pipe peer identity, polkit and systemd
 on Linux, and Windows Service Control Manager behavior need their real platform even when portable tests pass.
@@ -62,5 +62,5 @@ on Linux, and Windows Service Control Manager behavior need their real platform 
   owns.
 - The Helper owns executable integrity: Core SHA256 validation and the protocol stay identical across Flutter build
   modes, so a debug build is not exempt.
-- `plugins/setup/` is a build harness, not a Dart API plugin. Its hooks compile the Go Core, Rust Helper and the separate
+- `plugins/setup/` is a build harness, not a Dart API plugin. Its hooks compile the Go Core, Helper and the separate
   Go desktop background host; a missing toolchain fails `flutter test`, not only `flutter build`.

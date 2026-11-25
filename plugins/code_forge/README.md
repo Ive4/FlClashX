@@ -9,9 +9,9 @@ in step with upstream.
 
 ## What changed from upstream
 
-- The Rust backend (rope buffer, fold ranges, bracket matching, indent guides,
-  completion words) is the `editor/` module of `plugins/rust_api`, loaded through
-  the app's single `RustLib`; this package has no native build of its own.
+- The Go backend in `plugins/go_api/native/editor/` holds the rope buffer and
+  computes folds, matching brackets, viewport indent guides, and completion
+  words.
 - Vertical layout goes through one row-based `ViewLineLayout` (prefix sums over
   per-line row counts, folded lines take no rows), so scrolling and jumping stay
   logarithmic in large documents.

@@ -1,5 +1,4 @@
 import 'error.dart';
-import 'rust_toolchain.dart';
 import 'target.dart';
 import 'util.dart';
 

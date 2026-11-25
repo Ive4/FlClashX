@@ -23,6 +23,15 @@ void main() {
     };
   }
 
+  test('executes a profile through the bundled Go library', () async {
+    final result = await handleEvaluate(
+      'const main = async config => ({ ...config, mode: "global" });',
+      {'mode': 'rule'},
+    );
+
+    expect(result, {'mode': 'global', 'proxy-providers': {}});
+  });
+
   test(
     'passes the profile as JSON and returns what the script produced',
     () async {

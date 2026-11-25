@@ -7,12 +7,11 @@ import 'build_cache.dart';
 import 'desktop_builder.dart';
 import 'fingerprint.dart';
 import 'go_builder.dart';
+import 'helper_builder.dart';
 import 'macos_toolchain.dart';
 import 'options.dart';
-import 'rust_builder.dart';
 import 'target.dart';
 import 'util.dart';
-import 'windows_toolchain.dart';
 
 final _log = Logger('setup_hooks');
 
@@ -60,15 +59,7 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
     null => const <String>[],
     final dir => collectPackageInputs(dir),
   };
-  final environment = {
-    ...Platform.environment,
-    ...request.environment,
-    ...windowsRustEnvironment(
-      rootDir,
-      target,
-      environment: request.environment,
-    ),
-  };
+  final environment = {...Platform.environment, ...request.environment};
   environment.addAll(macosBuildEnvironment(target, environment: environment));
 
   final core = await GoBuilder(
@@ -99,13 +90,12 @@ Future<BuildReport> buildPlatform(BuildRequest request) async {
   }
 
   final coreSha256 = await calcSha256(core.primaryOutput);
-  final helper = await RustBuilder(
+  final helper = await HelperBuilder(
     rootDir: rootDir,
     config: config,
     cache: cache,
     notice: notice,
     harnessInputs: harnessInputs,
-    environment: environment,
   ).build(target, coreSha256);
   final manifestPath = p.join(
     rootDir,

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'system.dart';
 
-/// Mirrors `PRIMARY_MODIFIERS` in `plugins/rust_api/rust/src/hotkey/keys.rs`:
+/// Primary modifiers supported by the native hotkey registry:
 /// a global hotkey carrying none of these is refused by the OS layer.
 const primaryHotKeyModifiers = {
   KeyboardModifier.control,

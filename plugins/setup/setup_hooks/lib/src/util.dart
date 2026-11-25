@@ -9,6 +9,14 @@ import 'error.dart';
 
 final _log = Logger('util');
 
+typedef ToolchainCommand =
+    ProcessResult Function(
+      String executable,
+      List<String> arguments, {
+      String? workingDirectory,
+      Map<String, String>? environment,
+    });
+
 /// Recovers the toolchains that Xcode's and Gradle's stripped PATH would hide.
 final String? _toolSearchPath = _resolveToolSearchPath();
 
@@ -20,10 +28,7 @@ String? _resolveToolSearchPath() {
     '/opt/homebrew/bin',
     '/usr/local/bin',
     '/usr/local/go/bin',
-    if (home != null && home.isNotEmpty) ...[
-      p.join(home, 'go', 'bin'),
-      p.join(home, '.cargo', 'bin'),
-    ],
+    if (home != null && home.isNotEmpty) p.join(home, 'go', 'bin'),
   ];
   final missing = candidates
       .where((dir) => !entries.contains(dir) && Directory(dir).existsSync())

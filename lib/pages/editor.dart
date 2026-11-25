@@ -25,21 +25,21 @@ import 'package:code_forge/code_forge.dart'
         CodeSelectionStyle,
         FindController,
         UndoRedoController;
+import 'package:go_api/go_api.dart';
 import 'package:re_highlight/languages/javascript.dart';
 import 'package:re_highlight/languages/json.dart';
 import 'package:re_highlight/languages/yaml.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
-import 'package:rust_api/rust_api.dart' show isRustLibInitialized;
 
 export 'package:code_forge/code_forge.dart' show CodeForgeDocument;
 export 'package:fl_clash/features/editor/editor.dart'
     show EditorSchema, readRelaxed;
 
-/// Whether `main` initialised `RustLib`, which a test that needs it missing
-/// cannot undo once another test in its isolate has.
+/// Whether `main` initialized the native editor backend. Tests can override
+/// this check to exercise the unavailable state.
 @visibleForTesting
-bool Function() editorNativeReady = () => isRustLibInitialized;
+bool Function() editorNativeReady = () => GoApi.isInitialized;
 
 /// Opens [path] off the UI isolate, or [ifMissing] when nothing is there.
 Future<CodeForgeDocument> openEditorFile(
@@ -438,7 +438,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
 /// The code editor without page chrome, so it can fill a page or one pane
 /// of it. It shows its unavailable state when `main` did not initialise
-/// `RustLib`.
+/// the native editor backend.
 class EditorView extends ConsumerStatefulWidget {
   final CodeForgeDocument? document;
   final Language language;
@@ -478,7 +478,7 @@ class EditorViewState extends ConsumerState<EditorView> {
   void initState() {
     super.initState();
     if (!editorNativeReady()) {
-      _initError = StateError('RustLib is not initialized');
+      _initError = StateError('The native editor backend is not initialized');
       return;
     }
     _show(widget.document);

@@ -8,7 +8,7 @@ import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/pages/error.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rust_api/rust_api.dart';
+import 'package:go_api/go_api.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 import 'application.dart';
@@ -33,6 +33,10 @@ void main(List<String> args) {
           'assets/data/mihomo-license.txt',
         );
         yield LicenseEntryWithLineBreaks(['mihomo'], license);
+        final nativeLicense = await rootBundle.loadString(
+          'assets/data/go-api-licenses.txt',
+        );
+        yield LicenseEntryWithLineBreaks(['FlClash Go API'], nativeLicense);
       });
       if (Platform.isWindows || Platform.isLinux || system.isOhos) {
         SharedPreferencesStorePlatform.instance = AtomicFilePreferencesStore(
@@ -67,7 +71,7 @@ void main(List<String> args) {
         });
       };
       try {
-        await RustLib.init();
+        GoApi.initialize();
         final version = await system.init();
         final container = await bootstrap.init(version);
         await desktopBackground.inspectExisting();

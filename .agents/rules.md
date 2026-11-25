@@ -179,7 +179,7 @@ The Go wrapper in `core/` embeds the mihomo revision in `core/Clash.Meta`.
   themselves introduced — and say which of the two it is in the commit message.
 - Do not expose direct filesystem deletion APIs through Core or helper IPC; use
   a scope-specific cleanup API instead.
-- The desktop IPC socket in `plugins/rust_api` admits a Unix peer only when its effective uid is the app's own or root:
+- The desktop IPC socket in `plugins/go_api` admits a Unix peer only when its effective uid is the app's own or root:
   the socket lives in `/tmp`, and the Core connects as root whenever it runs setuid for TUN or under the Linux Helper.
   A launch mode that runs the Core as any other user has to widen `admit` in `ipc/access.rs`, and Windows
   keeps its identity check on the Dart side, which compares the named-pipe peer PID with the Core it launched.
@@ -249,7 +249,7 @@ The Go wrapper in `core/` embeds the mihomo revision in `core/Clash.Meta`.
   mutual exclusion against each other and against `patchSelectGroup` — but not against a whole config apply, which is
   what `configMu` made a proxy switch wait for, provider downloads included. `patchSelectGroup` takes `selectMu` under
   `configMu`, fixing the order as `configMu` → `selectMu`.
-- The Rust probe shares one deadline across its Core semaphore and request. Report measured latency from the start of the
+- The Core probe shares one deadline across its Core semaphore and request. Report measured latency from the start of the
   request. A delay test that expires while waiting for a Core slot returns null and leaves the last measurement in place.
   A request that runs out of its remaining budget returns `-1`. The IPC guard outlasts the Core's maximum supported budget.
   The manual test uses the longest explicit timeout from checks covering that member and URL, or its requested timeout
@@ -374,7 +374,7 @@ it there is.
   costs the UI isolate on every emission, and any write to that table makes it emit again.
 - Bounded work stays where it is: a provider recompute that reuses a cache, a single-item update, a search filter over
   a list sized for scrolling.
-- An editor document stays in the Rust rope. Open a file for `EditorPage` with `openEditorFile` rather than reading it
+- An editor document stays in the Go text buffer. Open a file for `EditorPage` with `openEditorFile` rather than reading it
   into a string, and read an edited one through `EditorContent`; a profile can be tens of megabytes.
 - Decide on measurements taken at the expected maximum. A `flutter test` probe that counts provider recomputes, times
   the provider body and hooks `debugOnRebuildDirtyWidget` shows what reruns and how it scales; its JIT timings are not

@@ -55,8 +55,7 @@ The `yaml_writer` fork (`chen08209/yaml_writer`) was replaced by
 and the Core applies the merge.
 
 The `code_forge` fork (`chen08209/code_forge`) is frozen: its Dart code now lives
-in the in-repo `plugins/code_forge` package and its Rust code in the `editor/`
-module of `plugins/rust_api`, both trimmed to what FlClash uses.
+in the in-repo `plugins/code_forge` package. Its native text backend is Go in `plugins/go_api/native/editor`.
 `plugins/code_forge/README.md` records what was kept and what was removed;
 upstream's MIT notice stays in `plugins/code_forge/LICENSE`.
 
@@ -88,11 +87,10 @@ non-deprecated plugin accessor changes only that one function.
 
 ## Build Dependencies
 
-- All Core builds use Go 1.27. Desktop also needs Rust for `rust_api` and the Windows or Linux Helper.
+- The Core, desktop Helper and native API use Go 1.27. The native API uses cgo to build QuickJS.
 - Linux needs the GTK 3, libsecret and Ayatana AppIndicator development packages, CMake, Ninja and pkg-config.
-- Windows needs Visual Studio C++ Build Tools, the Windows SDK and an MSVC Rust toolchain. Release packaging also
-  uses Inno Setup. `tool/rust_windows.ps1` imports the Visual Studio environment for the Helper build.
+- Windows needs Visual Studio C++ Build Tools and the Windows SDK for Flutter, and LLVM MinGW for cgo.
+  `tool/setup_windows_go_cgo.ps1` prepares the pinned toolchain. Release packaging also uses Inno Setup.
 - macOS needs Xcode and uses `appdmg` for DMG packaging.
-- Android needs JDK 17 and the AGP-pinned NDK for gomobile. The separate Rust API plugin needs the Android Rust
-  targets and LLVM/libclang for its NDK bindings.
-- HarmonyOS needs HarmonyOS Go with its SDK compiler wrapper, as well as the HarmonyOS Rust target for `rust_api`.
+- Android needs JDK 17 and the AGP-pinned NDK for gomobile and the native API.
+- HarmonyOS needs HarmonyOS Go with its SDK compiler wrapper.

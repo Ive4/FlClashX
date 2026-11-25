@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:fl_clash/core/desktop/transport.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rust_api/rust_api.dart';
+import 'package:go_api/go_api.dart';
 
 import 'fakes.dart';
 
@@ -61,12 +61,6 @@ final class _FakeIpcServer implements IpcServer {
     closeCount++;
     end();
   }
-
-  @override
-  void dispose() {}
-
-  @override
-  bool get isDisposed => false;
 }
 
 void main() {

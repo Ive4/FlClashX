@@ -61,7 +61,7 @@ Future<void> main(List<String> args) async {
     stderr.writeln(
       'pubspec.yaml sets hooks.user_defines.<package>.build_assets: false '
       'for ${skipped.join(', ')}; a package built this way would ship '
-      'whatever is left in libclash/ and no Rust library. '
+      'incomplete native assets. '
       'Restore "build_assets: true".',
     );
     exit(1);

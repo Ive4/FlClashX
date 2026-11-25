@@ -2,13 +2,24 @@ import 'dart:convert';
 
 import 'package:fl_clash/common/exception.dart';
 import 'package:flutter/foundation.dart';
-import 'package:rust_api/rust_api.dart';
+import 'package:go_api/go_api.dart';
 
 typedef ScriptEvaluator =
     Future<String> Function({required String script, required String config});
 
 @visibleForTesting
 ScriptEvaluator scriptEvaluator = evaluateScript;
+
+Future<String> evaluateScript({
+  required String script,
+  required String config,
+}) async {
+  return await GoApi.invokeAsync('script.evaluate', {
+        'script': script,
+        'config': config,
+      })
+      as String;
+}
 
 Future<Map<String, dynamic>> handleEvaluate(
   String scriptContent,

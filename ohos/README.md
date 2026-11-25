@@ -8,8 +8,7 @@ Cupertino and SQLite package copies, then restores ordinary dependency resolutio
 Do not run IDE dependency resolution concurrently with this build.
 
 Toolchains used: Harmony Flutter `3.47.7+ohos-0.0.1-pre`, DevEco Studio
-`26.0.0.851`, SDK `26.0.0.105`, HarmonyOS Go, and Rust with
-`aarch64-unknown-linux-ohos` for the Rust API plugin. `OHOS_NDK_HOME` must point to the SDK native folder.
+`26.0.0.851`, SDK `26.0.0.105` and HarmonyOS Go for the Core and native API. `OHOS_NDK_HOME` must point to the SDK native folder.
 SQLite 3.54.1 amalgamation is downloaded from sqlite.org and checked against its
 published SHA3-256 before compilation with the HarmonyOS NDK.
 
@@ -24,7 +23,7 @@ IDE sync after stock Flutter `pub get` fails with `undefined.filter`.
 
 Current boundaries:
 
-- Go, Rust and SQLite build for HarmonyOS ARM64; desktop IPC and hotkeys are excluded.
+- The Go libraries and SQLite build for HarmonyOS ARM64; desktop IPC and hotkeys are excluded.
 - Directory, package and device metadata channels are implemented in EntryAbility.
 - Preferences use the existing atomic file store on HarmonyOS.
 - The build script cross-compiles the existing Go Core. The VPN extension owns

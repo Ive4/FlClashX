@@ -113,14 +113,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.11"
-  build_cli_annotations:
-    dependency: transitive
-    description:
-      name: build_cli_annotations
-      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -538,22 +530,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.3"
-  flutter_rust_bridge:
-    dependency: transitive
-    description:
-      name: flutter_rust_bridge
-      sha256: ec69331e2335ab4d456c0a9fc700892c2c85b72b9c0cb39df3ecfe8833d5d5c8
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.13.0"
-  flutter_rust_bridge_hooks:
-    dependency: transitive
-    description:
-      name: flutter_rust_bridge_hooks
-      sha256: "19900fbcaa8ddc2a4f1b13994ef34393eda129ebccc59ceb887a8fd2cf5def3e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.13.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -651,6 +627,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  go_api:
+    dependency: "direct main"
+    description:
+      path: "plugins/go_api"
+      relative: true
+    source: path
+    version: "0.0.1"
   graphs:
     dependency: transitive
     description:
@@ -956,14 +939,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.19.3"
-  native_toolchain_rust:
-    dependency: transitive
-    description:
-      name: native_toolchain_rust
-      sha256: "8469a0e32a47a5c84b7fd300de9fd0e8082aac76c37922986324f5082a58350d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.6"
   nm:
     dependency: transitive
     description:
@@ -1203,13 +1178,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.9"
-  rust_api:
-    dependency: "direct main"
-    description:
-      path: "plugins/rust_api"
-      relative: true
-    source: path
-    version: "0.0.1"
   rxdart:
     dependency: transitive
     description:
@@ -1565,14 +1533,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.18"
-  toml:
-    dependency: transitive
-    description:
-      name: toml
-      sha256: "35a35f782228656a2af31e8c73d1353cc4ef3d683fd68af1111b44631879c05e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.18.0"
   tray:
     dependency: "direct main"
     description:

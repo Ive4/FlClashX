@@ -14,7 +14,6 @@ permissions:
 env:
   FLUTTER_VERSION: '3.47.6'
   GO_VERSION: '1.27.1'
-  RUST_VERSION: '1.99.1'
   FLCLASHX_UPDATE_REPOSITORY: ${{ github.repository }}
 
 jobs:
@@ -74,17 +73,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: false
 
-      - name: Install Rust on Windows ARM64
-        if: matrix.arch == 'arm64'
+      - name: Set up LLVM MinGW
         shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri https://win.rustup.rs/aarch64 -OutFile rustup-init.exe
-          .\rustup-init.exe -y --default-toolchain none
-          "$env:USERPROFILE/.cargo/bin" >> $env:GITHUB_PATH
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
+        run: ./tool/setup_windows_go_cgo.ps1
 
       - uses: subosito/flutter-action@v2
         with:
@@ -134,11 +125,6 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: core/go.sum
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: armv7-linux-androideabi,aarch64-linux-android,x86_64-linux-android
-
       - uses: nttld/setup-ndk@v1
         id: ndk
         with:
@@ -150,11 +136,8 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Install native dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang libclang-dev
-          flutter pub get
+      - name: Install Flutter dependencies
+        run: flutter pub get
 
       - name: Build signed APKs
         env:

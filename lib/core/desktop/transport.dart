@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
-import 'package:rust_api/rust_api.dart';
+import 'package:go_api/go_api.dart';
 
 typedef IpcServerBinder = Future<IpcServer> Function(String address);
 

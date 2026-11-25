@@ -18,9 +18,13 @@ try {
     & $flutter pub get
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS pub get failed' }
     & "$PSScriptRoot/build_go_ohos.ps1" -GoHome $env:HM_GO_HOME
+    $originalPath = $env:PATH
+    $goDirectory = Join-Path $env:HM_GO_HOME 'bin'
+    $env:PATH = "$goDirectory;$env:PATH"
     & $flutter build hap --release --target-platform ohos-arm64
     if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS HAP build failed; inspect the build output above' }
 } finally {
+    if ($originalPath) { $env:PATH = $originalPath }
     if (Test-Path $override) { Remove-Item -LiteralPath $override }
     [IO.File]::WriteAllBytes($lock, $originalLock)
     & $flutter pub get

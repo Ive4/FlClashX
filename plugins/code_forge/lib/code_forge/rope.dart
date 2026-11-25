@@ -1,101 +1,206 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:rust_api/editor.dart';
+import 'package:go_api/go_api.dart';
 
 /// From this many UTF-16 code units on, text is handled off the UI isolate.
 const backgroundTextLength = 1 << 17;
 
 const _uploadChunkBytes = 1 << 18;
 
+typedef RopeFold = ({int startLine, int endLine});
+typedef RopeGuide = ({
+  int startLine,
+  int endLine,
+  int indentLevel,
+  int leadingSpaces,
+});
+
 class Rope {
-  final RopeBridge _rope;
-  RopeBridge get core => _rope;
+  Rope([String initialText = ''])
+    : this._(GoApi.invoke('editor.create', {'text': initialText}) as int);
+
+  Rope._(int id) : _id = id {
+    _finalizer.attach(this, id, detach: this);
+  }
+
+  static final _finalizer = Finalizer<int>(_release);
+
+  static void _release(int id) {
+    GoApi.invoke('editor.dispose', {'id': id});
+  }
+
+  int? _id;
   int? _length, _lineCount;
 
-  Rope([String initialText = ''])
-    : _rope = RopeBridge.create(initialText: initialText);
+  bool get isDisposed => _id == null;
 
-  Rope._(this._rope);
+  int get _handle => _id ?? (throw StateError('The rope is disposed'));
 
-  static Future<Rope> openFile(String path) async =>
-      Rope._(await RopeBridge.openFile(path: path));
+  T _invoke<T>(String operation, [Map<String, Object?> args = const {}]) =>
+      GoApi.invoke('editor.$operation', {'id': _handle, ...args}) as T;
+
+  String _readText(String operation, [Map<String, Object?> args = const {}]) {
+    final bytes = _invoke<Uint8List>(operation, args);
+    final text = utf8.decode(bytes);
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xef &&
+        bytes[1] == 0xbb &&
+        bytes[2] == 0xbf) {
+      return '\uFEFF$text';
+    }
+    return text;
+  }
+
+  static Future<Rope> openFile(String path) async {
+    final result = await GoApi.invokeAsync('editor.openFile', {'path': path});
+    return _opened(result, path: path);
+  }
 
   static Future<Rope> fromUtf8(Uint8List bytes) async {
     if (bytes.length <= _uploadChunkBytes) {
-      return Rope._(await RopeBridge.fromUtf8(bytes: bytes));
+      final result = await GoApi.invokeAsync(
+        'editor.fromUtf8',
+        null,
+        bytes: bytes,
+      );
+      return _opened(result);
     }
-    final upload = RopeUpload(capacity: BigInt.from(bytes.length));
+    final id = await GoApi.invokeAsync('editor.beginUpload', {
+      'length': bytes.length,
+    }) as int;
+    final args = {'id': id};
     try {
       for (var start = 0; start < bytes.length; start += _uploadChunkBytes) {
         final end = min(start + _uploadChunkBytes, bytes.length);
-        await upload.push(chunk: Uint8List.sublistView(bytes, start, end));
+        await GoApi.invokeAsync(
+          'editor.uploadChunk',
+          args,
+          bytes: bytes.sublist(start, end),
+        );
       }
-      return Rope._(await upload.finish());
+      return _opened(await GoApi.invokeAsync('editor.finishUpload', args));
     } finally {
-      upload.dispose();
+      GoApi.invoke('editor.discardUpload', args);
     }
   }
 
-  Rope snapshot() => Rope._(_rope.snapshot());
+  static Rope _opened(Object? result, {String? path}) {
+    return switch (result) {
+      {'id': final int id} => Rope._(id),
+      {'kind': 'notUtf8', 'message': final String message} =>
+        throw FormatException(message),
+      {'kind': 'notFound', 'message': final String message} when path != null =>
+        throw PathNotFoundException(path, OSError(message)),
+      {'kind': 'unreadable', 'message': final String message} =>
+        throw FileSystemException(message, path),
+      _ => throw StateError('Invalid response from the editor backend'),
+    };
+  }
 
-  Future<Uint8List> utf8Bytes() => _rope.utf8Bytes();
+  Rope snapshot() => Rope._(_invoke<int>('snapshot'));
+
+  Future<Uint8List> utf8Bytes() async =>
+      await GoApi.invokeAsync('editor.utf8Bytes', {'id': _handle}) as Uint8List;
 
   bool sameText(
     Rope original, {
     int spliceStart = 0,
     int spliceLength = 0,
     String spliceText = '',
-  }) => _rope.sameText(
-    original: original._rope,
-    spliceStart: BigInt.from(spliceStart),
-    spliceLen: BigInt.from(spliceLength),
-    spliceText: spliceText,
-  );
+  }) => _invoke<bool>('sameText', {
+    'original': original._handle,
+    'start': spliceStart,
+    'length': spliceLength,
+    'text': spliceText,
+  });
 
-  int get length => _length ??= _rope.lenChars().toInt();
+  int get length => _length ??= _invoke<int>('length');
 
-  void dispose() => _rope.dispose();
-
-  String getText() {
-    return _rope.getText();
+  void dispose() {
+    if (_id case final int id) {
+      _finalizer.detach(this);
+      _id = null;
+      _release(id);
+    }
   }
 
-  String substring(int start, [int? end]) {
-    return _rope.slice(
-      start: BigInt.from(start),
-      end: BigInt.from(end ?? length),
-    );
-  }
+  String getText() => _readText('text');
+
+  String substring(int start, [int? end]) =>
+      _readText('slice', {'start': start, 'end': end ?? length});
 
   void insert(int position, String text) {
-    _rope.insert(charIdx: BigInt.from(position), text: text);
+    _invoke<Object?>('insert', {'index': position, 'text': text});
     _length = _lineCount = null;
   }
 
   void delete(int start, int end) {
-    _rope.remove(start: BigInt.from(start), end: BigInt.from(end));
+    _invoke<Object?>('remove', {'start': start, 'end': end});
     _length = _lineCount = null;
   }
 
-  List<String> cachedLinesRange(int startLine, int endLine) {
-    return _rope.cachedLinesRange(
-      startLine: BigInt.from(startLine),
-      endLine: BigInt.from(endLine),
-    );
+  List<String> cachedLinesRange(int startLine, int endLine) =>
+      _invoke<List<Object?>>('lines', {
+        'start': startLine,
+        'end': endLine,
+      }).cast<String>();
+
+  int get lineCount => _lineCount ??= _invoke<int>('lineCount');
+
+  String getLineText(int lineIndex) => _readText('line', {'index': lineIndex});
+
+  int getLineAtOffset(int charOffset) =>
+      _invoke<int>('charToLine', {'index': charOffset});
+
+  int getLineStartOffset(int lineIndex) =>
+      _invoke<int>('lineToChar', {'index': lineIndex});
+
+  int? matchingBracket(int offset) =>
+      _invoke<int?>('matchingBracket', {'index': offset});
+
+  Future<List<RopeFold>> computeFolds(int tabSize) async {
+    final folds = await _scan('folds', {'tabSize': tabSize});
+    return [
+      for (final fold in folds.cast<Map<String, Object?>>())
+        (startLine: fold['startLine'] as int, endLine: fold['endLine'] as int),
+    ];
   }
 
-  int get lineCount => _lineCount ??= _rope.lenLines().toInt();
-
-  String getLineText(int lineIndex) {
-    return _rope.line(lineIdx: BigInt.from(lineIndex));
+  List<RopeGuide> computeGuides(int firstLine, int lastLine, int tabSize) {
+    final guides = _invoke<List<Object?>>('guides', {
+      'firstLine': firstLine,
+      'lastLine': lastLine,
+      'tabSize': tabSize,
+    });
+    return [
+      for (final guide in guides.cast<Map<String, Object?>>())
+        (
+          startLine: guide['startLine'] as int,
+          endLine: guide['endLine'] as int,
+          indentLevel: guide['indentLevel'] as int,
+          leadingSpaces: guide['leadingSpaces'] as int,
+        ),
+    ];
   }
 
-  int getLineAtOffset(int charOffset) {
-    return _rope.charToLine(charIdx: BigInt.from(charOffset)).toInt();
-  }
+  Future<Set<String>> extractWords() async =>
+      (await _scan('words')).cast<String>().toSet();
 
-  int getLineStartOffset(int lineIndex) {
-    return _rope.lineToChar(lineIdx: BigInt.from(lineIndex)).toInt();
+  Future<List<Object?>> _scan(
+    String operation, [
+    Map<String, Object?> args = const {},
+  ]) async {
+    final copy = snapshot();
+    try {
+      return await GoApi.invokeAsync('editor.$operation', {
+        'id': copy._handle,
+        ...args,
+      }) as List<Object?>;
+    } finally {
+      copy.dispose();
+    }
   }
 }

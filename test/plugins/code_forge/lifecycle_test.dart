@@ -254,7 +254,7 @@ void main() {
       ..replaceRange(0, 0, '# ')
       ..dispose();
 
-    expect(controller.rope.core.isDisposed, isTrue);
+    expect(controller.rope.isDisposed, isTrue);
     expect(undo.undo(), isFalse);
   });
 
@@ -275,8 +275,8 @@ void main() {
     final controller = CodeForgeController()..text = 'a: 1';
     final previous = controller.rope;
     controller.text = 'b: 2';
-    expect(previous.core.isDisposed, isTrue);
-    expect(controller.rope.core.isDisposed, isFalse);
+    expect(previous.isDisposed, isTrue);
+    expect(controller.rope.isDisposed, isFalse);
   });
 
   group('opening a document', () {

@@ -8,8 +8,7 @@ import 'dart:typed_data';
 
 import 'package:fl_clash/core/desktop/transport.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import '../../plugins/code_forge/support.dart' show initEditorNative;
+import 'package:go_api/go_api.dart';
 
 const _wait = Duration(seconds: 5);
 
@@ -24,7 +23,7 @@ void main() {
   late String address;
   late IpcCoreTransport transport;
 
-  setUpAll(initEditorNative);
+  setUpAll(GoApi.initialize);
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('ipc');
@@ -83,7 +82,13 @@ void main() {
 
     expect(
       () => transport.send(utf8.encode('early')),
-      throwsA(contains('not connected')),
+      throwsA(
+        isA<GoApiException>().having(
+          (error) => error.message,
+          'message',
+          contains('not connected'),
+        ),
+      ),
     );
   });
 

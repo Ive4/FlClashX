@@ -17,10 +17,10 @@ const _coreSha256 =
 
 void main() {
   test('reads the port from the key the Windows service publishes it in', () {
-    final peer = File('services/helper/src/service/peer.rs').readAsStringSync();
+    final peer = File('services/helper/owner_windows.go').readAsStringSync();
 
-    expect(peer, contains('const PORT_KEY: &str = r"$helperPortKey";'));
-    expect(peer, contains('const PORT_VALUE: &str = "$helperPortValue";'));
+    expect(peer, contains('const portKey = `$helperPortKey`'));
+    expect(peer, contains('SetDWordValue("$helperPortValue",'));
   });
 
   test(

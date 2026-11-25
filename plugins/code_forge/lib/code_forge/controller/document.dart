@@ -7,31 +7,11 @@ final class CodeForgeDocument {
   final Rope _rope;
   final String? _text;
 
-  static Future<CodeForgeDocument> openFile(String path) async {
-    try {
-      return CodeForgeDocument._(await Rope.openFile(path));
-    } on EditorOpenError catch (error) {
-      throw switch (error.kind) {
-        EditorOpenErrorKind.notFound => PathNotFoundException(
-          path,
-          OSError(error.message),
-        ),
-        EditorOpenErrorKind.notUtf8 => FormatException(error.message),
-        EditorOpenErrorKind.unreadable => FileSystemException(
-          error.message,
-          path,
-        ),
-      };
-    }
-  }
+  static Future<CodeForgeDocument> openFile(String path) async =>
+      CodeForgeDocument._(await Rope.openFile(path));
 
-  static Future<CodeForgeDocument> fromUtf8(Uint8List bytes) async {
-    try {
-      return CodeForgeDocument._(await Rope.fromUtf8(bytes));
-    } on EditorOpenError catch (error) {
-      throw FormatException(error.message);
-    }
-  }
+  static Future<CodeForgeDocument> fromUtf8(Uint8List bytes) async =>
+      CodeForgeDocument._(await Rope.fromUtf8(bytes));
 
   static Future<CodeForgeDocument> fromText(String text) async {
     if (text.length < backgroundTextLength) {

@@ -40,20 +40,6 @@ class Target {
 
   String get platformDir => goos == 'darwin' ? 'macos' : goos;
 
-  String get rustTriple {
-    final arch = switch (goarch) {
-      'amd64' => 'x86_64',
-      'arm64' => 'aarch64',
-      _ => throw BuildException('No Rust target for $this'),
-    };
-    return switch (goos) {
-      'windows' => '$arch-pc-windows-msvc',
-      'linux' => '$arch-unknown-linux-gnu',
-      'darwin' => '$arch-apple-darwin',
-      _ => throw BuildException('No Rust target for $this'),
-    };
-  }
-
   @override
   String toString() => '$goos/$goarch';
 }

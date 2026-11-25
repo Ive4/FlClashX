@@ -5,7 +5,7 @@ Use the smallest durable surface that matches the job.
 ## Surfaces
 
 - `AGENTS.md`: repository entry point. Keep it small and reserve it for always-on rules, routing, and high-priority expectations.
-- No `CLAUDE.md`: Claude Code v2.1.277+ loads `AGENTS.md` at startup only while no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits in the working directory or above it, so adding one silently replaces `AGENTS.md` for Claude. Sessions that cannot load `AGENTS.md` directly (third-party providers, telemetry disabled) need an uncommitted `CLAUDE.local.md` containing `@AGENTS.md`. The one nested `CLAUDE.md`, in `plugins/rust_api/`, imports the root `AGENTS.md` for the same reason.
+- No `CLAUDE.md`: Claude Code v2.1.277+ loads `AGENTS.md` at startup only while no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits in the working directory or above it, so adding one silently replaces `AGENTS.md` for Claude. Sessions that cannot load `AGENTS.md` directly (third-party providers, telemetry disabled) need an uncommitted `CLAUDE.local.md` containing `@AGENTS.md`.
 - `.agents/*.md`: human- and agent-readable reference docs linked from `AGENTS.md`. Use these for detailed project context, commands, architecture, and conventions.
 - `.agents/skills/*/SKILL.md`: repo skills shared by Codex and Claude Code. Use these for repeatable workflows that should be discoverable by name and description; `.claude/skills/` holds one symlink per skill so Claude Code finds the same files.
 - `.codex/config.toml`: trusted project Codex settings such as MCP, hooks, sandbox, approval, or model defaults.

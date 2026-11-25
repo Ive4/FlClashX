@@ -9,7 +9,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:re_highlight/re_highlight.dart';
-import 'package:rust_api/editor.dart';
 
 import '../code_forge.dart';
 import 'text_offsets.dart';

@@ -164,9 +164,7 @@ extension CodeForgeControllerCompletion on CodeForgeController {
     return [for (final word in words) CodeForgeSuggestion(label: word)];
   }
 
-  Future<Set<String>> _extractWords() async {
-    return (await wordsExtract(rope: _rope.core)).toSet();
-  }
+  Future<Set<String>> _extractWords() => _rope.extractWords();
 }
 
 class _DocumentLines extends ListBase<String> {

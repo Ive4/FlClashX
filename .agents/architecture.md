@@ -31,7 +31,7 @@ HarmonyOS embedded mode:
 Desktop core mode:
 
 - The Go Core runs as a separate process and uses the same method protocol as the mobile bindings.
-- `rust_api`'s `ipc` module provides the native local-IPC primitives: a Unix domain socket on macOS/Linux and a named pipe
+- `go_api`'s `ipc` module provides the native local-IPC primitives: a Unix domain socket on macOS/Linux and a named pipe
   on Windows, served by an `IpcServer` handle. Dart owns the transport state, RPC correlation, process ownership, and
   lifecycle convergence above those primitives.
 - `lib/core/service.dart` (`CoreService`) is the composition root. It wires the IPC transport, launcher selection,
@@ -1073,7 +1073,7 @@ held back until the route settles slides in as an empty page and pops in once th
 than the frames a load costs. What a transition must not carry is work that repeats on every refresh or every frame.
 
 - Loads start as the widget mounts, never behind `whenRouteSettled`. `CommonTargetIcon` and `PackageIcon` show what is
-  already in memory at once and load the rest right away; the editor has Rust open its file as it mounts, so the text
+  already in memory at once and load the rest right away; the editor has Go open its file as it mounts, so the text
   itself never passes through the UI isolate. An icon still loading leaves a blank slot of its size and shows its
   fallback only once the load ends
   without an image, so a grid of placeholders is never painted only to be replaced. `whenRouteSettled`
@@ -1484,18 +1484,18 @@ that asks the OS for a permission, a global shortcut or a registration, must con
 the `chen08209/flutter_distributor` fork pinned to a `v<version>-flclash.<n>` tag (cut a new tag there and bump
 `--git-ref` when the fork changes), and leaves the Core artifacts to the build hook.
 
-The Dart build hook builds the desktop Go Core, Rust Helper and Go background host.
+The Dart build hook builds the desktop Go Core, Go Helper and Go background host.
 Gradle builds the Android Core with gomobile (see Android Core Build). `plugins/setup/hook/build.dart` only constructs
-`CoreBuilder`, a `package:hooks` `Builder` in `plugins/setup/setup_hooks/`, the same shape `rust_api` uses. Flutter
+`CoreBuilder`, a `package:hooks` `Builder` in `plugins/setup/setup_hooks/`. Flutter
 runs it for every platform build and for `flutter test`, once per target architecture. `CoreBuilder` turns the hook
 input into a `BuildRequest` (repository root, `Target`) and hands it to `buildPlatform`. It lives in
 `setup_hooks` so `dart test` there can cover it; a test run of `plugins/setup` itself would execute the hook. Failures
-reach the runner as `BuildError` (Go or Cargo build failed, no Core for the architecture) or `InfraError` (a toolchain could
+reach the runner as `BuildError` (Go build failed, no Core for the architecture) or `InfraError` (a toolchain could
 not start, the package is not at `plugins/setup`).
 
 What the hook protocol forces:
 
-- `PATH` arrives unextended, so `runCommand` appends the Homebrew, Go and rustup locations that Xcode's and Gradle's
+- `PATH` arrives unextended, so `runCommand` appends the Homebrew and Go locations that Xcode's and Gradle's
   stripped `PATH` hides.
 - The hook does not know the build mode: the protocol carries none and `linkingEnabled` only says whether link hooks
   run, so nothing in the hook branches on debug versus release. It cannot tell `flutter test` from a build either; the
@@ -1515,7 +1515,7 @@ Platform projects copy the artifacts out of `libclash/`; application code must n
   flutter_tools otherwise builds a universal binary and every artifact ships one slice; the hook skips a non-host slice
   for the same reason. The `Stage Core` phase copies the Core after the hook may have rewritten it and fails when it is
   missing or lacks a slice for `ARCHS`, so a skipped hook cannot stage a stale Core silently.
-- Linux and Windows: `FlClashCore`, the Rust `FlClashHelperService`, and a `manifest.json` holding `coreSha256`; the
+- Linux and Windows: `FlClashCore`, the Go `FlClashHelperService`, and a `manifest.json` holding `coreSha256`; the
   Core builds first because the Helper embeds its hash. The CMake `install` rules copy them, and the Windows bundle
   places `manifest.json` beside the executable. A Helper running from a Debug build keeps its exe open and the install
   fails behind an opaque `MSB3073`, so `windows/CMakeLists.txt` stops it from an `install(CODE)` step for the `Debug`
@@ -1524,10 +1524,10 @@ Platform projects copy the artifacts out of `libclash/`; application code must n
   executable path rather than image name, so a Helper registered from an installed release keeps running.
 
 Setup keeps its own cache under `.dart_tool/setup_build_cache/v1/` for the Go Core, desktop background host, and
-the Rust Helper on Windows and Linux:
+the Go Helper on Windows and Linux:
 
 - Core fingerprints cover the Go toolchain and build settings, local source dependency graph, Go manifests, and
-  setup hook sources. Helper fingerprints include its Rust sources and toolchain, and the expected Core SHA256.
+  setup hook sources. Helper fingerprints include its Go sources and toolchain, and the expected Core SHA256.
 - A hit requires the fingerprint and every recorded output's path, size and modification state to match, and skips
   compilation and copying.
 - Records are written only after a successful build, under per-target locks. Compilation happens in a staging
@@ -1538,7 +1538,7 @@ the Rust Helper on Windows and Linux:
 Windows helper integrity/version check:
 
 - `setup_hooks` constructs the Core first, calculates its SHA256, and always
-  builds the Rust Helper with release hardening and that expected hash.
+  links the expected hash into the Go Helper.
 - Flutter reads the Core SHA256 from the bundled `manifest.json` and sends it with `/ping`. Debug, Profile, and Release
   builds use the same Helper protocol and may use TUN through the same flow.
 - `/ping` is loopback-only and requires no request token. The Helper compares the requested SHA256 with its embedded value
@@ -1591,12 +1591,11 @@ the classes JAR and stages the native libraries as `libclash.so`.
 
 `tool/build_ohos.ps1` calls `tool/build_go_ohos.ps1` before packaging. It compiles the pinned Go Core as a C shared
 library, applies the package-owner overlay for this target, and stages `libflclash.so` in
-`ohos/entry/libs/arm64-v8a` after a successful build. The separate `rust_api` native-assets hook builds its own crate
-using the HarmonyOS Rust toolchain.
+`ohos/entry/libs/arm64-v8a` after a successful build. The separate `go_api` native-assets hook builds the Go shared library with the same HarmonyOS toolchain.
 
 ## Local Plugins
 
-- `setup`: build-time harness for the Go Core, Rust Helper and desktop background host, driven by a Dart build hook;
+- `setup`: build-time harness for the Go Core, Go Helper and desktop background host, driven by a Dart build hook;
   no runtime Dart API.
 - `proxy`: system proxy configuration. On Windows the package installer and uninstaller kill the app, and then run
   `FlClash.exe --clear-stale-proxy`, the installer once the new files are in place; the runner hands it to the plugin
@@ -1604,7 +1603,7 @@ using the HarmonyOS Rust toolchain.
   listening on that port. In the app `SystemProxyQueue` sets the system proxy when the Core starts with it on, and
   stops it on a stop or exit only when this run set it, since a stop also clears a proxy, PAC or auto-detect setting
   someone else made. Nothing is stored, so a launch leaves alone the proxy a crashed run left.
-- `rust_api`: runtime Flutter Rust Bridge FFI package built through Native Assets. See below.
+- `go_api`: runtime Go FFI package built through Native Assets. See below.
 - `tray`: system tray for Linux, macOS and Windows. Written for FlClash; replaced the `tray_manager` fork.
 - `window`: desktop window control for Linux, macOS and Windows. Written for FlClash; replaced the
   `window_manager` fork. See below.
@@ -1613,20 +1612,20 @@ using the HarmonyOS Rust toolchain.
 
 ## code_forge Plugin
 
-`CodeForgeController` is the document: text lives in the Rust `RopeBridge`, and the controller's methods are split by
+`CodeForgeController` is the document: text lives in the Go text buffer, and the controller's methods are split by
 concern into `lib/code_forge/controller/` extensions. `CodeForge` builds `_CodeFieldRenderer`, whose painting, layout,
 folding, caret, gutter and pointer code sit in `lib/code_forge/code_area/` part files.
 
 - A document arrives as a `CodeForgeDocument`, which `load` swaps in as a copy of its rope that costs nothing to make.
-  `openFile` reads the file, checks it is UTF-8 and turns CRLF into LF on a Rust worker thread; `fromText` encodes a
+  `openFile` reads the file, checks it is UTF-8 and turns CRLF into LF on a background Dart isolate; `fromText` encodes a
   string of 128K UTF-16 code units or more in an isolate first. Bytes past 256 KiB go over in pieces through
   `RopeUpload`, since the Dart side copies all a call carries in one go. `EditorPage` drops a document that a later one
   supersedes while it builds.
 - A text that long is never held as a Dart string. `isModified` compares the rope with a copy of the one loaded inside
-  Rust; `readBytes` and `readText` copy it out off the UI isolate; find searches, and replace-all rewrites, a byte copy
+  Go; `readBytes` and `readText` copy it out off the UI isolate; find searches, and replace-all rewrites, a byte copy
   in an isolate, keeps the matches packed in an `Int32List`, and records replace-all as one `DocumentOperation` that
   swaps whole ropes. `EditorPage` hands its callbacks an `EditorContent` to read the text from for the same reason.
-- Rust counts offsets in Unicode scalars and Flutter in UTF-16 code units. Convert at the boundary with
+- The Go buffer counts offsets in Unicode scalars and Flutter in UTF-16 code units. Convert at the boundary with
   `text_offsets.dart`; a mixed-up offset only shows up with astral characters such as emoji, so tests use them.
 - The renderer learns what changed from `takeChange()`, whose `lines` (first line, lines removed, lines inserted) let it
   follow edits without reading the whole text; a whole-text `text =` assignment marks the change `replaced` and resets
@@ -1655,7 +1654,7 @@ folding, caret, gutter and pointer code sit in `lib/code_forge/code_area/` part 
 - A caret the input method moves has to set `selection` on the change record like any other move, or the renderer
   neither repaints nor follows it.
 - A line's fold comes from the renderer's `_computeFoldRangeForLine` up to 10000 lines and from `compute_all` in
-  `rust_api`'s `editor/folds.rs` past that, and the two must find the same ranges; `folding_test.dart` compares them on
+  `go_api/native/editor` past that, and the two must find the same ranges; `folding_test.dart` compares them on
   one document. The per-line pass reads the lines below a line in batches that grow as it goes: one call into the
   rope per line spends a frame on a key heading thousands of lines. A folded range, and the folded ranges inside it
   that it folds again when it opens, outlive an edit
@@ -1671,8 +1670,8 @@ folding, caret, gutter and pointer code sit in `lib/code_forge/code_area/` part 
   It also passes the vertical scroll controller, `sheetScrollController`, so the editor in a sheet grows and closes
   the sheet as a list does.
 - `Rope` keeps its length and line count between its own `insert` and `delete`, which every edit goes through, so
-  `core` is only for Rust calls that read.
-- Tests live in `test/plugins/code_forge/` at the repository root and need the `rust_api` library.
+  `core` is only for native calls that read.
+- Tests live in `test/plugins/code_forge/` at the repository root and need the `go_api` library.
 - `isMobile` comes from `Platform`, so host tests never reach the touch branches (selection handles, long press,
   magnifier); check those on an Android emulator.
 - A touch drag that moves the selection (a handle, the gutter, a long press that moves on) is won by
@@ -1731,77 +1730,27 @@ table. `lib/common/window.dart` and `lib/manager/window_manager.dart` are the on
   effect view in `ensureInitialized` and leaves it active until the first `setEffect`, so the `none` request is what
   makes the window opaque and parks the effect view.
 
-## rust_api Crate Layout
+## Go Native API
 
-`plugins/rust_api` has no platform folders. `hook/build.dart` is a Dart build hook: Flutter runs it for every platform
-build and for `flutter test`, and `flutter_rust_bridge_hooks` (over `native_toolchain_rust`) compiles the crate with
-Cargo and registers `librust_api` as a code asset that Flutter bundles and signs. The build runs
-`rustup run <channel>`, so `rust/rust-toolchain.toml` must pin an exact channel and list every target the project ships;
-the hook refuses `stable` and a target missing from that list. `rustup show` installs the pinned toolchain and those
-targets on first use.
+The `go_api` Dart build hook compiles `plugins/go_api/native` as a C shared library. Flutter bundles the module
+as a code asset. `GoApi.initialize()` checks its ABI at startup. Dart FFI calls use JSON for command arguments
+and raw byte buffers for IPC frames and editor UTF-8 transfers. A Dart native callback receives asynchronous IPC
+and shortcut events. Each subscription has a native identifier and closes with its Dart stream.
 
-`flutter_rust_bridge_codegen generate` (see `.agents/commands.md`) writes `lib/src/rust/frb_generated.dart`,
-`frb_generated.io.dart`, `frb_generated.web.dart`, one `lib/src/rust/api/<module>.dart` per Rust API module, and
-`rust/src/frb_generated.rs`; none of them is edited by hand. A new Rust function is a public function in `rust/src/api/`,
-plus `pub mod <name>;` in `api/mod.rs` and an export from `lib/rust_api.dart` when it starts a new module. `RustLib` is
-the singleton entry point: `RustLib.init()` runs before any call and `RustLib.dispose()` on teardown.
+- `editor/` stores the text buffer and handles UTF-8, character offsets, folds and completion. File I/O and
+  whole-document operations run off the UI isolate.
+- `ipc/` handles desktop sockets and Windows named pipes. The Dart transport retains connection generation and
+  lifecycle arbitration. The native writer bounds the outgoing queue by bytes.
+- `hotkey/` registers the desktop application's shortcuts and sends shortcut IDs to Dart. Android and HarmonyOS
+  use platform stubs for desktop-only functions.
+- `script/` runs the profile's `main(config)` in a QuickJS context with a 10-second time limit, 256 MiB memory
+  limit, and no host modules or timers. It runs off the UI isolate and handles settled Promises. Integration tests
+  exercise the existing script fixture in `plugins/go_api/native/script/testdata/`.
 
-`plugins/rust_api/rust/src/` separates the bridge boundary from the code behind it:
-
-- `api/` is the only input flutter_rust_bridge parses (`rust_input: crate::api`). Every function there is a thin
-  delegation, so the generated bindings stay identical on every platform.
-- `ipc/` implements the desktop socket server: `frame` (length-prefixed framing), `outbox` (the byte-bounded send
-  queue), `access` (socket mode, the Unix peer uid check, and the peer PID), and `server` (bind, the accept loop, and
-  the read and write halves of a connection). Each `Server` runs a current-thread tokio runtime on an `ipc-server`
-  thread of its own and holds no global state, so I/O is event-driven on every platform and closing or dropping the
-  handle releases the socket. It serves one peer at a time; a second one waits in the backlog.
-- `script/` runs profile override scripts on QuickJS through `rquickjs`.
-- `editor/` backs `plugins/code_forge`: a `ropey` buffer that opens files and UTF-8 bytes and compares and copies its
-  text itself, fold ranges and bracket matching, indent guides for the viewport, and completion words. `api/editor.rs` exposes the buffer as the opaque `RopeBridge`; the selection
-  stays in Dart. Only the editor imports this module, through `lib/editor.dart`, so `lib/rust_api.dart` keeps its
-  generic names such as `GuideBlock` out of app code.
-- `hotkey/` registers desktop global shortcuts through `global-hotkey`: `keys` maps Flutter USB HID usages to key
-  codes, `owner` runs every registration on the thread the platform binds it to (a dedicated message-loop thread on
-  Windows, the main dispatch queue on macOS, in place on Linux), and `service` owns the registry and forwards presses
-  to Dart. Linux is X11 only; a Wayland session without XWayland gets an error rather than a silent no-op.
-
-`IpcServer.bind` resolves once the address is bound, `events()` attaches the one event stream, `send` only enqueues
-and is a synchronous call so frames keep the order they were sent in, and `close` joins the thread. A bridge function
-that takes a `StreamSink` must not return an error: the generated Dart code drops that call's future, so an `Err`
-surfaces as an unhandled async error instead of reaching the caller. That is why binding is its own call and
-everything after it is reported as an event.
-
-What a platform does not use, it does not compile. `interprocess`, `tokio` and `global-hotkey` are declared under
-`cfg(not(target_os = "android"))`, and `ipc/mod.rs` and `hotkey/mod.rs` swap in their `unsupported.rs` there, because
-Android loads the Core in-process and has no global shortcuts. Adding a capability follows the same shape: implement it in its own module, gate the
-dependency by target, and keep the `api/` entry point unconditional so one set of bindings still serves every platform.
-
-`RustLib.init()` runs on every platform in `main`, because the script engine and the editor are shared; the editor
-shows its unavailable state when `RustLib` is not initialized rather than loading the library itself.
-
-## Profile Script Engine
-
-`lib/common/javascript.dart` sends the profile as JSON to `evaluate_script`, which runs `main(config)` on QuickJS and
-returns the JSON the script produced. Nothing about the script runs in Dart.
-
-- QuickJS is compiled from source for the target being built, which is what removed the prebuilt `quickjs-c-bridge`
-  binaries: `flutter_js` shipped x64 Windows and desktop-only libraries, so Windows ARM64 could not start (#2361).
-- `rquickjs` carries pre-generated bindings for every target this project builds except the Android ones, so Android
-  builds enable its `bindgen` feature. That needs the NDK's own libclang and sysroot: `native_toolchain_rust` exports
-  the sysroot through `BINDGEN_EXTRA_CLANG_ARGS_<target>`, and `hook/build.dart` adds `LIBCLANG_PATH` from the NDK
-  toolchain Flutter hands the hook, because bindgen otherwise loads whatever libclang the host has, or none.
-- Evaluation is bounded: a 10-second interrupt deadline and a memory ceiling, because a script that never returns would
-  otherwise hold the profile forever. `console` is installed before the script runs, since scripts written for other
-  clients log as they work.
-- `rust/tests/fixtures/profile_script.js` is the compatibility regression: an extension script written for the suite that
-  performs the transform real ones perform, so it exercises `Map`/`Set`, spread, destructuring, optional chaining,
-  nullish coalescing, `Object.fromEntries`, named capture groups and lookbehind in one pass. Keep it first-party and
-  free of external URLs — vendoring somebody's published script here carries their attribution and their links.
-
-## Rust Helper Service
+## Go Helper Service
 
 `services/helper/` is the privileged helper that starts the core elevated so TUN works. It ships on Windows and Linux
-and is built by the setup build hook alongside the Core, which always compiles the Helper in Rust release mode
+and is built by the setup build hook alongside the Core, which embeds the built Core hash in the Go Helper
 after calculating the SHA256 of the Core produced for the active Flutter configuration.
 
 The helper owns its Windows Service Control Manager lifecycle through two elevated commands:
@@ -1889,6 +1838,6 @@ owner SID the service was registered with. The Windows Core runs as SYSTEM and d
 without that check any local account would host a SYSTEM Core. What no per-connection check closes is a process that
 runs as the owner itself, on either platform. Lifecycle safety also comes from the fixed executable/hash, the strict
 address namespace (`\\.\pipe\FlClashCore_<32 hex>` on Windows, `/tmp/FlClashSocket_<digits>.sock` on Linux), the session-scoped stop
-contract, Dart-side peer-PID verification on Windows and, on Unix, the Core socket that `plugins/rust_api` sets to
+contract, Dart-side peer-PID verification on Windows and, on Unix, the Core socket that `plugins/go_api` sets to
 mode `0600` so only the owning user (and the root-effective Core) can connect. When the Helper service itself shuts
 down, it unconditionally stops the Core process it owns; under systemd the unit's control group does the same.

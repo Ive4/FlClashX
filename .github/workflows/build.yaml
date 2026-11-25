@@ -18,7 +18,6 @@ env:
   BRANCH_CACHE: ${{ !startsWith(github.ref, 'refs/tags/') }}
   FLUTTER_VERSION: '3.47.6'
   GO_VERSION: '1.27.1'
-  RUST_VERSION: '1.99.1'
   NDK_VERSION: r28c
 
 jobs:
@@ -46,12 +45,12 @@ jobs:
       - name: Test Gitee OAuth service
         run: node --test services/gitee_oauth/server.test.mjs
 
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          workspaces: plugins/rust_api/rust
-          cache-directories: .dart_tool/hooks_runner
-          save-if: ${{ env.BRANCH_CACHE }}
+          go-version: ${{ env.GO_VERSION }}
+          cache: ${{ env.BRANCH_CACHE }}
+          cache-dependency-path: plugins/go_api/native/go.sum
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -134,21 +133,14 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: |
             services/desktop/go.sum
+            services/helper/go.sum
+            plugins/go_api/native/go.sum
             core/go.sum
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: desktop-${{ matrix.platform }}
-          workspaces: |
-            services/helper
-            plugins/rust_api/rust
-          cache-directories: .dart_tool/hooks_runner
+      - name: Set up LLVM MinGW
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: ./tool/setup_windows_go_cgo.ps1
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -204,19 +196,12 @@ jobs:
           cache-dependency-path: |
             core/go.sum
             services/desktop/go.sum
+            services/helper/go.sum
+            plugins/go_api/native/go.sum
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: windows-package-amd64
-          workspaces: |
-            services/helper
-            plugins/rust_api/rust
+      - name: Set up LLVM MinGW
+        shell: pwsh
+        run: ./tool/setup_windows_go_cgo.ps1
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -237,6 +222,17 @@ jobs:
 
       - name: Test desktop host
         working-directory: services/desktop
+        run: go test -count=1 ./...
+
+      - name: Test Go Helper
+        working-directory: services/helper
+        run: go test -count=1 ./...
+
+      - name: Test native Go library
+        working-directory: plugins/go_api/native
+        env:
+          CC: x86_64-w64-mingw32-clang
+          CGO_ENABLED: 1
         run: go test -count=1 ./...
 
       - name: Fetch Dart CA certificates
@@ -317,28 +313,8 @@ jobs:
           cache-dependency-path: |
             core/go.sum
             services/desktop/go.sum
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: macos-package-${{ matrix.arch }}
-          workspaces: |
-            plugins/rust_api/rust
-
-      - name: Setup Xcode
-        run: |
-          sudo xcode-select -s /Applications/Xcode_26.3.app || sudo xcode-select -s /Applications/Xcode_26.2.app
-          xcodebuild -version
-
-      - name: Install native dependencies
-        run: |
-          xcodebuild -version
-          xcrun --sdk macosx --show-sdk-path
+            services/helper/go.sum
+            plugins/go_api/native/go.sum
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -409,7 +385,7 @@ jobs:
           retention-days: 14
 
   go:
-    name: Go Core and desktop host
+    name: Go Core, desktop services and native library
     if: *checks
     runs-on: ubuntu-latest
     steps:
@@ -426,6 +402,8 @@ jobs:
           cache-dependency-path: |
             core/go.sum
             services/desktop/go.sum
+            services/helper/go.sum
+            plugins/go_api/native/go.sum
 
       - name: Validate proxy Core
         working-directory: core
@@ -439,6 +417,22 @@ jobs:
         working-directory: services/desktop
         env:
           CGO_ENABLED: 0
+        run: |
+          test -z "$(gofmt -l .)"
+          go test -count=1 ./...
+          go vet ./...
+
+      - name: Validate Go Helper
+        working-directory: services/helper
+        run: |
+          test -z "$(gofmt -l .)"
+          go test -count=1 ./...
+          go vet ./...
+
+      - name: Validate native Go library
+        working-directory: plugins/go_api/native
+        env:
+          CGO_ENABLED: 1
         run: |
           test -z "$(gofmt -l .)"
           go test -count=1 ./...
@@ -507,57 +501,6 @@ jobs:
             -Ptarget-platform=android-arm64 \
             -x :app:compileFlutterBuildDebug -x :app:copyFlutterAssetsDebug
 
-  rust:
-    name: Rust
-    if: *checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            services/helper
-            plugins/rust_api/rust
-          save-if: ${{ env.BRANCH_CACHE }}
-
-      - name: Check format
-        run: |
-          cargo fmt --manifest-path services/helper/Cargo.toml -- --check
-          cargo fmt --manifest-path plugins/rust_api/rust/Cargo.toml -- --check
-
-      - name: Run tests
-        run: |
-          cargo test --manifest-path services/helper/Cargo.toml
-          cargo test --manifest-path plugins/rust_api/rust/Cargo.toml
-
-  windows-helper-test:
-    name: Windows helper test
-    if: *checks
-    runs-on: windows-2022
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: services/helper
-          save-if: ${{ env.BRANCH_CACHE }}
-
-      - name: Check format
-        run: cargo fmt --manifest-path services/helper/Cargo.toml -- --check
-
-      - name: Run Windows service tests
-        run: cargo test --manifest-path services/helper/Cargo.toml --features windows-service
-
   build:
     # Releases publish where the release links point: the public repository.
     if: github.repository == 'chen08209/FlClash' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -589,15 +532,6 @@ jobs:
             flutter-channel: master
 
     steps:
-      - name: Setup rust
-        if: startsWith(matrix.os, 'windows-11-arm')
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://win.rustup.rs/aarch64" -OutFile rustup-init.exe
-          .\rustup-init.exe -y --default-toolchain stable
-          $cargoPath = "$env:USERPROFILE\.cargo\bin"
-          Add-Content $env:GITHUB_PATH $cargoPath
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -621,16 +555,13 @@ jobs:
           cache-dependency-path: |
             core/go.sum
             services/desktop/go.sum
+            services/helper/go.sum
+            plugins/go_api/native/go.sum
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: ${{ matrix.platform == 'android' && 'armv7-linux-androideabi,aarch64-linux-android,x86_64-linux-android' || '' }}
-
-      - name: Install Android Rust API build dependencies
-        if: matrix.platform == 'android'
-        run: sudo apt-get update && sudo apt-get install -y clang libclang-dev
+      - name: Set up LLVM MinGW
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: ./tool/setup_windows_go_cgo.ps1
 
       - name: Setup Gradle
         if: startsWith(matrix.platform,'android')
@@ -696,7 +627,7 @@ jobs:
   upload:
     permissions:
       contents: write
-    needs: [ build, dart, plugins, go, android, rust, windows-helper-test ]
+    needs: [ build, dart, plugins, go, android ]
     runs-on: ubuntu-latest
     services:
       telegram-bot-api:
@@ -731,7 +662,7 @@ jobs:
 
       - name: Skip native build hooks
         run: |
-          yq -i '.hooks.user_defines.setup.build_assets = false | .hooks.user_defines.rust_api.build_assets = false' pubspec.yaml
+          yq -i '.hooks.user_defines.setup.build_assets = false | .hooks.user_defines.go_api.build_assets = false' pubspec.yaml
 
       - name: Generate release notes
         shell: bash

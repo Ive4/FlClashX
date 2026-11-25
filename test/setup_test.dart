@@ -53,7 +53,7 @@ hooks:
   user_defines:
     setup:
       build_assets: false
-    rust_api:
+    go_api:
       build_assets: true
 ''';
 
