@@ -477,6 +477,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("颜色"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("配色风格"),
     "columns": MessageLookupByLibrary.simpleMessage("列数"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage("规则与脚本"),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "先执行脚本，再应用附加规则。",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("紧凑"),
     "compatible": MessageLookupByLibrary.simpleMessage("兼容模式"),
     "confirm": MessageLookupByLibrary.simpleMessage("确定"),
@@ -724,6 +728,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "existsTip": m30,
     "exit": MessageLookupByLibrary.simpleMessage("退出"),
     "exitFullScreen": MessageLookupByLibrary.simpleMessage("退出全屏"),
+    "exitName": MessageLookupByLibrary.simpleMessage("出口名称"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("出口节点"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("预期状态"),
     "expireTime": MessageLookupByLibrary.simpleMessage("到期时间"),
@@ -756,6 +761,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "fileIsUpdate": MessageLookupByLibrary.simpleMessage("文件有修改，是否保存修改"),
     "filter": MessageLookupByLibrary.simpleMessage("筛选"),
     "filters": MessageLookupByLibrary.simpleMessage("筛选"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("始终查找"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("查找进程"),
     "floating": MessageLookupByLibrary.simpleMessage("悬浮"),
     "followProfile": MessageLookupByLibrary.simpleMessage("跟随配置"),
@@ -886,6 +892,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "DSCP 标记不能超过 63",
     ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage("出口名称不能包含逗号或换行。"),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage("请输入域名或 IP 地址"),
     "invalidIconSet": MessageLookupByLibrary.simpleMessage("不是有效的图标集"),
     "invalidLinkTip": MessageLookupByLibrary.simpleMessage("不是有效的订阅链接或代理分享链接"),
@@ -1048,6 +1055,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("更多"),
     "name": MessageLookupByLibrary.simpleMessage("名称"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("命名出口"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("命名出口"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage("底栏"),
     "network": MessageLookupByLibrary.simpleMessage("网络"),
     "networkAccessDeniedError": m56,
@@ -1123,6 +1132,8 @@ class MessageLookup extends MessageLookupByLibrary {
       "覆盖目标地址使用嗅探到的域名替换原目标地址发起连接。",
     ),
     "overrideEntries": MessageLookupByLibrary.simpleMessage("覆写项"),
+    "pacMode": MessageLookupByLibrary.simpleMessage("PAC 模式"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("PAC 脚本"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("解析纯IP"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "解析纯 IP 会嗅探只有 IP 地址的连接。",
@@ -1643,6 +1654,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "更新包与已安装应用的签名密钥不同。",
     ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage("在后台继续"),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage("下载并安装更新"),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "下载完成后将自动安装并重启应用，恢复更新前的服务状态。Windows 可能要求管理员授权。",

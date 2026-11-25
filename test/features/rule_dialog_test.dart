@@ -85,6 +85,54 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('named exit validates and saves a separate routing target', (
+    tester,
+  ) async {
+    Rule? result;
+    await tester.pumpWidget(
+      TestApp(
+        wrapInProviderScope: true,
+        overrides: [
+          viewSizeProvider.overrideWithBuild((_, _) => const Size(1200, 800)),
+        ],
+        child: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () async {
+              result = await showFormSheet<Rule>(
+                context: context,
+                builder: (_) => const RuleForm(),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.current;
+    await tester.enterText(find.byType(TextFormField), 'example.com');
+    await tester.tap(find.text(l10n.namedExit));
+    await tester.pumpAndSettle();
+
+    final save = find.widgetWithText(TextButton, l10n.save);
+    final exitName = find.descendant(
+      of: find.widgetWithText(FormRow, l10n.exitName),
+      matching: find.byType(TextFormField),
+    );
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(_banner(l10n.emptyTip(l10n.exitName)), findsOneWidget);
+    await tester.enterText(exitName, 'Media, Proxy');
+    await tester.pumpAndSettle();
+    expect(_banner(l10n.invalidExitName), findsOneWidget);
+    await tester.enterText(exitName, '  Media  ');
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(result?.customExit, isTrue);
+    expect(result?.ruleTarget, 'Media');
+  });
+
   testWidgets('a rule without content centers its action', (tester) async {
     await tester.pumpWidget(
       TestApp(

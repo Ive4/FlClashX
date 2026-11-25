@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -6,8 +7,11 @@ import 'package:proxy/proxy.dart';
 import 'package:proxy/proxy_method_channel.dart';
 import 'package:proxy/src/linux_proxy.dart';
 import 'package:proxy/src/macos_proxy.dart';
+import 'package:proxy/src/pac_server.dart';
 import 'package:proxy/src/proxy_command.dart';
 import 'package:proxy/src/windows_proxy.dart';
+
+class _LoopbackHttpOverrides extends HttpOverrides {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -95,7 +99,77 @@ void main() {
     });
   });
 
+  test(
+    'serves the PAC script on loopback with a fresh URL for updates',
+    () async {
+      final server = PacServer();
+      addTearDown(server.close);
+      final client = _LoopbackHttpOverrides().createHttpClient(null)
+        ..findProxy = (_) => 'DIRECT';
+      addTearDown(() => client.close(force: true));
+      const script = '/* 代理 */ "PROXY 127.0.0.1:8080"';
+
+      final first = await server.serve('first');
+      final url = await server.serve(script);
+      expect(first, isNot(url));
+      expect(url.host, '127.0.0.1');
+      final response = await (await client.getUrl(url)).close();
+      expect(response.statusCode, HttpStatus.ok);
+      expect(
+        response.headers.contentType?.mimeType,
+        'application/x-ns-proxy-autoconfig',
+      );
+      expect(
+        response.headers.value(HttpHeaders.cacheControlHeader),
+        'no-store',
+      );
+      expect(await utf8.decoder.bind(response).join(), script);
+
+      final head = await (await client.headUrl(url)).close();
+      expect(head.statusCode, HttpStatus.ok);
+      expect(await head.toList(), isEmpty);
+
+      final unrelated = await (await client.getUrl(
+        url.replace(path: '/not-a-pac'),
+      )).close();
+      expect(unrelated.statusCode, HttpStatus.notFound);
+      await unrelated.drain<void>();
+    },
+  );
+
   group('Linux proxy command builders', () {
+    test('configures auto mode for GNOME and MATE', () {
+      const url = 'http://127.0.0.1:12345/flclash.pac?v=0';
+      for (final desktop in ['GNOME', 'MATE']) {
+        final commands = LinuxProxyCommands.buildStart(
+          port: 7890,
+          bypassDomain: const [],
+          desktop: desktop,
+          homeDir: '/home/user',
+          pacUrl: Uri.parse(url),
+        );
+        final schema = 'org.${desktop.toLowerCase()}.system.proxy';
+        expect(commands.map((command) => command.args), [
+          ['set', schema, 'autoconfig-url', url],
+          ['set', schema, 'mode', 'auto'],
+        ]);
+      }
+    });
+
+    test('sets the PAC URL in KDE and tells KIO to reload', () {
+      const url = 'http://127.0.0.1:12345/flclash.pac?v=0';
+      final commands = LinuxProxyCommands.buildStart(
+        port: 7890,
+        bypassDomain: const [],
+        desktop: 'KDE',
+        homeDir: '/home/user',
+        pacUrl: Uri.parse(url),
+      );
+      expect(commands[0].args.skip(5), ['Proxy Config Script', url]);
+      expect(commands[1].args.skip(5), ['ProxyType', '2']);
+      expect(commands[2].executable, 'dbus-send');
+    });
+
     test(
       'checks each fallback command only once for unknown desktops',
       () async {
@@ -405,6 +479,23 @@ USB 10/100/1000 LAN
 
       expect(firstStateCommand, 4);
       expect(commands[3].args.first, '-setproxybypassdomains');
+      expect(commands[4].args, ['-setautoproxystate', 'Wi-Fi', 'off']);
+    });
+
+    test('turns off manual proxy states before enabling the PAC URL', () {
+      const url = 'http://127.0.0.1:12345/flclash.pac?v=0';
+      final commands = MacosProxyCommands.buildPacStart(
+        'Wi-Fi',
+        Uri.parse(url),
+      );
+
+      expect(commands.map((command) => command.args), [
+        ['-setwebproxystate', 'Wi-Fi', 'off'],
+        ['-setsecurewebproxystate', 'Wi-Fi', 'off'],
+        ['-setsocksfirewallproxystate', 'Wi-Fi', 'off'],
+        ['-setautoproxyurl', 'Wi-Fi', url],
+        ['-setautoproxystate', 'Wi-Fi', 'on'],
+      ]);
     });
 
     test('reports failure when no active network service is found', () async {
@@ -487,5 +578,60 @@ USB 10/100/1000 LAN
 
       expect(await proxy.stopProxy(), isFalse);
     });
+
+    test('sends the PAC URL to Windows', () async {
+      MethodCall? capturedCall;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(proxy.methodChannel, (call) async {
+            capturedCall = call;
+            return true;
+          });
+
+      const url = 'http://127.0.0.1:12345/flclash.pac?v=0';
+      expect(await proxy.startPacProxy(Uri.parse(url)), isTrue);
+      expect(capturedCall?.method, 'StartPacProxy');
+      expect(capturedCall?.arguments, url);
+    });
+
+    test(
+      'keeps the PAC script live when Windows proxy cleanup fails',
+      () async {
+        final desktopProxy = Proxy();
+        final client = _LoopbackHttpOverrides().createHttpClient(null)
+          ..findProxy = (_) => 'DIRECT';
+        addTearDown(() => client.close(force: true));
+        Uri? url;
+        var stopSucceeds = false;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(proxy.methodChannel, (call) async {
+              if (call.method == 'StartPacProxy') {
+                url = Uri.parse(call.arguments as String);
+                return true;
+              }
+              expect(call.method, 'StopProxy');
+              return stopSucceeds;
+            });
+        addTearDown(() {
+          stopSucceeds = true;
+          return desktopProxy.stopProxy();
+        });
+
+        expect(
+          await desktopProxy.startPacProxy(
+            7890,
+            'PROXY 127.0.0.1:%mixed-port%',
+          ),
+          isTrue,
+        );
+        expect(await desktopProxy.stopProxy(), isFalse);
+
+        final response = await (await client.getUrl(url!)).close();
+        expect(
+          await utf8.decoder.bind(response).join(),
+          'PROXY 127.0.0.1:7890',
+        );
+      },
+      skip: !Platform.isWindows,
+    );
   });
 }

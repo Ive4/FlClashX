@@ -21,6 +21,8 @@ Future<YamlMap> _tunOf({
   required Map<String, dynamic> rawConfig,
   ProfileOverrides overrides = _overrides,
   bool bypassPrivateRoute = false,
+  String? defaultTunDnsMode,
+  bool safeMode = false,
 }) async {
   final result = await makeRealProfileTask(
     MakeRealProfileState(
@@ -30,11 +32,13 @@ Future<YamlMap> _tunOf({
       realPatchConfig: const PatchClashConfig(),
       overrides: overrides,
       bypassPrivateRoute: bypassPrivateRoute,
+      defaultTunDnsMode: defaultTunDnsMode,
       appendSystemDns: false,
       proxyGroups: const [],
       rules: const [],
       addedRules: const [],
       defaultUA: 'FlClash-Test',
+      safeMode: safeMode,
     ),
   );
   final config = loadYaml(result.yaml) as YamlMap;
@@ -42,6 +46,25 @@ Future<YamlMap> _tunOf({
 }
 
 void main() {
+  test('applies the native DNS default only to an eligible tunnel', () async {
+    final defaults = await _tunOf(rawConfig: {}, defaultTunDnsMode: 'native');
+    final explicit = await _tunOf(
+      rawConfig: {
+        'tun': {'dns-mode': 'disabled'},
+      },
+      defaultTunDnsMode: 'native',
+    );
+    final safe = await _tunOf(
+      rawConfig: {},
+      defaultTunDnsMode: 'native',
+      safeMode: true,
+    );
+
+    expect(defaults['dns-mode'], 'native');
+    expect(explicit['dns-mode'], 'disabled');
+    expect(safe.containsKey('dns-mode'), isFalse);
+    expect(safe['enable'], isFalse);
+  });
   test('writes the selected keys beside the network settings', () async {
     final tun = await _tunOf(rawConfig: {});
 

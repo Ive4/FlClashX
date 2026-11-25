@@ -1,5 +1,4 @@
 import 'package:fl_clash/core/controller.dart';
-import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/connection/tracker_info_list.dart';
 import 'package:fl_clash/models/models.dart';
@@ -14,10 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/core_connections.dart';
 import '../../helpers/test_app.dart';
 import '../../helpers/test_profiles.dart';
-
-class _MockCore extends Mock implements CoreHandlerInterface {}
 
 const _mobileSize = Size(400, 800);
 
@@ -46,11 +44,11 @@ Finder _stat(String label) => find.descendant(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _MockCore core;
+  late MockCoreWithConnections core;
   late ProviderContainer container;
 
   setUp(() {
-    core = _MockCore();
+    core = MockCoreWithConnections();
     when(() => core.getConnectionCount()).thenAnswer((_) async => 0);
     when(() => core.getConnections()).thenAnswer((_) async => []);
     container = ProviderContainer(

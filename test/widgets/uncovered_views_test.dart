@@ -293,6 +293,10 @@ void main() {
     await tester.tap(find.text('Check for updates'));
     await tester.pump();
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(
+      container.read(appUpdateActivityProvider)?.phase,
+      AppUpdatePhase.checking,
+    );
 
     await tester.tap(find.text('Check for updates'));
     await tester.pump(const Duration(milliseconds: 100));
@@ -300,7 +304,7 @@ void main() {
 
     adapter.response.complete(
       ResponseBody.fromString(
-        jsonEncode({'tag_name': 'v0.0.0'}),
+        jsonEncode({'draft': true, 'tag_name': 'v0.0.0'}),
         200,
         headers: {
           Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -312,7 +316,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    expect(find.text('The app is already up to date'), findsOneWidget);
+    expect(find.text('You are up to date.'), findsOneWidget);
+    expect(container.read(appUpdateActivityProvider), isNull);
     expect(tester.takeException(), null);
   });
 

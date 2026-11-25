@@ -317,6 +317,18 @@ class DesktopBackgroundClient {
     await _request('/cancel-lightweight', body: {'sessionId': _sessionId});
   }
 
+  Future<Uri?> servePac(String script) async {
+    final sessionId = _sessionId;
+    if (sessionId == null) {
+      return null;
+    }
+    final response = await _request(
+      '/pac',
+      body: {'sessionId': sessionId, 'script': script},
+    );
+    return Uri.parse(response['url'] as String);
+  }
+
   Map<String, String> get trayLabels => {
     'show': currentAppLocalizations.show,
     'exit': currentAppLocalizations.exit,

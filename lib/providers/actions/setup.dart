@@ -469,7 +469,7 @@ class SetupAction extends _$SetupAction {
     final profile = ref.read(currentProfileProvider);
     if (profile == null ||
         profile.type == ProfileType.custom ||
-        profile.extendType != ExtendType.standard) {
+        !profile.extendType.usesRules) {
       return;
     }
     applyProfileDebounce(silence: true);
@@ -577,6 +577,7 @@ class SetupAction extends _$SetupAction {
       networkSettingProvider.select(
         (state) => (
           appendSystemDns: state.appendSystemDns,
+          autoSetSystemDns: state.autoSetSystemDns,
           bypassPrivateRoute: state.bypassPrivateRoute,
           authentication: state.authentication,
         ),
@@ -584,8 +585,7 @@ class SetupAction extends _$SetupAction {
     );
     final appendSystemDns = networkSetting.appendSystemDns;
     final isCustom = setupState.profileType == ProfileType.custom;
-    final scriptContent =
-        !isCustom && setupState.extendType == ExtendType.script
+    final scriptContent = !isCustom && setupState.extendType.usesScript
         ? await setupState.script?.content
         : null;
     final hasScript = scriptContent?.isNotEmpty == true;
@@ -606,6 +606,11 @@ class SetupAction extends _$SetupAction {
     if (hasScript) {
       rawConfig = await handleEvaluate(scriptContent!, rawConfig);
     }
+    final outboundNames =
+        profileBase != null &&
+            setupState.addedRules.any((rule) => rule.customExit)
+        ? outboundNamesOf(await _core.getProfileOutbounds(profileId))
+        : null;
     final directory = await appPath.profilesPath;
     final injected = await _resolveInjectedProviders(
       setupState,
@@ -624,10 +629,17 @@ class SetupAction extends _$SetupAction {
         realPatchConfig: patchConfig,
         overrides: setupState.overrides,
         bypassPrivateRoute: networkSetting.bypassPrivateRoute,
-        keepEmptyDnsOverrides: setupState.profileType != ProfileType.custom,
         appendSystemDns: appendSystemDns,
+        defaultTunDnsMode: system.isMacOS
+            ? (networkSetting.autoSetSystemDns ? 'native' : 'disabled')
+            : null,
         accessControlProps: _desktopAccessControl,
         addedRules: setupState.addedRules,
+        exitTargets: setupState.exitTargets,
+        outboundNames: outboundNames,
+        defaultExitTarget: profileBase == null
+            ? null
+            : lastMatchTarget(profileBase.base.matchRules),
         defaultUA: defaultUA,
         authentication: networkSetting.authentication.credentials,
         matchTarget:

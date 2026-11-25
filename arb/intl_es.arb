@@ -1058,5 +1058,15 @@
   "mixedPortReset": "El puerto mixto no puede ser {value}, se restableció a {port}",
   "vpnPermissionNotGranted": "No se concedió el permiso de VPN, así que la VPN no se inició. Una VPN siempre activa configurada en otra app también lo impide.",
   "vpnServiceStartFailed": "No se pudo iniciar el servicio VPN.",
-  "coreConnectionLost": "Se perdió la conexión con el núcleo ({reason})."
+  "coreConnectionLost": "Se perdió la conexión con el núcleo ({reason}).",
+  "findProcessAlways": "Siempre",
+  "combinedProfileExtension": "Reglas y script",
+  "combinedProfileExtensionDesc": "Ejecuta el script y después aplica las reglas añadidas.",
+  "pacMode": "Modo PAC",
+  "pacScript": "Script PAC",
+  "namedExit": "Salida con nombre",
+  "namedExits": "Salidas con nombre",
+  "exitName": "Nombre de la salida",
+  "invalidExitName": "El nombre de una salida no puede contener comas ni saltos de línea.",
+  "updateContinueInBackground": "Continuar en segundo plano"
 }

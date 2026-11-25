@@ -225,20 +225,34 @@ class CoreController {
   }) async {
     final connections = await _interface.getConnections();
     if (rememberApplications) {
-      unawaited(
-        applicationHistory
-            .record(
-              applicationConnectionsOf(connections),
-              system.isWindows,
-              DateTime.now(),
-              preservePaths: system.isWindows || system.isMacOS,
-            )
-            .catchError((Object error) {
-              commonPrint.log('application history: $error');
-            }),
-      );
+      _recordApplications(applicationConnectionsOf(connections));
     }
     return connections;
+  }
+
+  Future<R> getConnectionsWith<R extends Object>(
+    R Function(List<TrackerInfo>) present,
+  ) async {
+    final (:result, :applications) = await _interface.getConnectionsWith(
+      _withApplicationConnections(present),
+    );
+    _recordApplications(applications);
+    return result;
+  }
+
+  void _recordApplications(List<ApplicationConnection> applications) {
+    unawaited(
+      applicationHistory
+          .record(
+            applications,
+            system.isWindows,
+            DateTime.now(),
+            preservePaths: system.isWindows || system.isMacOS,
+          )
+          .catchError((Object error) {
+            commonPrint.log('application history: $error');
+          }),
+    );
   }
 
   Future<int> getConnectionCount() async {
@@ -391,3 +405,13 @@ class CoreController {
 }
 
 final coreController = CoreController();
+
+({R result, List<ApplicationConnection> applications}) Function(
+  List<TrackerInfo>,
+)
+_withApplicationConnections<R>(R Function(List<TrackerInfo>) present) {
+  return (connections) => (
+    applications: applicationConnectionsOf(connections),
+    result: present(connections),
+  );
+}

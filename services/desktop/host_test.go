@@ -35,6 +35,46 @@ func TestFrameBoundsAndPartialWrites(t *testing.T) {
 	}
 }
 
+func TestPACRemainsAvailableInLightweightMode(t *testing.T) {
+	h, _ := testHost(t)
+	h.operation.Lock()
+	h.config.SafeMode = false
+	h.operation.Unlock()
+	session := randomID()
+	attachFrontend(t, h, session)
+	const script = `function FindProxyForURL() { return "PROXY 127.0.0.1:7890"; }`
+	pacBody := func(sessionID string) string {
+		body, _ := json.Marshal(map[string]string{"sessionId": sessionID, "script": script})
+		return string(body)
+	}
+	if response := control(h, "/pac", h.token, pacBody(randomID())); response.Code != http.StatusConflict {
+		t.Fatalf("superseded session could write PAC: %d", response.Code)
+	}
+	response := control(h, "/pac", h.token, pacBody(session))
+	if response.Code != http.StatusOK {
+		t.Fatal(response.Body.String())
+	}
+	var result struct{ URL string }
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil || result.URL == "" {
+		t.Fatalf("PAC URL: %q, %v", response.Body, err)
+	}
+	if response := control(h, "/lightweight", h.token, `{"sessionId":"`+session+`","cleanupProxy":true}`); response.Code != http.StatusOK {
+		t.Fatal(response.Body.String())
+	}
+	request := httptest.NewRequest(http.MethodGet, result.URL, nil)
+	recorder := httptest.NewRecorder()
+	h.serveHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != script {
+		t.Fatalf("GET PAC: %d %s", recorder.Code, recorder.Body.String())
+	}
+	request.Header.Set("Origin", "http://example.test")
+	recorder = httptest.NewRecorder()
+	h.serveHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin GET PAC: %d", recorder.Code)
+	}
+}
+
 type shortWriter struct{ bytes.Buffer }
 
 func (writer *shortWriter) Write(data []byte) (int, error) {

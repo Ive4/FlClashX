@@ -33,13 +33,24 @@ ExtendType extendType(Ref ref, int? profileId) {
 
 @riverpod
 Future<ClashConfig> clashConfig(Ref ref, int profileId) async {
-  final type = ref.read(profileProvider(profileId))?.type;
-  if (type == ProfileType.custom) {
+  final profile = ref.watch(profileProvider(profileId));
+  if (profile?.type == ProfileType.custom) {
     return const ClashConfig();
   }
-  final outbounds = await ref
-      .read(coreHandlerProvider)
-      .getProfileOutbounds(profileId);
+  final core = ref.read(coreHandlerProvider);
+  if (profile case Profile(
+    extendType: final mode,
+    scriptId: final int id,
+  ) when mode.usesScript) {
+    final script = await database.scriptsDao.get(id).getSingleOrNull();
+    if (await script?.content case final String content
+        when content.isNotEmpty) {
+      return clashConfigTask(
+        await handleEvaluate(content, await core.getConfig(profileId)),
+      );
+    }
+  }
+  final outbounds = await core.getProfileOutbounds(profileId);
   return clashConfigTask(outbounds);
 }
 
@@ -90,12 +101,13 @@ Future<SetupState> setupState(Ref ref, int? profileId) async {
             in await database.proxyDialersDao.query(profileId).get())
           dialer.proxyId: dialer.target,
       };
-    } else if (extendType == ExtendType.standard) {
-      addedRules = await database.rulesDao.queryAddedRules(profileId).get();
-    } else if (extendType == ExtendType.script) {
-      script = scriptId == null
-          ? null
-          : await database.scriptsDao.get(scriptId).getSingleOrNull();
+    } else {
+      if (extendType.usesRules) {
+        addedRules = await database.rulesDao.queryAddedRules(profileId).get();
+      }
+      if (extendType.usesScript && scriptId != null) {
+        script = await database.scriptsDao.get(scriptId).getSingleOrNull();
+      }
     }
   }
   return SetupState(
@@ -112,10 +124,12 @@ Future<SetupState> setupState(Ref ref, int? profileId) async {
     addedRules: addedRules,
     script: script,
     overrides: overrides,
-    matchTarget:
-        profileType != ProfileType.custom && extendType == ExtendType.standard
+    matchTarget: profileType != ProfileType.custom && extendType.usesRules
         ? profile?.matchTarget
         : null,
+    exitTargets: profileType != ProfileType.custom && extendType.usesRules
+        ? profile?.exitTargets ?? const {}
+        : const {},
   );
 }
 

@@ -12,6 +12,78 @@ import '../helpers/glyph_finders.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('shows Core failure and multiple updating resources together', (
+    tester,
+  ) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    globalState.container = container;
+    container.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+    container.read(coreStopReasonProvider.notifier).value = 'Core stopped';
+    final resources = container.read(updatingKeysProvider.notifier);
+    resources.start('provider_Example subscription');
+    resources.start(GeoResource.GEOIP.updatingKey);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: TestApp(
+          homeBuilder: (child) => Scaffold(body: Center(child: child)),
+          child: const CoreStatusButton(),
+        ),
+      ),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '3'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Core stopped'), findsOneWidget);
+    expect(find.text('Resources (2)'), findsOneWidget);
+    expect(find.text('Example subscription'), findsOneWidget);
+    expect(find.text('GEOIP'), findsOneWidget);
+
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Core stopped'), findsOneWidget);
+    expect(find.text('Confirm'), findsOneWidget);
+  });
+
+  testWidgets('shows update progress with an embedded Core', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    globalState.container = container;
+    container.read(coreStatusProvider.notifier).value = CoreStatus.connected;
+    final update = container.read(appUpdateActivityProvider.notifier);
+    update.value = (
+      phase: AppUpdatePhase.downloading,
+      version: '0.9.4+42',
+      progress: .42,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: TestApp(
+          homeBuilder: (child) => Scaffold(body: Center(child: child)),
+          child: const CoreStatusButton(separateCore: false),
+        ),
+      ),
+    );
+    expect(find.text('42%'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '42%'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('v0.9.4+42'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('Restart'), findsNothing);
+    update.value = (
+      phase: AppUpdatePhase.downloading,
+      version: '0.9.4+42',
+      progress: .63,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('63%'), findsWidgets);
+  });
+
   testWidgets(
     'holds connecting for the minimum duration after a fast restart',
     (tester) async {

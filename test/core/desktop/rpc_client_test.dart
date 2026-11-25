@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:fl_clash/core/desktop/rpc_client.dart';
@@ -72,6 +73,26 @@ void main() {
     expect(file.existsSync(), isFalse);
     await client.close();
     await transport.close();
+  });
+
+  test('decodes a large response before applying a later disconnect', () async {
+    final transport = FakeDesktopCoreTransport.connected();
+    final client = CoreRpcClient(transport);
+    addTearDown(transport.close);
+    addTearDown(client.close);
+    final invocation = client.invoke<({int length, String? isolate})>(
+      method: CoreMethod.getConnections,
+      model: _responseSize,
+    );
+    final request = await _sentRequest(transport);
+    final payload = 'x' * coreIsolateDecodeBytes;
+
+    transport.addJson({'id': request['id'], 'result': payload});
+    transport.disconnect(1);
+
+    final result = (await invocation)!;
+    expect(result.length, payload.length);
+    expect(result.isolate, isNot(Isolate.current.debugName));
   });
 
   test('correlates a response and ignores a late duplicate', () async {
@@ -375,6 +396,9 @@ void main() {
     await transport.close();
   });
 }
+
+({int length, String? isolate}) _responseSize(Object? response) =>
+    (length: (response as String).length, isolate: Isolate.current.debugName);
 
 final class _LoadedListener with CoreEventListener {
   final Completer<String> loaded = Completer<String>();

@@ -16,6 +16,7 @@ import 'desktop/transport.dart';
 import 'event.dart';
 import 'interface.dart';
 import 'method.dart';
+import 'spill.dart';
 
 class CoreService extends CoreHandlerInterface {
   static CoreService? _instance;
@@ -106,11 +107,13 @@ class CoreService extends CoreHandlerInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) {
     return _rpcClient.invoke<T>(
       method: method,
       arguments: arguments,
       timeout: timeout,
+      model: model,
     );
   }
 }

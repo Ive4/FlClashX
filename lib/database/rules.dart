@@ -21,6 +21,8 @@ class Rules extends Table {
 
   TextColumn get ruleTarget => text().nullable()();
 
+  BoolColumn get customExit => boolean().withDefault(const Constant(false))();
+
   TextColumn get ruleProvider => text().nullable()();
 
   TextColumn get subRule => text().nullable()();
@@ -174,14 +176,18 @@ class RulesDao extends DatabaseAccessor<Database> with _$RulesDaoMixin {
   }) {
     final stmt = rules.update()
       ..where((t) => t.profileId.equals(profileId))
-      ..where((t) => t.ruleTarget.equals(oldName));
+      ..where((t) => t.ruleTarget.equals(oldName) & t.customExit.equals(false));
     return stmt.write(RulesCompanion(ruleTarget: Value(newName)));
   }
 
   Future<Map<int, Set<String>>> targetsNaming(Set<String> names) async {
     final query = selectOnly(rules, distinct: true)
       ..addColumns([rules.profileId, rules.ruleTarget])
-      ..where(rules.profileId.isNotNull() & rules.ruleTarget.isIn(names));
+      ..where(
+        rules.profileId.isNotNull() &
+            rules.ruleTarget.isIn(names) &
+            rules.customExit.equals(false),
+      );
     final targets = <int, Set<String>>{};
     for (final row in await query.get()) {
       targets
@@ -308,6 +314,7 @@ extension RawRuleExt on RawRule {
       ruleAction: ruleAction,
       content: content,
       ruleTarget: ruleTarget,
+      customExit: customExit,
       ruleProvider: ruleProvider,
       subRule: subRule,
       noResolve: noResolve,
@@ -326,6 +333,7 @@ extension RulesCompanionExt on Rule {
       ruleAction: ruleAction,
       content: Value(content),
       ruleTarget: Value(ruleTarget),
+      customExit: Value(customExit),
       ruleProvider: Value(ruleProvider),
       subRule: Value(subRule),
       noResolve: Value(noResolve),

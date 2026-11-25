@@ -18,6 +18,16 @@ T roundTrip<T>(
 }
 
 void main() {
+  test('uses on-demand process lookup and preserves a saved off mode', () {
+    expect(
+      PatchClashConfig.fromJson({}).findProcessMode,
+      FindProcessMode.strict,
+    );
+    expect(
+      PatchClashConfig.fromJson({'find-process-mode': 'off'}).findProcessMode,
+      FindProcessMode.off,
+    );
+  });
   group('GeoResource JSON', () {
     test('exposes mihomo raw config keys', () {
       expect(GeoResource.MMDB.configKey, 'mmdb');
@@ -998,7 +1008,7 @@ void main() {
     });
 
     for (final (overrideDns, keys) in [
-      (true, {DnsOverrideKey.nameserver}),
+      (true, {DnsOverrideKey.nameserver, DnsOverrideKey.respectRules}),
       (false, <DnsOverrideKey>{}),
     ]) {
       test('a legacy overrideDns $overrideDns keeps $keys', () {
@@ -1006,7 +1016,11 @@ void main() {
           'themeProps': const ThemeProps().toJson(),
           'overrideDns': overrideDns,
           'patchClashConfig': {
-            'dns-override-keys': ['nameserver', 'respect-rules'],
+            'dns-override-keys': [
+              'nameserver',
+              'respect-rules',
+              'nameserver-policy',
+            ],
           },
         });
 

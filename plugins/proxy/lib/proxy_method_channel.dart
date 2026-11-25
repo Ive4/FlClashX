@@ -5,6 +5,7 @@ import 'proxy_platform_interface.dart';
 
 class MethodChannelProxy extends ProxyPlatform {
   static const _startProxyMethod = 'StartProxy';
+  static const _startPacProxyMethod = 'StartPacProxy';
   static const _stopProxyMethod = 'StopProxy';
 
   @visibleForTesting
@@ -16,6 +17,15 @@ class MethodChannelProxy extends ProxyPlatform {
           'port': port,
           'bypassDomain': bypassDomain,
         }) ??
+        false;
+  }
+
+  @override
+  Future<bool> startPacProxy(Uri url) async {
+    return await methodChannel.invokeMethod<bool>(
+          _startPacProxyMethod,
+          url.toString(),
+        ) ??
         false;
   }
 

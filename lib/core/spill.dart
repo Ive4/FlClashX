@@ -16,25 +16,41 @@ Future<bool> _isSpilled(String file) async {
   return equals(dirname(file), directory);
 }
 
-/// Parsed where a transport decodes them, off the UI isolate for a large one.
-const _resultModels = <CoreMethod, Object? Function(Object?)>{
+const coreIsolateDecodeBytes = 50 * 1024;
+
+/// Runs where the transport decodes the response. Capture only sendable data.
+typedef CoreResultModel = Object? Function(Object?);
+
+const _resultModels = <CoreMethod, CoreResultModel>{
   CoreMethod.getConnections: trackerInfosOf,
 };
 
+CoreResultModel? coreResultModelOf(CoreMethod method) => _resultModels[method];
+
 Map<String, Object?> withResultModel(
-  CoreMethod? method,
+  CoreResultModel? model,
   Map<String, Object?> response,
 ) {
-  final model = _resultModels[method];
   if (model == null || response['error'] != null || response['file'] != null) {
     return response;
   }
-  return {...response, 'result': model(response['result'])};
+  try {
+    return {...response, 'result': model(response['result'])};
+  } catch (error) {
+    return {
+      'id': response['id'],
+      'error': CoreMethodError(
+        code: 'result_error',
+        message: 'Unable to decode Core result',
+        details: error.toString(),
+      ).toJson(),
+    };
+  }
 }
 
 Future<CoreMethodResponse> resolveSpilledResponse(
   CoreMethodResponse response, {
-  CoreMethod? method,
+  CoreResultModel? model,
 }) async {
   final file = response.file;
   if (file == null) {
@@ -51,7 +67,7 @@ Future<CoreMethodResponse> resolveSpilledResponse(
   }
   try {
     return CoreMethodResponse.fromJson(
-      await compute(_readSpilledResponse, (file, method)),
+      await compute(_readSpilledResponse, (file, model)),
     );
   } catch (error) {
     return CoreMethodResponse(
@@ -61,14 +77,14 @@ Future<CoreMethodResponse> resolveSpilledResponse(
   }
 }
 
-Map<String, Object?> _readSpilledResponse((String, CoreMethod?) request) {
-  final (path, method) = request;
+Map<String, Object?> _readSpilledResponse((String, CoreResultModel?) request) {
+  final (path, model) = request;
   final file = File(path);
   try {
     final decoded = utf8.decoder
         .fuse(json.decoder)
         .convert(file.readAsBytesSync());
-    return withResultModel(method, Map<String, Object?>.from(decoded as Map));
+    return withResultModel(model, Map<String, Object?>.from(decoded as Map));
   } finally {
     try {
       file.deleteSync();

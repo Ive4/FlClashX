@@ -21,7 +21,7 @@ class _LiveConnectionsState extends ConsumerState<_LiveConnections>
         RouteMotionHoldMixin<_LiveConnections> {
   CoreController get _core => ref.read(coreHandlerProvider);
 
-  final _speedRanker = TrackerSpeedRanker();
+  var _ranking = TrackerRanking.empty;
   late final ScrollController _scrollController;
   var _loaded = false;
 
@@ -38,19 +38,21 @@ class _LiveConnectionsState extends ConsumerState<_LiveConnections>
 
   @override
   Future<void> poll(PollGuard isCurrent) async {
-    final trackerInfos = await _readConnections();
+    final ranked = await _readConnections();
     if (!isCurrent()) {
       return;
     }
-    _showConnections(trackerInfos);
+    if (ranked != null) _ranking = ranked.ranking;
+    _showConnections(ranked?.trackerInfos);
   }
 
-  Future<List<TrackerInfo>?> _readConnections() async {
+  Future<RankedTrackerInfos?> _readConnections() async {
+    final rank = rankAfter(_ranking);
     try {
       final connectionsReader = widget.connectionsReader;
       return connectionsReader != null
-          ? await connectionsReader()
-          : await _core.getConnections();
+          ? rank(await connectionsReader())
+          : await _core.getConnectionsWith(rank);
     } catch (error) {
       commonPrint.log(
         'updateConnections error: $error',
@@ -61,22 +63,16 @@ class _LiveConnectionsState extends ConsumerState<_LiveConnections>
   }
 
   void _showConnections(List<TrackerInfo>? trackerInfos) {
-    final readAt = DateTime.now();
     if (!_loaded) {
       setState(() => _loaded = true);
-      _applyConnections(trackerInfos ?? const [], readAt);
+      widget.listController.setTrackerInfos(trackerInfos ?? const []);
       return;
     }
-    updateWhenRouteSettled(() => _applyConnections(trackerInfos, readAt));
-  }
-
-  void _applyConnections(List<TrackerInfo>? trackerInfos, DateTime readAt) {
-    if (trackerInfos == null) {
-      return;
+    if (trackerInfos != null) {
+      updateWhenRouteSettled(
+        () => widget.listController.setTrackerInfos(trackerInfos),
+      );
     }
-    widget.listController.setTrackerInfos(
-      _speedRanker.rank(trackerInfos, readAt),
-    );
   }
 
   Future<void> _close(Future<void> Function() close) async {

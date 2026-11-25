@@ -20,6 +20,18 @@ class SystemAction extends _$SystemAction {
         });
   }
 
+  bool _hasLightweightBlockingWork() {
+    final phase = ref.read(appUpdateActivityProvider)?.phase;
+    if (phase == AppUpdatePhase.downloading ||
+        phase == AppUpdatePhase.installing) {
+      return true;
+    }
+    final updating = ref.read(updatingKeysProvider.notifier);
+    return ref
+        .read(updatingKeysProvider)
+        .any((key) => updating.scopeOf(key) == UpdatingScope.local);
+  }
+
   bool _canEnterAutomatically(bool Function()? shouldContinue) {
     if (shouldContinue?.call() == false ||
         !ref.mounted ||
@@ -27,7 +39,8 @@ class SystemAction extends _$SystemAction {
         ref.read(appSettingProvider).autoLightweightMinutes < 0 ||
         ref.read(excludeSSIDsProvider).isNotEmpty ||
         ref.read(coreStatusProvider) != CoreStatus.connected ||
-        _exitCoordinator != null) {
+        _exitCoordinator != null ||
+        _hasLightweightBlockingWork()) {
       return false;
     }
     final navigator = globalState.navigatorKey.currentState;
@@ -70,10 +83,7 @@ class SystemAction extends _$SystemAction {
     if (ref.read(excludeSSIDsProvider).isNotEmpty) {
       throw MessageException(localizations.lightweightModeOnDemand);
     }
-    final updating = ref.read(updatingKeysProvider.notifier);
-    if (ref
-        .read(updatingKeysProvider)
-        .any((key) => updating.scopeOf(key) == UpdatingScope.local)) {
+    if (_hasLightweightBlockingWork()) {
       if (automatic) return;
       throw MessageException(localizations.lightweightModeBusy);
     }
@@ -89,9 +99,7 @@ class SystemAction extends _$SystemAction {
       return;
     }
     if (automatic && !_canEnterAutomatically(shouldContinue)) return;
-    if (ref
-        .read(updatingKeysProvider)
-        .any((key) => updating.scopeOf(key) == UpdatingScope.local)) {
+    if (_hasLightweightBlockingWork()) {
       if (automatic) return;
       throw MessageException(localizations.lightweightModeBusy);
     }
@@ -214,7 +222,6 @@ class SystemAction extends _$SystemAction {
     await Future.wait([
       ?saveOperation,
       bootGuard.markClosed(),
-      if (systemDnsCoordinator != null) systemDnsCoordinator!.shutdown(),
       ?systemProxyQueue?.close(),
     ]);
   }

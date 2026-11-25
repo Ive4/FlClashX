@@ -613,6 +613,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("Цвет"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("Стиль палитры"),
     "columns": MessageLookupByLibrary.simpleMessage("Столбцы"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage(
+      "Правила и сценарий",
+    ),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "Запустить сценарий, затем применить добавленные правила.",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("Компактный"),
     "compatible": MessageLookupByLibrary.simpleMessage("Режим совместимости"),
     "confirm": MessageLookupByLibrary.simpleMessage("Подтвердить"),
@@ -954,6 +960,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "exitFullScreen": MessageLookupByLibrary.simpleMessage(
       "Выйти из полноэкранного режима",
     ),
+    "exitName": MessageLookupByLibrary.simpleMessage("Название выхода"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("Выходные узлы"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("Ожидаемый статус"),
     "expireTime": MessageLookupByLibrary.simpleMessage("Срок действия"),
@@ -996,6 +1003,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "filter": MessageLookupByLibrary.simpleMessage("Фильтр"),
     "filters": MessageLookupByLibrary.simpleMessage("Фильтры"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("Всегда"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("Поиск процесса"),
     "floating": MessageLookupByLibrary.simpleMessage("Плавающая"),
     "followProfile": MessageLookupByLibrary.simpleMessage("Как в профиле"),
@@ -1163,6 +1171,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "Метка DSCP не может превышать 63",
+    ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage(
+      "Название выхода не может содержать запятые или переносы строк.",
     ),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage(
       "Введите домен или IP-адрес",
@@ -1384,6 +1395,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("Ещё"),
     "name": MessageLookupByLibrary.simpleMessage("Название"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("Именованный выход"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("Именованные выходы"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage("Нижняя панель"),
     "network": MessageLookupByLibrary.simpleMessage("Сеть"),
     "networkAccessDeniedError": m56,
@@ -1487,6 +1500,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "overrideEntries": MessageLookupByLibrary.simpleMessage(
       "Переопределяемые параметры",
     ),
+    "pacMode": MessageLookupByLibrary.simpleMessage("Режим PAC"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("Сценарий PAC"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("Разбирать чистые IP"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "«Разбирать чистые IP» анализирует соединения, у которых есть только IP-адрес.",
@@ -2182,6 +2197,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "Обновление подписано другим ключом, чем установленное приложение.",
+    ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
+      "Продолжить в фоне",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",

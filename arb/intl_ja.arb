@@ -1058,5 +1058,15 @@
   "mixedPortReset": "混合ポートを {value} にはできないため、{port} に戻しました",
   "vpnPermissionNotGranted": "VPN の権限が許可されなかったため、VPN は起動しませんでした。ほかのアプリが常時接続 VPN に設定されている場合も起動できません。",
   "vpnServiceStartFailed": "VPN サービスを起動できませんでした。",
-  "coreConnectionLost": "コアとの接続が切断されました（{reason}）。"
+  "coreConnectionLost": "コアとの接続が切断されました（{reason}）。",
+  "findProcessAlways": "常に検索",
+  "combinedProfileExtension": "ルールとスクリプト",
+  "combinedProfileExtensionDesc": "スクリプトを実行してから追加ルールを適用します。",
+  "pacMode": "PAC モード",
+  "pacScript": "PAC スクリプト",
+  "namedExit": "名前付き出口",
+  "namedExits": "名前付き出口",
+  "exitName": "出口名",
+  "invalidExitName": "出口名にカンマや改行を含めることはできません。",
+  "updateContinueInBackground": "バックグラウンドで続行"
 }

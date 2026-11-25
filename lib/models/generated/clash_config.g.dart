@@ -767,6 +767,7 @@ _Rule _$RuleFromJson(Map<String, dynamic> json) => _Rule(
       RuleAction.DOMAIN,
   content: json['content'] as String?,
   ruleTarget: json['ruleTarget'] as String?,
+  customExit: json['customExit'] as bool? ?? false,
   ruleProvider: json['ruleProvider'] as String?,
   subRule: json['subRule'] as String?,
   noResolve: json['noResolve'] as bool? ?? false,
@@ -780,6 +781,7 @@ Map<String, dynamic> _$RuleToJson(_Rule instance) => <String, dynamic>{
   'ruleAction': _$RuleActionEnumMap[instance.ruleAction]!,
   'content': instance.content,
   'ruleTarget': instance.ruleTarget,
+  'customExit': instance.customExit,
   'ruleProvider': instance.ruleProvider,
   'subRule': instance.subRule,
   'noResolve': instance.noResolve,
@@ -880,9 +882,9 @@ _PatchClashConfig _$PatchClashConfigFromJson(Map<String, dynamic> json) =>
           $enumDecodeNullable(
             _$FindProcessModeEnumMap,
             json['find-process-mode'],
-            unknownValue: FindProcessMode.off,
+            unknownValue: FindProcessMode.strict,
           ) ??
-          FindProcessMode.off,
+          FindProcessMode.strict,
       interfaceNameMode:
           $enumDecodeNullable(
             _$InterfaceNameModeEnumMap,
@@ -1003,6 +1005,7 @@ const _$LogLevelEnumMap = {
 };
 
 const _$FindProcessModeEnumMap = {
+  FindProcessMode.strict: 'strict',
   FindProcessMode.always: 'always',
   FindProcessMode.off: 'off',
 };

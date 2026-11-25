@@ -15,6 +15,7 @@ import '../desktop/transport.dart';
 import '../event.dart';
 import '../interface.dart';
 import '../method.dart';
+import '../spill.dart';
 import 'diagnostics.dart';
 import 'transport.dart';
 
@@ -204,6 +205,7 @@ final class OhosCore extends CoreHandlerInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) {
     final rpc = _rpc;
     if (rpc == null) throw StateError('HarmonyOS Core has not started');
@@ -211,6 +213,7 @@ final class OhosCore extends CoreHandlerInterface {
       method: method,
       arguments: arguments,
       timeout: timeout,
+      model: model,
     );
   }
 }

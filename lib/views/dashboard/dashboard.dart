@@ -63,7 +63,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
       title: editing
           ? appLocalizations.editDashboard
           : appLocalizations.dashboard,
-      actions: [if (!editing && coreLib == null) const CoreStatusButton()],
+      actions: [if (!editing) CoreStatusButton(separateCore: coreLib == null)],
       confirmationAction: editing
           ? IconButtonData(
               glyph: AppGlyphs.check,

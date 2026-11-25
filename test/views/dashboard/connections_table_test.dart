@@ -1,6 +1,5 @@
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
-import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
@@ -14,10 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/core_connections.dart';
 import '../../helpers/test_app.dart';
 import '../../helpers/test_profiles.dart';
-
-class _MockCore extends Mock implements CoreHandlerInterface {}
 
 TrackerInfo _connection(
   int index, {
@@ -146,7 +144,7 @@ void main() {
 
   testWidgets('the table keeps the newest rows, sorts every connection and '
       'counts them all', (tester) async {
-    final core = _MockCore();
+    final core = MockCoreWithConnections();
     when(() => core.getConnections()).thenAnswer(
       (_) async => [
         for (var index = 0; index < 150; index++)

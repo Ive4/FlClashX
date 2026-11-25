@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -7,7 +8,7 @@ import 'package:fl_clash/core/event.dart';
 import 'package:fl_clash/core/method.dart';
 import 'package:fl_clash/core/spill.dart';
 import 'package:fl_clash/enum/enum.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show compute, visibleForTesting;
 
 import 'transport.dart';
 import 'model.dart';
@@ -23,11 +24,26 @@ const _connectTimeout = Duration(seconds: 10);
 final _requestEncoder = JsonUtf8Encoder();
 final _frameDecoder = utf8.decoder.fuse(json.decoder);
 
+Map<String, Object?> _decodeFrame(
+  (Uint8List, Map<String, CoreResultModel>) request,
+) {
+  final (frame, models) = request;
+  final decoded = _frameDecoder.convert(frame);
+  if (decoded is! Map) {
+    throw const FormatException('Core transport data is not an object');
+  }
+  final data = Map<String, Object?>.from(decoded);
+  return data.containsKey('method')
+      ? data
+      : withResultModel(models[data['id']], data);
+}
+
 abstract interface class CoreRpcChannel {
   Future<T?> invoke<T>({
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   });
 
   Future<void> close();
@@ -36,10 +52,14 @@ abstract interface class CoreRpcChannel {
 final class CoreRpcClient implements CoreRpcChannel {
   final DesktopCoreTransport transport;
   final Duration extensionGrace;
-  final Map<String, ({Completer<Object?> completer, CoreMethod method})>
+  final Map<String, ({Completer<Object?> completer, CoreResultModel? model})>
   _pending = {};
   late final StreamSubscription<Uint8List> _frameSubscription;
   late final StreamSubscription<DesktopTransportEvent> _eventSubscription;
+
+  // A disconnect waits for the frames already received from that transport.
+  final _inbox = Queue<Object>();
+  var _draining = false;
 
   int _methodCallId = 0;
   final String _clientId = createCoreSessionId();
@@ -57,7 +77,7 @@ final class CoreRpcClient implements CoreRpcChannel {
     @visibleForTesting this.extensionGrace = _maxExtensionGrace,
   }) {
     _frameSubscription = transport.frames.listen(
-      _handleFrame,
+      _receive,
       onError: _handleFrameError,
     );
     _eventSubscription = transport.events.listen(_handleTransportEvent);
@@ -70,6 +90,7 @@ final class CoreRpcClient implements CoreRpcChannel {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) async {
     if (_closeOperation != null) {
       throw const CoreMethodException(
@@ -79,7 +100,10 @@ final class CoreRpcClient implements CoreRpcChannel {
     }
     final id = '$_clientId-${++_methodCallId}';
     final completer = Completer<Object?>();
-    _pending[id] = (completer: completer, method: method);
+    _pending[id] = (
+      completer: completer,
+      model: model ?? coreResultModelOf(method),
+    );
     final requestTimeout = timeout ?? const Duration(minutes: 3);
     final stopwatch = Stopwatch()..start();
     try {
@@ -172,15 +196,43 @@ final class CoreRpcClient implements CoreRpcChannel {
     }
   }
 
-  void _handleFrame(Uint8List frame) {
+  void _receive(Object item) {
+    _inbox.add(item);
+    if (!_draining) unawaited(_drain());
+  }
+
+  Future<void> _drain() async {
+    _draining = true;
     try {
-      final decoded = _frameDecoder.convert(frame);
-      if (decoded is! Map) {
-        throw const FormatException('Core transport data is not an object');
+      while (_inbox.isNotEmpty) {
+        switch (_inbox.removeFirst()) {
+          case final Uint8List frame:
+            await _handleFrame(frame);
+          case (final CoreMethodException error, final List<String> pending):
+            _failPending(error, pending);
+        }
       }
-      final data = Map<String, Object?>.from(decoded);
+    } finally {
+      _draining = false;
+    }
+  }
+
+  Future<void> _handleFrame(Uint8List frame) async {
+    try {
+      final request = (
+        frame,
+        {
+          for (final MapEntry(:key, :value) in _pending.entries)
+            key: ?value.model,
+        },
+      );
+      final data = frame.length < coreIsolateDecodeBytes
+          ? _decodeFrame(request)
+          : await compute(_decodeFrame, request);
       if (data.containsKey('method')) {
-        _handleMethodCall(CoreMethodCall.fromJson(data));
+        if (_closeOperation == null) {
+          _handleMethodCall(CoreMethodCall.fromJson(data));
+        }
       } else {
         _handleResponse(CoreMethodResponse.fromJson(data));
       }
@@ -222,7 +274,7 @@ final class CoreRpcClient implements CoreRpcChannel {
       unawaited(
         resolveSpilledResponse(
           response,
-          method: pending.method,
+          model: pending.model,
         ).then((resolved) => _complete(completer, resolved)),
       );
       return;
@@ -256,32 +308,28 @@ final class CoreRpcClient implements CoreRpcChannel {
   }
 
   void _handleTransportEvent(DesktopTransportEvent event) {
-    switch (event) {
-      case TransportDisconnected():
-        _failPending(
-          const CoreMethodException(
-            code: 'transport_disconnected',
-            message: 'Core transport disconnected',
-          ),
-        );
-      case TransportFailed(:final error):
-        _failPending(
-          CoreMethodException(
-            code: 'transport_error',
-            message: 'Core transport failed',
-            details: error.toString(),
-          ),
-        );
-      case TransportReady() || TransportConnected():
-        break;
+    final error = switch (event) {
+      TransportDisconnected() => const CoreMethodException(
+        code: 'transport_disconnected',
+        message: 'Core transport disconnected',
+      ),
+      TransportFailed(:final error) => CoreMethodException(
+        code: 'transport_error',
+        message: 'Core transport failed',
+        details: error.toString(),
+      ),
+      TransportReady() || TransportConnected() => null,
+    };
+    if (error != null) {
+      _receive((error, _pending.keys.toList()));
     }
   }
 
-  void _failPending(CoreMethodException error) {
+  void _failPending(CoreMethodException error, [List<String>? ids]) {
     final completers = [
-      for (final pending in _pending.values) pending.completer,
+      for (final id in ids ?? _pending.keys.toList())
+        ?_pending.remove(id)?.completer,
     ];
-    _pending.clear();
     for (final completer in completers) {
       if (!completer.isCompleted) {
         completer.completeError(error);

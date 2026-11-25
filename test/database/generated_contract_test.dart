@@ -18,6 +18,7 @@ void main() {
       extendType: ExtendType.script,
       scriptId: 2,
       matchTarget: 'Proxy',
+      exitTargets: const {'Media': 'Movies'},
       autoUpdateDurationMillis: 3600000,
       subscriptionInfo: const SubscriptionInfo(
         upload: 1,
@@ -34,8 +35,8 @@ void main() {
       ),
     );
 
-    expect(profile.toColumns(true), hasLength(17));
-    expect(profile.toCompanion(true).toColumns(true), hasLength(17));
+    expect(profile.toColumns(true), hasLength(18));
+    expect(profile.toCompanion(true).toColumns(true), hasLength(18));
     expect(RawProfile.fromJson(profile.toJson()).toJson(), profile.toJson());
     expect(profile.copyWith(label: 'Next').label, 'Next');
     expect(
@@ -64,10 +65,11 @@ void main() {
       autoUpdate: false,
       selectedMap: {},
       unfoldSet: {},
+      exitTargets: {},
     );
-    expect(emptyProfile.toColumns(true), hasLength(9));
-    expect(emptyProfile.toColumns(false), hasLength(17));
-    expect(emptyProfile.toCompanion(true).toColumns(true), hasLength(9));
+    expect(emptyProfile.toColumns(true), hasLength(10));
+    expect(emptyProfile.toColumns(false), hasLength(18));
+    expect(emptyProfile.toCompanion(true).toColumns(true), hasLength(10));
 
     final insertedProfile = ProfilesCompanion.insert(
       type: ProfileType.file,
@@ -93,6 +95,7 @@ void main() {
         extendType: const Variable('standard'),
         scriptId: const Variable(2),
         matchTarget: const Variable('Proxy'),
+        exitTargets: const Variable('{}'),
         autoUpdateDurationMillis: const Variable(60),
         subscriptionInfo: const Variable('{}'),
         autoUpdate: const Variable(true),
@@ -101,7 +104,7 @@ void main() {
         order: const Variable(1),
         overrides: const Variable('{}'),
       ).toColumns(false),
-      hasLength(17),
+      hasLength(18),
     );
 
     final script = RawScript(id: 2, label: 'Script', lastUpdateTime: date);
@@ -149,6 +152,7 @@ void main() {
       ruleAction: RuleAction.RULE_SET,
       content: 'content',
       ruleTarget: 'Proxy',
+      customExit: true,
       ruleProvider: 'provider',
       subRule: 'sub',
       noResolve: true,
@@ -157,8 +161,8 @@ void main() {
       order: 'a0',
     );
 
-    expect(rule.toColumns(true), hasLength(11));
-    expect(rule.toCompanion(true).toColumns(true), hasLength(11));
+    expect(rule.toColumns(true), hasLength(12));
+    expect(rule.toCompanion(true).toColumns(true), hasLength(12));
     expect(RawRule.fromJson(rule.toJson()), rule);
     expect(rule.copyWith(content: const Value(null)).content, null);
     expect(
@@ -181,9 +185,10 @@ void main() {
       noResolve: false,
       src: false,
       applicationProxyRule: false,
+      customExit: false,
     );
-    expect(emptyRule.toColumns(true), hasLength(5));
-    expect(emptyRule.toColumns(false), hasLength(11));
+    expect(emptyRule.toColumns(true), hasLength(6));
+    expect(emptyRule.toColumns(false), hasLength(12));
 
     final ruleCompanion =
         RulesCompanion.insert(ruleAction: RuleAction.DOMAIN_SUFFIX).copyWith(

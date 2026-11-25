@@ -124,6 +124,21 @@ void main() {
     }
   });
 
+  testWidgets('PAC mode swaps the bypass domains row for the script', (
+    tester,
+  ) async {
+    await pumpItem(tester, const SystemProxySection());
+    final l10n = currentAppLocalizations;
+    expect(find.text(l10n.bypassDomain), findsOneWidget);
+    expect(find.text(l10n.pacScript), findsNothing);
+
+    await tester.tap(find.text(l10n.pacMode));
+    await tester.pumpAndSettle();
+    expect(container.read(networkSettingProvider).pacMode, isTrue);
+    expect(find.text(l10n.pacScript), findsOneWidget);
+    expect(find.text(l10n.bypassDomain), findsNothing);
+  });
+
   group('option pickers', () {
     testWidgets('the stack picker writes the chosen tun stack', (tester) async {
       await pumpItem(tester, const TunStackItem());

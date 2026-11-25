@@ -516,6 +516,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("カラー"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("配色スタイル"),
     "columns": MessageLookupByLibrary.simpleMessage("列数"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage(
+      "ルールとスクリプト",
+    ),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "スクリプトを実行してから追加ルールを適用します。",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("コンパクト"),
     "compatible": MessageLookupByLibrary.simpleMessage("互換モード"),
     "confirm": MessageLookupByLibrary.simpleMessage("OK"),
@@ -791,6 +797,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "existsTip": m30,
     "exit": MessageLookupByLibrary.simpleMessage("終了"),
     "exitFullScreen": MessageLookupByLibrary.simpleMessage("全画面表示を終了"),
+    "exitName": MessageLookupByLibrary.simpleMessage("出口名"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("出口ノード"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("期待するステータス"),
     "expireTime": MessageLookupByLibrary.simpleMessage("有効期限"),
@@ -827,6 +834,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "filter": MessageLookupByLibrary.simpleMessage("フィルター"),
     "filters": MessageLookupByLibrary.simpleMessage("フィルター"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("常に検索"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("プロセス検出"),
     "floating": MessageLookupByLibrary.simpleMessage("フローティング"),
     "followProfile": MessageLookupByLibrary.simpleMessage("プロファイルに従う"),
@@ -970,6 +978,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "DSCP マークは 63 を超えられません",
+    ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage(
+      "出口名にカンマや改行を含めることはできません。",
     ),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage(
       "ドメインまたは IP アドレスを入力してください",
@@ -1149,6 +1160,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("その他"),
     "name": MessageLookupByLibrary.simpleMessage("名前"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("名前付き出口"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("名前付き出口"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage("ボトムバー"),
     "network": MessageLookupByLibrary.simpleMessage("ネットワーク"),
     "networkAccessDeniedError": m56,
@@ -1234,6 +1247,8 @@ class MessageLookup extends MessageLookupByLibrary {
       "宛先を上書きすると、元のアドレスではなく検出したドメインに接続します。",
     ),
     "overrideEntries": MessageLookupByLibrary.simpleMessage("上書き項目"),
+    "pacMode": MessageLookupByLibrary.simpleMessage("PAC モード"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("PAC スクリプト"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("純粋なIPを解析"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "純粋な IP を解析すると、IP アドレスしかない接続をスニッフィングします。",
@@ -1805,6 +1820,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "更新の署名鍵がインストール済みアプリの署名鍵と異なります。",
+    ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
+      "バックグラウンドで続行",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",

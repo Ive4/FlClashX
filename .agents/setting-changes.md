@@ -53,6 +53,7 @@ rebuilds the profile YAML and hands it to Go's `applyConfig` through `setupConfi
 
 - `PatchClashConfig.setupOnly`: the config with every field that update carries reset to its default.
 - `NetworkProps.appendSystemDns`.
+- On macOS, `NetworkProps.autoSetSystemDns` sets the default TUN DNS mode. A mode explicitly set by the profile takes precedence.
 - On Windows/macOS, `VpnProps.accessControlProps.forRouting` carries the enabled blacklist/whitelist and active list.
   It adds TUN-only DIRECT exclusions and forces process lookup in the effective Core config so application history
   can learn programs before the first selection. Sort/filter changes do not reapply the profile. Mobile keeps its
@@ -93,7 +94,7 @@ database once instead of watching them. Content is applied explicitly by whateve
   the page, and whatever `inputsApplied` found unapplied when it opened.
 - Subscription updates, scripts and app-level providers call `applyProfileDebounce`. The global added rules are the
   one content `CoreManager` watches, small enough to keep watched, so no writer has to remember the apply: any change
-  to them calls `applyIfGlobalRulesUsed`, since only a profile with the standard extension takes them in.
+  to them calls `applyIfGlobalRulesUsed` when the profile's extension enables added rules.
 - A profile switch runs `fullSetup`.
 - A start applies again with `force` unless the last apply saw the same inputs (`inputsApplied`), the `testUrl` and
   `skipCertVerify` that only `SetupParams` carries included.

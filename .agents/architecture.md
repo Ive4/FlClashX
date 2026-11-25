@@ -62,7 +62,7 @@ and SSID rules or active local updates prevent entry.
 
 `LightweightManager` counts a continuous hidden interval from
 `AppSettingProps.autoLightweightMinutes` (defaults to 0 for immediate entry; -1 disables automatic entry). Desktop
-visibility comes from native window events and an initial visibility/minimize probe,
+visibility comes from native window events, a verified hide response, and an initial visibility/minimize probe,
 since Flutter can still report resumed for a hidden startup window. Showing the UI or changing
 the delay invalidates an in-flight automatic handoff. Automatic entry also waits
 while any navigator has a pushed page or dialog, or the Access Control tab has unsaved edits.
@@ -1451,9 +1451,8 @@ rewritten; each owner reads the flag where it would otherwise act:
   `vmess-config`, `tuic-server` and `iptables`, and closes `dns.listen`, preventing profile-only changes during apply.
 - System proxy: the `proxy` plugin handle in `lib/common/proxy.dart` is `null`, so `ProxyManager` and exit cleanup
   never write the OS setting, not even the `stopProxy` that would clear what the installed app configured.
-- System DNS: `systemDnsCoordinator` is `null` and `shouldPatchSystemDnsProvider` is `false`, so neither the apply nor
-  the restore path runs. The restore path matters because a profile or release build shares the preferences of the
-  installed app (only a macOS or Android debug build has its own bundle id) and would restore from its record.
+- System DNS: the disabled TUN makes no native resolver changes. Safe mode also skips restoring DNS records saved by
+  older macOS builds, because it can share preferences with the installed app.
 - Login item: the `autoLaunch` handle in `lib/common/launch.dart` is `null`, so neither the boot sync nor the setting
   listener registers the build's executable or removes the installed app's entry, which on Windows is the same
   `FlClash` value in the user's Run key.

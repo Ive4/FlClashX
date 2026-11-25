@@ -7,6 +7,7 @@ import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/widgets/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
@@ -115,6 +116,7 @@ class _LogsViewState extends ConsumerState<LogsView>
   @override
   Widget build(BuildContext context) {
     final appLocalizations = context.appLocalizations;
+    final selectable = !ViewScope.isMobileOf(context);
     return CommonScaffold(
       iconActions: _buildActions(),
       onKeywordsUpdate: _listController.updateKeywords,
@@ -167,6 +169,7 @@ class _LogsViewState extends ConsumerState<LogsView>
                       final log = logs[index];
                       return LogItem(
                         log: log,
+                        selectable: selectable,
                         onClick: (value) {
                           context.commonScaffoldState?.addKeyword(value);
                         },
@@ -186,8 +189,14 @@ class _LogsViewState extends ConsumerState<LogsView>
 class LogItem extends StatelessWidget {
   final Log log;
   final Function(String)? onClick;
+  final bool selectable;
 
-  const LogItem({super.key, required this.log, this.onClick});
+  const LogItem({
+    super.key,
+    required this.log,
+    this.onClick,
+    this.selectable = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +207,7 @@ class LogItem extends StatelessWidget {
     };
     final payload = LogPayload.parse(log.payload);
     return RecordListItem(
-      onTap: () {},
+      onTap: selectable ? () {} : () => _showLogDetail(context, log),
       header: RecordHeader(
         children: [
           RecordTimestamp(log.dateTime),
@@ -209,7 +218,11 @@ class LogItem extends StatelessWidget {
           ),
         ],
       ),
-      body: _LogBody(payload: payload, errorColor: tone.accentColor(context)),
+      body: _LogBody(
+        payload: payload,
+        errorColor: tone.accentColor(context),
+        selectable: selectable,
+      ),
     );
   }
 }
@@ -217,8 +230,13 @@ class LogItem extends StatelessWidget {
 class _LogBody extends StatelessWidget {
   final LogPayload payload;
   final Color? errorColor;
+  final bool selectable;
 
-  const _LogBody({required this.payload, this.errorColor});
+  const _LogBody({
+    required this.payload,
+    required this.selectable,
+    this.errorColor,
+  });
 
   String get _sourceText => [
     payload.tag,
@@ -233,35 +251,112 @@ class _LogBody extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SelectableText(payload.message, style: styles.primary),
+          selectable
+              ? SelectableText(payload.message, style: styles.primary)
+              : Text(payload.message, style: styles.primary),
           if (payload.tag.isNotEmpty)
             Text(payload.tag, style: styles.secondary),
         ],
       );
     }
-    return SelectableText.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: route.destination, style: styles.title),
-          if (route.error.isNotEmpty)
-            TextSpan(
-              text: '\n${route.error}',
-              style: styles.secondary.copyWith(color: errorColor),
-            ),
-          const TextSpan(text: '\n'),
-          if (route.rule.isNotEmpty) ...[
-            TextSpan(text: route.rule, style: styles.secondary),
-            TextSpan(text: ' \u2192 ', style: styles.secondary.toJetBrainsMono),
-          ],
+    final text = TextSpan(
+      children: [
+        TextSpan(text: route.destination, style: styles.title),
+        if (route.error.isNotEmpty)
           TextSpan(
-            text: route.proxy,
-            style: AppTextStyle.footnote
-                .of(context, emphasized: true)
-                .copyWith(color: context.colorScheme.primary),
+            text: '\n${route.error}',
+            style: styles.secondary.copyWith(color: errorColor),
           ),
-          TextSpan(text: '\n$_sourceText', style: styles.secondary),
+        const TextSpan(text: '\n'),
+        if (route.rule.isNotEmpty) ...[
+          TextSpan(text: route.rule, style: styles.secondary),
+          TextSpan(text: ' \u2192 ', style: styles.secondary.toJetBrainsMono),
         ],
+        TextSpan(
+          text: route.proxy,
+          style: AppTextStyle.footnote
+              .of(context, emphasized: true)
+              .copyWith(color: context.colorScheme.primary),
+        ),
+        TextSpan(text: '\n$_sourceText', style: styles.secondary),
+      ],
+    );
+    return selectable ? SelectableText.rich(text) : Text.rich(text);
+  }
+}
+
+void _showLogDetail(BuildContext context, Log log) {
+  showInSheet<void>(
+    context,
+    builder: (context) {
+      final localizations = context.appLocalizations;
+      return CommonScaffold(
+        title: localizations.details(localizations.log),
+        iconActions: [
+          IconButtonData(
+            glyph: AppGlyphs.copy,
+            tooltip: localizations.copy,
+            onPressed: () => _copyLog(context, log),
+          ),
+        ],
+        body: _LogDetailView(log: log),
+      );
+    },
+  );
+}
+
+Future<void> _copyLog(BuildContext context, Log log) async {
+  await globalState.safeRun(() async {
+    await Clipboard.setData(
+      ClipboardData(
+        text: '${log.dateTime} [${log.logLevel.name}] ${log.payload}',
       ),
+    );
+    if (context.mounted) {
+      context.showNotifier(context.appLocalizations.copySuccess);
+    }
+  });
+}
+
+class _LogDetailView extends StatelessWidget {
+  final Log log;
+
+  const _LogDetailView({required this.log});
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = context.appLocalizations;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        context.sectionsTopPadding,
+        16,
+        20 + context.bottomInset,
+      ),
+      children: [
+        generateSection(
+          title: localizations.basicInfo,
+          items: [
+            DetailRow.text(title: localizations.time, value: log.dateTime),
+            DetailRow.text(
+              title: localizations.logLevel,
+              value: log.logLevel.name,
+            ),
+          ],
+        ),
+        generateSection(
+          title: localizations.content,
+          items: [
+            DecorationListItem(
+              minVerticalPadding: 14,
+              title: SelectableText(
+                log.payload,
+                style: AppTextStyle.subheadline.of(context),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

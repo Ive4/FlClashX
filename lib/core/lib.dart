@@ -132,8 +132,13 @@ class CoreLib extends CoreHandlerInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) {
-    final call = _invokeMethod<T>(method: method, arguments: arguments);
+    final call = _invokeMethod<T>(
+      method: method,
+      arguments: arguments,
+      model: model,
+    );
     return call.withTimeout(
       timeout: timeout,
       onTimeout: () {
@@ -146,6 +151,7 @@ class CoreLib extends CoreHandlerInterface {
   Future<T?> _invokeMethod<T>({
     required CoreMethod method,
     Object? arguments,
+    CoreResultModel? model,
   }) async {
     try {
       await _connectedCompleter.future.timeout(coreConnectionWaitDuration);
@@ -159,6 +165,7 @@ class CoreLib extends CoreHandlerInterface {
     final id = '${++_methodCallId}';
     final response = await _service?.invokeMethod(
       CoreMethodCall(id: id, method: method, arguments: arguments),
+      model: model,
     );
     if (response == null) {
       return null;

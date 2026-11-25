@@ -22,26 +22,65 @@ ArchitecturesInstallIn64BitMode={{ARCH}}
 [Code]
 procedure KillProcesses;
 var
-  Processes: TArrayOfString;
-  i: Integer;
-  ResultCode: Integer;
+  Locator, Wmi, Processes, Process, ImagePath: Variant;
+  AppDir, Path: String;
+  i, ResultCode: Integer;
 begin
-  Processes := ['FlClashX.exe', 'FlClash.exe', 'FlClashDesktop.exe', 'FlClashCore.exe'];
-
-  for i := 0 to GetArrayLength(Processes)-1 do
-  begin
-    Exec('taskkill', '/f /im ' + Processes[i], '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  AppDir := AddBackslash(ExpandConstant('{app}'));
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Locator.Security_.Privileges.AddAsString('SeDebugPrivilege', True);
+    Wmi := Locator.ConnectServer('.', 'root\CIMV2');
+    Processes := Wmi.ExecQuery('SELECT * FROM Win32_Process WHERE Name = ''FlClashX.exe'' OR ' +
+      'Name = ''FlClash.exe'' OR Name = ''FlClashDesktop.exe'' OR Name = ''FlClashCore.exe''');
+    for i := 0 to Processes.Count - 1 do
+    begin
+      try
+        Process := Processes.ItemIndex(i);
+        ImagePath := Process.ExecutablePath;
+        if not VarIsNull(ImagePath) then
+        begin
+          Path := ImagePath;
+          if CompareText(Copy(Path, 1, Length(AppDir)), AppDir) = 0 then
+          begin
+            ResultCode := Process.Terminate(0);
+            if ResultCode <> 0 then
+              Log('Could not stop an installed process: ' + IntToStr(ResultCode));
+          end;
+        end;
+      except
+        Log('Could not check or stop an installed process.');
+      end;
+    end;
+  except
+    Log('Could not check for running installed processes.');
   end;
+end;
+
+function ServiceCommandMatches(Command, HelperPath: String): Boolean;
+begin
+  Command := Trim(Command);
+  if Copy(Command, 1, 1) = '"' then
+    HelperPath := '"' + HelperPath + '"'
+  else if (Pos(' ', HelperPath) > 0) or (Pos(#9, HelperPath) > 0) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  Result := (CompareText(Copy(Command, 1, Length(HelperPath)), HelperPath) = 0) and
+    (Pos(Copy(Command + ' ', Length(HelperPath) + 1, 1), ' ' + #9) > 0);
 end;
 
 function UnregisterHelperService: Boolean;
 var
-  HelperPath: String;
+  HelperPath, Command: String;
   ResultCode: Integer;
 begin
-  HelperPath := ExpandConstant('{app}\\FlClashHelperService.exe');
+  HelperPath := AddBackslash(ExpandConstant('{app}')) + 'FlClashHelperService.exe';
   Result := True;
-  if FileExists(HelperPath) then
+  if FileExists(HelperPath) and
+    RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Services\FlClashHelperService', 'ImagePath', Command) and
+    ServiceCommandMatches(Command, HelperPath) then
   begin
     if not ExecAndLogOutput(HelperPath, 'uninstall', '', SW_HIDE, ewWaitUntilTerminated, ResultCode, nil) then
     begin

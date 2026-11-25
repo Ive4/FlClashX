@@ -8,11 +8,13 @@ class MacosProxy {
   MacosProxy({required ProxyCommandRunner commandRunner})
     : _commandRunner = commandRunner;
 
-  Future<bool> start(int port, List<String> bypassDomain) async {
+  Future<bool> start(int port, List<String> bypassDomain, {Uri? pacUrl}) async {
     final services = await _networkServices();
     return _commandRunner.run(
       services.expand(
-        (service) => MacosProxyCommands.buildStart(service, port, bypassDomain),
+        (service) => pacUrl == null
+            ? MacosProxyCommands.buildStart(service, port, bypassDomain)
+            : MacosProxyCommands.buildPacStart(service, pacUrl),
       ),
     );
   }
@@ -64,6 +66,11 @@ class MacosProxyCommands {
       ]),
       buildProxyBypass(service, bypassDomain),
       ProxyCommand('/usr/sbin/networksetup', [
+        '-setautoproxystate',
+        service,
+        'off',
+      ]),
+      ProxyCommand('/usr/sbin/networksetup', [
         '-setwebproxystate',
         service,
         'on',
@@ -81,6 +88,22 @@ class MacosProxyCommands {
     ];
   }
 
+  static List<ProxyCommand> buildPacStart(String service, Uri url) {
+    return [
+      ..._disableManualProxy(service),
+      ProxyCommand('/usr/sbin/networksetup', [
+        '-setautoproxyurl',
+        service,
+        url.toString(),
+      ]),
+      ProxyCommand('/usr/sbin/networksetup', [
+        '-setautoproxystate',
+        service,
+        'on',
+      ]),
+    ];
+  }
+
   static List<ProxyCommand> buildStop(String service) {
     return [
       ProxyCommand('/usr/sbin/networksetup', [
@@ -88,6 +111,13 @@ class MacosProxyCommands {
         service,
         'off',
       ]),
+      ..._disableManualProxy(service),
+      buildProxyBypass(service, const []),
+    ];
+  }
+
+  static List<ProxyCommand> _disableManualProxy(String service) {
+    return [
       ProxyCommand('/usr/sbin/networksetup', [
         '-setwebproxystate',
         service,
@@ -103,7 +133,6 @@ class MacosProxyCommands {
         service,
         'off',
       ]),
-      buildProxyBypass(service, const []),
     ];
   }
 

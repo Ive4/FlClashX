@@ -2,6 +2,7 @@ import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/form/form.dart';
 import 'package:fl_clash/models/clash_config.dart';
+import 'package:fl_clash/models/profile.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/views/config/rules.dart';
@@ -25,7 +26,7 @@ class _StandardContentState extends ConsumerState<StandardContent> {
       context: context,
       builder: (_) => RuleForm(rule: rule),
     );
-    if (res == null) {
+    if (res == null || !mounted) {
       return;
     }
     ref.read(profileRulesProvider(_profileId).notifier).put(res);
@@ -122,6 +123,17 @@ class _StandardContentState extends ConsumerState<StandardContent> {
     final appLocalizations = context.appLocalizations;
     _profileId = ProfileIdProvider.of(context)!.profileId;
     final addedRules = ref.watch(profileRulesProvider(_profileId)).value ?? [];
+    final globalRules = ref.watch(globalRulesProvider).value ?? const [];
+    final disabled = ref.watch(profileDisabledRuleIdsProvider(_profileId));
+    final disabledIds = disabled.value?.toSet() ?? const <int>{};
+    final exitNames = {
+      for (final rule in addedRules.followedBy(
+        globalRules.where((rule) => !disabledIds.contains(rule.id)),
+      ))
+        if (rule.customExit)
+          if (rule.ruleTarget?.trim() case final name? when name.isNotEmpty)
+            name,
+    }.toList()..sort();
     final selectedRules = ref.watch(itemsProvider(_key));
     return CommonPopScope(
       onPop: selectedRules.isEmpty
@@ -180,7 +192,20 @@ class _StandardContentState extends ConsumerState<StandardContent> {
                 .order,
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          SliverToBoxAdapter(child: _MatchTargetItem(_profileId)),
+          SliverToBoxAdapter(child: _ExitTargetItem(_profileId)),
+          if (exitNames.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ListHeader(title: appLocalizations.namedExits),
+              ),
+            ),
+            SliverList.builder(
+              itemCount: exitNames.length,
+              itemBuilder: (_, index) =>
+                  _ExitTargetItem(_profileId, exitName: exitNames[index]),
+            ),
+          ],
           SliverToBoxAdapter(
             child: MoreActionButton(
               label: appLocalizations.controlGlobalAddedRules,
@@ -193,10 +218,16 @@ class _StandardContentState extends ConsumerState<StandardContent> {
   }
 }
 
-class _MatchTargetItem extends ConsumerWidget {
+class _ExitTargetItem extends ConsumerWidget {
   final int profileId;
+  final String? exitName;
 
-  const _MatchTargetItem(this.profileId);
+  const _ExitTargetItem(this.profileId, {this.exitName});
+
+  String? _targetOf(Profile? profile) {
+    final name = exitName;
+    return name == null ? profile?.matchTarget : profile?.exitTargets[name];
+  }
 
   Future<void> _handleSelect(BuildContext context, WidgetRef ref) async {
     final res = await showSheet<String>(
@@ -212,7 +243,7 @@ class _MatchTargetItem extends ConsumerWidget {
           };
           final proxyTypes = {for (final item in proxies) item.name: item.type};
           return SelectionSheet<String>(
-            title: appLocalizations.matchTarget,
+            title: exitName ?? appLocalizations.matchTarget,
             sections: [
               const SelectionSection(items: ['']),
               SelectionSection(
@@ -238,38 +269,46 @@ class _MatchTargetItem extends ConsumerWidget {
             selectedOf: (ref) => ref.watch(
               profileProvider(
                 profileId,
-              ).select((state) => state?.matchTarget ?? ''),
+              ).select((state) => _targetOf(state) ?? ''),
             ),
             onSelected: (item) => Navigator.of(context).pop(item),
           );
         },
       ),
     );
-    if (res == null) {
+    if (res == null || !context.mounted) {
       return;
     }
     ref.read(profilesProvider.notifier).updateProfile(profileId, (state) {
-      return state.copyWith(matchTarget: res.isEmpty ? null : res);
+      final name = exitName;
+      if (name == null) {
+        return state.copyWith(matchTarget: res.isEmpty ? null : res);
+      }
+      final exitTargets = {...state.exitTargets};
+      if (res.isEmpty) {
+        exitTargets.remove(name);
+      } else {
+        exitTargets[name] = res;
+      }
+      return state.copyWith(exitTargets: exitTargets);
     });
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appLocalizations = context.appLocalizations;
-    final matchTarget = ref.watch(
-      profileProvider(profileId).select((state) => state?.matchTarget),
-    );
+    final target = ref.watch(profileProvider(profileId).select(_targetOf));
     final clashConfig = ref.watch(clashConfigProvider(profileId)).value;
     final invalid =
-        matchTarget != null &&
+        target != null &&
         clashConfig != null &&
-        !RuleTarget.ruleTargets.contains(matchTarget) &&
-        !clashConfig.proxyGroups.any((item) => item.name == matchTarget) &&
-        !clashConfig.proxies.any((item) => item.name == matchTarget);
+        !RuleTarget.ruleTargets.contains(target) &&
+        !clashConfig.proxyGroups.any((item) => item.name == target) &&
+        !clashConfig.proxies.any((item) => item.name == target);
     return MoreActionButton(
-      label: appLocalizations.matchTarget,
+      label: exitName ?? appLocalizations.matchTarget,
       trailing: Text(
-        matchTarget ?? appLocalizations.followProfile,
+        target ?? appLocalizations.followProfile,
         style: AppTextStyle.subheadline
             .of(context)
             .toJetBrainsMono

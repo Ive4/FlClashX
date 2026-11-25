@@ -6,6 +6,10 @@ import 'package:fl_clash/models/models.dart';
 
 import 'desktop/model.dart';
 import 'method.dart';
+import 'spill.dart';
+
+CoreResultModel _presentConnections<R>(R Function(List<TrackerInfo>) present) =>
+    (result) => present(trackerInfosOf(result));
 
 mixin CoreInterface {
   Future<CoreLifecycleResult> start();
@@ -121,6 +125,7 @@ abstract class CoreHandlerInterface with CoreInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) async {
     return await handleWatch(
       onStart: () {
@@ -133,6 +138,7 @@ abstract class CoreHandlerInterface with CoreInterface {
           method: method,
           arguments: arguments,
           timeout: timeout,
+          model: model,
         );
       },
       onEnd: (result, elapsedMilliseconds) {
@@ -147,6 +153,7 @@ abstract class CoreHandlerInterface with CoreInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   });
 
   Future<String> _invokeMessage({
@@ -496,6 +503,16 @@ abstract class CoreHandlerInterface with CoreInterface {
   Future<List<TrackerInfo>> getConnections() async {
     final data = await _invokeMethod<Object>(method: CoreMethod.getConnections);
     return data is List<TrackerInfo> ? data : trackerInfosOf(data);
+  }
+
+  Future<R> getConnectionsWith<R extends Object>(
+    R Function(List<TrackerInfo>) present,
+  ) async {
+    final result = await _invokeMethod<R>(
+      method: CoreMethod.getConnections,
+      model: _presentConnections(present),
+    );
+    return result ?? present(const []);
   }
 
   @override

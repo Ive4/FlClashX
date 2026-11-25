@@ -65,6 +65,7 @@ void main() {
         method: CoreMethod.getIsInit,
         arguments: null,
         timeout: null,
+        model: null,
       ),
     ).thenAnswer((_) async => true);
 

@@ -635,6 +635,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("Color"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("Estilo de color"),
     "columns": MessageLookupByLibrary.simpleMessage("Columnas"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage(
+      "Reglas y script",
+    ),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "Ejecuta el script y después aplica las reglas añadidas.",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("Compacto"),
     "compatible": MessageLookupByLibrary.simpleMessage(
       "Modo de compatibilidad",
@@ -980,6 +986,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "exitFullScreen": MessageLookupByLibrary.simpleMessage(
       "Salir de pantalla completa",
     ),
+    "exitName": MessageLookupByLibrary.simpleMessage("Nombre de la salida"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("Nodos de salida"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("Estado esperado"),
     "expireTime": MessageLookupByLibrary.simpleMessage("Fecha de vencimiento"),
@@ -1026,6 +1033,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "filter": MessageLookupByLibrary.simpleMessage("Filtro"),
     "filters": MessageLookupByLibrary.simpleMessage("Filtros"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("Siempre"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("Buscar proceso"),
     "floating": MessageLookupByLibrary.simpleMessage("Flotante"),
     "followProfile": MessageLookupByLibrary.simpleMessage("Seguir perfil"),
@@ -1201,6 +1209,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "Una marca DSCP no puede superar 63",
+    ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage(
+      "El nombre de una salida no puede contener comas ni saltos de línea.",
     ),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage(
       "Introduce un dominio o una dirección IP",
@@ -1420,6 +1431,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("Más"),
     "name": MessageLookupByLibrary.simpleMessage("Nombre"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("Salida con nombre"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("Salidas con nombre"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage(
       "Barra inferior",
     ),
@@ -1529,6 +1542,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "overrideEntries": MessageLookupByLibrary.simpleMessage(
       "Entradas de sobrescritura",
     ),
+    "pacMode": MessageLookupByLibrary.simpleMessage("Modo PAC"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("Script PAC"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("Analizar IP pura"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "Analizar IP pura analiza las conexiones que solo llevan una dirección IP.",
@@ -2238,6 +2253,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "La actualización está firmada con una clave distinta de la de la aplicación instalada.",
+    ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
+      "Continuar en segundo plano",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",

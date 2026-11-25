@@ -6,6 +6,7 @@ import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/views/views.dart';
 import 'package:fl_clash/widgets/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,8 +24,11 @@ void main() {
     (i) => Log(payload: 'log $i', dateTime: '2024-01-01 12:00:$i'),
   );
 
-  Future<void> pumpLogsView(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1400, 1000);
+  Future<void> pumpLogsView(
+    WidgetTester tester, {
+    Size size = const Size(1400, 1000),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -32,6 +36,7 @@ void main() {
     container = ProviderContainer();
     addTearDown(container.dispose);
     globalState.container = container;
+    container.read(viewSizeProvider.notifier).value = size;
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -164,6 +169,35 @@ void main() {
     await tester.tap(find.text('warning'));
 
     expect(clicked, 'warning');
+  });
+
+  testWidgets('a phone opens a log with selectable content and a copy action', (
+    tester,
+  ) async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    String? copied;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    await pumpLogsView(tester, size: const Size(390, 844));
+
+    expect(find.byType(SelectableText), findsNothing);
+    await tester.tap(find.text('log 199'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Log details'), findsOneWidget);
+    expect(find.widgetWithText(SelectableText, 'log 199'), findsOneWidget);
+    await tester.tap(find.byTooltip('Copy'));
+    await tester.pump();
+
+    expect(copied, '2024-01-01 12:00:199 [info] log 199');
   });
 
   group('LogListController', () {

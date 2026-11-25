@@ -35,6 +35,8 @@ namespace
 constexpr int kMinProxyPort = 1;
 constexpr int kMaxProxyPort = 65535;
 constexpr wchar_t kProxyServerPrefix[] = L"127.0.0.1:";
+constexpr wchar_t kPacScheme[] = L"http://";
+constexpr wchar_t kPacPath[] = L"/flclash.pac?v=";
 
 std::wstring Utf8ToWide(const std::string& value)
 {
@@ -143,16 +145,23 @@ bool NotifySettingsChanged()
   return changed && refreshed;
 }
 
+bool ApplyProxyOptions(std::vector<INTERNET_PER_CONN_OPTION>& options)
+{
+  INTERNET_PER_CONN_OPTION_LIST list = {};
+  list.dwSize = sizeof(list);
+  list.dwOptionCount = static_cast<DWORD>(options.size());
+  list.pOptions = options.data();
+
+  const bool optionsApplied = ApplyOptionsToConnections(list);
+  const bool settingsNotified = NotifySettingsChanged();
+  return optionsApplied && settingsNotified;
+}
+
 bool startProxy(const int port, const flutter::EncodableList& bypassDomain)
 {
   auto url = kProxyServerPrefix + std::to_wstring(port);
   auto bypassList = BuildBypassList(bypassDomain);
   std::vector<INTERNET_PER_CONN_OPTION> options(3);
-
-  INTERNET_PER_CONN_OPTION_LIST list = {};
-  list.dwSize = sizeof(list);
-  list.dwOptionCount = static_cast<DWORD>(options.size());
-  list.pOptions = options.data();
 
   options[0].dwOption = INTERNET_PER_CONN_FLAGS;
   options[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_PROXY;
@@ -163,26 +172,29 @@ bool startProxy(const int port, const flutter::EncodableList& bypassDomain)
   options[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
   options[2].Value.pszValue = bypassList.data();
 
-  const bool optionsApplied = ApplyOptionsToConnections(list);
-  const bool settingsNotified = NotifySettingsChanged();
-  return optionsApplied && settingsNotified;
+  return ApplyProxyOptions(options);
+}
+
+bool startPacProxy(std::wstring& url)
+{
+  std::vector<INTERNET_PER_CONN_OPTION> options(2);
+
+  options[0].dwOption = INTERNET_PER_CONN_FLAGS;
+  options[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_AUTO_PROXY_URL;
+  options[1].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
+  options[1].Value.pszValue = url.data();
+
+  return ApplyProxyOptions(options);
 }
 
 bool stopProxy()
 {
   std::vector<INTERNET_PER_CONN_OPTION> options(1);
 
-  INTERNET_PER_CONN_OPTION_LIST list = {};
-  list.dwSize = sizeof(list);
-  list.dwOptionCount = 1;
-  list.pOptions = options.data();
-
   options[0].dwOption = INTERNET_PER_CONN_FLAGS;
   options[0].Value.dwValue = PROXY_TYPE_DIRECT;
 
-  const bool optionsApplied = ApplyOptionsToConnections(list);
-  const bool settingsNotified = NotifySettingsChanged();
-  return optionsApplied && settingsNotified;
+  return ApplyProxyOptions(options);
 }
 
 std::optional<int> ProxyPort(const std::wstring& server)
@@ -207,6 +219,29 @@ std::optional<int> ProxyPort(const std::wstring& server)
     return std::nullopt;
   }
   return port;
+}
+
+std::optional<int> PacPort(const std::wstring& url)
+{
+  const std::wstring scheme = kPacScheme;
+  if (url.compare(0, scheme.size(), scheme) != 0)
+  {
+    return std::nullopt;
+  }
+  const auto path = url.find(L'/', scheme.size());
+  const std::wstring pacPath = kPacPath;
+  if (path == std::wstring::npos ||
+      url.compare(path, pacPath.size(), pacPath) != 0)
+  {
+    return std::nullopt;
+  }
+  const auto version = path + pacPath.size();
+  if (version == url.size() ||
+      url.find_first_not_of(L"0123456789", version) != std::wstring::npos)
+  {
+    return std::nullopt;
+  }
+  return ProxyPort(url.substr(scheme.size(), path - scheme.size()));
 }
 
 template <typename Table>
@@ -280,9 +315,10 @@ bool ClearStaleProxyForConnection(
     LPTSTR connection,
     std::map<int, bool>& releasedPorts)
 {
-  std::vector<INTERNET_PER_CONN_OPTION> options(2);
+  std::vector<INTERNET_PER_CONN_OPTION> options(3);
   options[0].dwOption = INTERNET_PER_CONN_FLAGS;
   options[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+  options[2].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
 
   INTERNET_PER_CONN_OPTION_LIST list = {};
   list.dwSize = sizeof(list);
@@ -297,31 +333,42 @@ bool ClearStaleProxyForConnection(
   {
     return false;
   }
+  const auto isReleased = [&releasedPorts](std::optional<int> port)
+  {
+    if (!port)
+    {
+      return false;
+    }
+    auto [released, unchecked] = releasedPorts.try_emplace(*port, false);
+    if (unchecked)
+    {
+      released->second = IsPortReleased(*port);
+    }
+    return released->second;
+  };
   const DWORD flags = options[0].Value.dwValue;
-  std::wstring server;
-  if (options[1].Value.pszValue != nullptr)
+  DWORD remaining = flags;
+  const auto server = options[1].Value.pszValue;
+  const auto pacUrl = options[2].Value.pszValue;
+  if ((flags & PROXY_TYPE_PROXY) != 0 && server != nullptr &&
+      isReleased(ProxyPort(server)))
   {
-    server = options[1].Value.pszValue;
-    GlobalFree(options[1].Value.pszValue);
+    remaining &= ~PROXY_TYPE_PROXY;
   }
-
-  const auto port = ProxyPort(server);
-  if ((flags & PROXY_TYPE_PROXY) == 0 || !port)
+  if ((flags & PROXY_TYPE_AUTO_PROXY_URL) != 0 && pacUrl != nullptr &&
+      isReleased(PacPort(pacUrl)))
   {
-    return true;
+    remaining &= ~PROXY_TYPE_AUTO_PROXY_URL;
   }
-  auto [released, unchecked] = releasedPorts.try_emplace(*port, false);
-  if (unchecked)
-  {
-    released->second = IsPortReleased(*port);
-  }
-  if (!released->second)
+  GlobalFree(server);
+  GlobalFree(pacUrl);
+  if (remaining == flags)
   {
     return true;
   }
   INTERNET_PER_CONN_OPTION option = {};
   option.dwOption = INTERNET_PER_CONN_FLAGS;
-  option.Value.dwValue = (flags & ~PROXY_TYPE_PROXY) | PROXY_TYPE_DIRECT;
+  option.Value.dwValue = remaining | PROXY_TYPE_DIRECT;
   list.dwOptionCount = 1;
   list.pOptions = &option;
   return SetOptionsForConnection(list, connection);
@@ -408,6 +455,19 @@ namespace proxy
       const bool stopped = stopProxy();
       proxy_applied_ = proxy_applied_ && !stopped;
       result->Success(stopped);
+    }
+    else if (method_call.method_name() == "StartPacProxy")
+    {
+      const auto* argument =
+          std::get_if<std::string>(method_call.arguments());
+      auto url = argument == nullptr ? std::wstring() : Utf8ToWide(*argument);
+      if (!PacPort(url))
+      {
+        result->Error("bad_args", "StartPacProxy requires a loopback PAC URL");
+        return;
+      }
+      proxy_applied_ = true;
+      result->Success(startPacProxy(url));
     }
     else if (method_call.method_name() == "StartProxy")
     {

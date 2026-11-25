@@ -197,6 +197,7 @@ class Bootstrap {
         level: MessageLevel.warning,
       );
     }
+    await restoreLegacySystemDns();
     await _container.read(coreActionProvider.notifier).startCore();
     if (!_bootDecision.isDegraded) {
       await _container.read(setupActionProvider.notifier).initStatus();
@@ -204,9 +205,6 @@ class Bootstrap {
     if (desktopBackground.restorePending) {
       desktopBackground.restorePending = false;
       await systemProxyQueue?.apply(_container.read(proxyStateProvider));
-      await systemDnsCoordinator?.sync(
-        _container.read(shouldPatchSystemDnsProvider),
-      );
     }
     _container.read(initProvider.notifier).value = true;
     unawaited(_container.read(resourcesActionProvider.notifier).autoUpdate());

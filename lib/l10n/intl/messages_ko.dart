@@ -505,6 +505,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("색상"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("색상 스타일"),
     "columns": MessageLookupByLibrary.simpleMessage("열"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage(
+      "규칙 및 스크립트",
+    ),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "스크립트를 실행한 뒤 추가 규칙을 적용합니다.",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("간결하게"),
     "compatible": MessageLookupByLibrary.simpleMessage("호환 모드"),
     "confirm": MessageLookupByLibrary.simpleMessage("확인"),
@@ -780,6 +786,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "existsTip": m30,
     "exit": MessageLookupByLibrary.simpleMessage("종료"),
     "exitFullScreen": MessageLookupByLibrary.simpleMessage("전체 화면 종료"),
+    "exitName": MessageLookupByLibrary.simpleMessage("출구 이름"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("출구 노드"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("예상 상태"),
     "expireTime": MessageLookupByLibrary.simpleMessage("만료 시간"),
@@ -816,6 +823,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "filter": MessageLookupByLibrary.simpleMessage("필터"),
     "filters": MessageLookupByLibrary.simpleMessage("필터"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("항상 검색"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("프로세스 찾기"),
     "floating": MessageLookupByLibrary.simpleMessage("플로팅"),
     "followProfile": MessageLookupByLibrary.simpleMessage("프로필 따르기"),
@@ -957,6 +965,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "DSCP 마크는 63을 넘을 수 없습니다",
+    ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage(
+      "출구 이름에 쉼표나 줄바꿈을 넣을 수 없습니다.",
     ),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage(
       "도메인 또는 IP 주소를 입력하세요",
@@ -1134,6 +1145,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("더 보기"),
     "name": MessageLookupByLibrary.simpleMessage("이름"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("이름이 지정된 출구"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("이름이 지정된 출구"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage("하단 바"),
     "network": MessageLookupByLibrary.simpleMessage("네트워크"),
     "networkAccessDeniedError": m56,
@@ -1215,6 +1228,8 @@ class MessageLookup extends MessageLookupByLibrary {
       "대상 덮어쓰기는 원래 주소 대신 스니핑한 도메인으로 연결합니다.",
     ),
     "overrideEntries": MessageLookupByLibrary.simpleMessage("덮어쓰기 항목"),
+    "pacMode": MessageLookupByLibrary.simpleMessage("PAC 모드"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("PAC 스크립트"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("순수 IP 분석"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "순수 IP 분석은 IP 주소만 있는 연결을 스니핑합니다.",
@@ -1780,6 +1795,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "업데이트의 서명 키가 설치된 앱의 서명 키와 다릅니다.",
+    ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
+      "백그라운드에서 계속",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",

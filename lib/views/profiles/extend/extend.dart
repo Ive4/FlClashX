@@ -54,7 +54,12 @@ class _ExtendViewState extends ConsumerState<ExtendView> {
     final profileId = widget.profileId;
     final profile = ref.watch(
       profileProvider(profileId).select(
-        (state) => (state?.extendType, state?.scriptId, state?.matchTarget),
+        (state) => (
+          state?.extendType,
+          state?.scriptId,
+          state?.matchTarget,
+          state?.exitTargets,
+        ),
       ),
     );
     final rules = ref.watch(profileRulesProvider(profileId)).value;
@@ -152,11 +157,13 @@ class _ModeSection extends ConsumerWidget {
   String _label(AppLocalizations l, ExtendType type) => switch (type) {
     ExtendType.standard => l.standard,
     ExtendType.script => l.script,
+    ExtendType.combined => l.combinedProfileExtension,
   };
 
   String _description(AppLocalizations l, ExtendType type) => switch (type) {
     ExtendType.standard => l.standardModeDesc,
     ExtendType.script => l.scriptModeDesc,
+    ExtendType.combined => l.combinedProfileExtensionDesc,
   };
 
   void _handleChangeType(WidgetRef ref, int profileId, ExtendType type) {
@@ -203,6 +210,9 @@ class _Content extends ConsumerWidget {
     return switch (extendType) {
       ExtendType.standard => const StandardContent(),
       ExtendType.script => const ScriptContent(),
+      ExtendType.combined => const SliverMainAxisGroup(
+        slivers: [ScriptContent(), StandardContent()],
+      ),
     };
   }
 }

@@ -513,7 +513,7 @@ void main() {
     expect(container.read(filterGroupsStateProvider('hk jp')).value, isEmpty);
   });
 
-  test('runtime, VPN, tray, and DNS states follow live state', () async {
+  test('runtime, VPN, and tray states follow live state', () async {
     container
         .read(runTimeProvider.notifier)
         .update((_) => DateTime(2026).millisecondsSinceEpoch);
@@ -535,8 +535,6 @@ void main() {
             tun: state.tun.copyWith(enable: true),
           ),
         );
-    expect(container.read(shouldPatchSystemDnsProvider), isFalse);
-
     container
         .read(authorizedTunEnableProvider.notifier)
         .update((_) => TunAuthorizationState.authorized);
@@ -558,21 +556,6 @@ void main() {
     expect(vpn.stack, container.read(patchClashConfigProvider).tun.stack.name);
     expect(vpn.port, 8899);
     expect(vpn.bypassDomain, ['localhost']);
-
-    expect(container.read(shouldPatchSystemDnsProvider), isTrue);
-
-    container
-        .read(networkSettingProvider.notifier)
-        .update((state) => state.copyWith(autoSetSystemDns: false));
-    expect(container.read(shouldPatchSystemDnsProvider), isFalse);
-    container
-        .read(networkSettingProvider.notifier)
-        .update((state) => state.copyWith(autoSetSystemDns: true));
-
-    container
-        .read(authorizedTunEnableProvider.notifier)
-        .update((_) => TunAuthorizationState.unauthorized);
-    expect(container.read(shouldPatchSystemDnsProvider), isFalse);
 
     container.read(excludeSSIDsProvider.notifier).update((_) => ['Office']);
     container.read(currentSSIDProvider.notifier).update((_) => 'Office');
@@ -629,7 +612,7 @@ void main() {
     expect(tray.showTrayTitle, isTrue);
     expect(tray.hotKeys.keys, [HotAction.view]);
     expect(scoped.read(trayTitleStateProvider).showTrayTitle, isTrue);
-    expect(scoped.read(shouldPatchSystemDnsProvider), isFalse);
+    expect(scoped.read(setupPatchProvider).autoSetSystemDns, isFalse);
     await scoped.read(vpnOptionsProvider.future);
     final vpnOptions = scoped.read(sharedStateProvider).vpnOptions!;
     expect(vpnOptions.enable, isFalse);

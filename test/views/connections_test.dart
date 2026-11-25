@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:fl_clash/core/controller.dart';
-import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/features/features.dart';
 import 'package:fl_clash/models/models.dart';
@@ -15,10 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../helpers/core_connections.dart';
 import '../helpers/test_app.dart';
 import '../helpers/test_profiles.dart';
-
-class MockCoreHandlerInterface extends Mock implements CoreHandlerInterface {}
 
 TrackerInfo _tracker({
   required String id,
@@ -50,11 +48,11 @@ TrackerInfo _tracker({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late MockCoreHandlerInterface core;
+  late MockCoreWithConnections core;
   late ProviderContainer container;
 
   setUpAll(() {
-    core = MockCoreHandlerInterface();
+    core = MockCoreWithConnections();
   });
 
   setUp(() {

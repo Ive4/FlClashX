@@ -247,6 +247,7 @@ String _extendLabel(BuildContext context, ExtendType type) {
   return switch (type) {
     ExtendType.standard => context.appLocalizations.standard,
     ExtendType.script => context.appLocalizations.script,
+    ExtendType.combined => context.appLocalizations.combinedProfileExtension,
   };
 }
 

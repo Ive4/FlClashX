@@ -96,8 +96,6 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
 
   bool get pollsConnections;
 
-  bool get sortsConnections => true;
-
   CoreController get _core => ref.read(coreHandlerProvider);
 
   @override
@@ -131,15 +129,9 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
     }
     try {
       if (pollsConnections) {
-        final next = [...await _core.getConnections()];
+        final (:next, :tcp) = await _core.getConnectionsWith(_newestFirst);
         if (!isCurrent()) return;
         final sampledAt = DateTime.now();
-        if (sortsConnections) {
-          next.sort((a, b) => b.start.compareTo(a.start));
-        }
-        final tcp = next
-            .where((item) => item.metadata.network.toLowerCase() == 'tcp')
-            .length;
         connectionCount.value = next.length;
         updateWhenRouteSettled(
           () => setState(() {
@@ -165,6 +157,16 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
       );
     }
   }
+}
+
+({List<TrackerInfo> next, int tcp}) _newestFirst(
+  List<TrackerInfo> connections,
+) {
+  final next = [...connections]..sort((a, b) => b.start.compareTo(a.start));
+  final tcp = next
+      .where((item) => item.metadata.network.toLowerCase() == 'tcp')
+      .length;
+  return (next: next, tcp: tcp);
 }
 
 /// Follows a counter the Core moves per event, at the cadence the feed's own

@@ -1058,5 +1058,15 @@
   "mixedPortReset": "Le port mixte ne peut pas être {value}, il a été remis à {port}",
   "vpnPermissionNotGranted": "L'autorisation VPN n'a pas été accordée, le VPN n'a donc pas démarré. Un VPN permanent défini pour une autre application l'empêche aussi.",
   "vpnServiceStartFailed": "Le service VPN n'a pas pu démarrer.",
-  "coreConnectionLost": "La connexion au cœur a été perdue ({reason})."
+  "coreConnectionLost": "La connexion au cœur a été perdue ({reason}).",
+  "findProcessAlways": "Toujours",
+  "combinedProfileExtension": "Règles et script",
+  "combinedProfileExtensionDesc": "Exécuter le script, puis appliquer les règles ajoutées.",
+  "pacMode": "Mode PAC",
+  "pacScript": "Script PAC",
+  "namedExit": "Sortie nommée",
+  "namedExits": "Sorties nommées",
+  "exitName": "Nom de la sortie",
+  "invalidExitName": "Le nom de la sortie ne peut contenir ni virgule ni saut de ligne.",
+  "updateContinueInBackground": "Continuer en arrière-plan"
 }

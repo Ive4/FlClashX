@@ -25,6 +25,7 @@ class LinuxProxy {
     List<String> bypassDomain, {
     required String? desktop,
     required String? homeDir,
+    Uri? pacUrl,
   }) async {
     if (homeDir == null || homeDir.isEmpty) {
       return false;
@@ -40,6 +41,7 @@ class LinuxProxy {
         homeDir: homeDir,
         backend: selection.backend,
         kdeConfigWriter: selection.executable,
+        pacUrl: pacUrl,
       ),
     );
   }
@@ -132,6 +134,7 @@ class LinuxProxyCommands {
     required String? desktop,
     required String homeDir,
     Set<String>? availableExecutables,
+    Uri? pacUrl,
   }) {
     final backend = _resolveBackend(
       desktop: desktop,
@@ -146,6 +149,7 @@ class LinuxProxyCommands {
       homeDir: homeDir,
       backend: backend,
       kdeConfigWriter: _resolveKdeConfigWriter(availableExecutables),
+      pacUrl: pacUrl,
     );
   }
 
@@ -174,23 +178,27 @@ class LinuxProxyCommands {
     required String homeDir,
     required LinuxProxyBackend backend,
     required String kdeConfigWriter,
+    Uri? pacUrl,
   }) {
     return switch (backend) {
       LinuxProxyBackend.gnome => _buildGSettingsStart(
         port: port,
         bypassDomain: bypassDomain,
         schemaPrefix: 'org.gnome.system.proxy',
+        pacUrl: pacUrl,
       ),
       LinuxProxyBackend.mate => _buildGSettingsStart(
         port: port,
         bypassDomain: bypassDomain,
         schemaPrefix: 'org.mate.system.proxy',
+        pacUrl: pacUrl,
       ),
       LinuxProxyBackend.kde => _buildKdeStart(
         port: port,
         bypassDomain: bypassDomain,
         homeDir: homeDir,
         executable: kdeConfigWriter,
+        pacUrl: pacUrl,
       ),
     };
   }
@@ -261,7 +269,19 @@ class LinuxProxyCommands {
     required int port,
     required List<String> bypassDomain,
     required String schemaPrefix,
+    required Uri? pacUrl,
   }) {
+    if (pacUrl != null) {
+      return [
+        ProxyCommand('gsettings', [
+          'set',
+          schemaPrefix,
+          'autoconfig-url',
+          pacUrl.toString(),
+        ]),
+        ProxyCommand('gsettings', ['set', schemaPrefix, 'mode', 'auto']),
+      ];
+    }
     final commands = <ProxyCommand>[
       ProxyCommand('gsettings', [
         'set',
@@ -305,37 +325,24 @@ class LinuxProxyCommands {
     required List<String> bypassDomain,
     required String homeDir,
     required String executable,
+    required Uri? pacUrl,
   }) {
     final configFile = path.join(homeDir, '.config', 'kioslaverc');
+    ProxyCommand write(String key, String value) =>
+        _kdeWrite(executable, configFile, key, value);
     return [
-      ProxyCommand(executable, [
-        '--file',
-        configFile,
-        '--group',
-        'Proxy Settings',
-        '--key',
-        'NoProxyFor',
-        bypassDomain.join(','),
-      ]),
-      for (final type in _ProxyType.values)
-        ProxyCommand(executable, [
-          '--file',
-          configFile,
-          '--group',
-          'Proxy Settings',
-          '--key',
-          '${type.name}Proxy',
-          '${type == _ProxyType.socks ? 'socks' : 'http'}://$proxyHost:$port',
-        ]),
-      ProxyCommand(executable, [
-        '--file',
-        configFile,
-        '--group',
-        'Proxy Settings',
-        '--key',
-        'ProxyType',
-        '1',
-      ]),
+      if (pacUrl != null) ...[
+        write('Proxy Config Script', pacUrl.toString()),
+        write('ProxyType', '2'),
+      ] else ...[
+        write('NoProxyFor', bypassDomain.join(',')),
+        for (final type in _ProxyType.values)
+          write(
+            '${type.name}Proxy',
+            '${type == _ProxyType.socks ? 'socks' : 'http'}://$proxyHost:$port',
+          ),
+        write('ProxyType', '1'),
+      ],
       _kdeReparseConfiguration,
     ];
   }
@@ -345,18 +352,30 @@ class LinuxProxyCommands {
     required String executable,
   }) {
     return [
-      ProxyCommand(executable, [
-        '--file',
+      _kdeWrite(
+        executable,
         path.join(homeDir, '.config', 'kioslaverc'),
-        '--group',
-        'Proxy Settings',
-        '--key',
         'ProxyType',
         '0',
-      ]),
+      ),
       _kdeReparseConfiguration,
     ];
   }
+
+  static ProxyCommand _kdeWrite(
+    String executable,
+    String configFile,
+    String key,
+    String value,
+  ) => ProxyCommand(executable, [
+    '--file',
+    configFile,
+    '--group',
+    'Proxy Settings',
+    '--key',
+    key,
+    value,
+  ]);
 
   /// Running KIO programs keep the settings they read at startup until this
   /// signal, which is what the KDE proxy settings page sends after saving.

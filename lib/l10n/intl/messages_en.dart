@@ -591,6 +591,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "color": MessageLookupByLibrary.simpleMessage("Color"),
     "colorStyle": MessageLookupByLibrary.simpleMessage("Color style"),
     "columns": MessageLookupByLibrary.simpleMessage("Columns"),
+    "combinedProfileExtension": MessageLookupByLibrary.simpleMessage(
+      "Rules and script",
+    ),
+    "combinedProfileExtensionDesc": MessageLookupByLibrary.simpleMessage(
+      "Run the script, then apply the added rules.",
+    ),
     "compact": MessageLookupByLibrary.simpleMessage("Compact"),
     "compatible": MessageLookupByLibrary.simpleMessage("Compatibility mode"),
     "confirm": MessageLookupByLibrary.simpleMessage("Confirm"),
@@ -918,6 +924,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "existsTip": m30,
     "exit": MessageLookupByLibrary.simpleMessage("Exit"),
     "exitFullScreen": MessageLookupByLibrary.simpleMessage("Exit full screen"),
+    "exitName": MessageLookupByLibrary.simpleMessage("Exit name"),
     "exitNodes": MessageLookupByLibrary.simpleMessage("Exit nodes"),
     "expectedStatus": MessageLookupByLibrary.simpleMessage("Expected status"),
     "expireTime": MessageLookupByLibrary.simpleMessage("Expiration time"),
@@ -960,6 +967,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "filter": MessageLookupByLibrary.simpleMessage("Filter"),
     "filters": MessageLookupByLibrary.simpleMessage("Filters"),
+    "findProcessAlways": MessageLookupByLibrary.simpleMessage("Always"),
     "findProcessMode": MessageLookupByLibrary.simpleMessage("Find process"),
     "floating": MessageLookupByLibrary.simpleMessage("Floating"),
     "followProfile": MessageLookupByLibrary.simpleMessage("Follow profile"),
@@ -1125,6 +1133,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "invalidDscpContent": MessageLookupByLibrary.simpleMessage(
       "A DSCP mark cannot exceed 63",
+    ),
+    "invalidExitName": MessageLookupByLibrary.simpleMessage(
+      "An exit name cannot contain commas or line breaks.",
     ),
     "invalidHostContent": MessageLookupByLibrary.simpleMessage(
       "Enter a domain or an IP address",
@@ -1324,6 +1335,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "monthsAgoShort": m55,
     "more": MessageLookupByLibrary.simpleMessage("More"),
     "name": MessageLookupByLibrary.simpleMessage("Name"),
+    "namedExit": MessageLookupByLibrary.simpleMessage("Named exit"),
+    "namedExits": MessageLookupByLibrary.simpleMessage("Named exits"),
     "navigationBarStyle": MessageLookupByLibrary.simpleMessage("Bottom bar"),
     "network": MessageLookupByLibrary.simpleMessage("Network"),
     "networkAccessDeniedError": m56,
@@ -1425,6 +1438,8 @@ class MessageLookup extends MessageLookupByLibrary {
       "Override destination connects to the sniffed domain instead of the original address.",
     ),
     "overrideEntries": MessageLookupByLibrary.simpleMessage("Override entries"),
+    "pacMode": MessageLookupByLibrary.simpleMessage("PAC mode"),
+    "pacScript": MessageLookupByLibrary.simpleMessage("PAC script"),
     "parsePureIp": MessageLookupByLibrary.simpleMessage("Parse pure IP"),
     "parsePureIpDesc": MessageLookupByLibrary.simpleMessage(
       "Parse pure IP sniffs connections that carry only an IP address.",
@@ -2082,6 +2097,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "The update was signed with a different key than the installed app.",
+    ),
+    "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
+      "Continue in background",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",

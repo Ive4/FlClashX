@@ -59,18 +59,21 @@ final class SetupPatchProvider
           ({
             bool appendSystemDns,
             AccessControlProps applicationAccessControl,
+            bool autoSetSystemDns,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
             AccessControlProps applicationAccessControl,
+            bool autoSetSystemDns,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           }),
           ({
             bool appendSystemDns,
             AccessControlProps applicationAccessControl,
+            bool autoSetSystemDns,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           })
@@ -80,6 +83,7 @@ final class SetupPatchProvider
           ({
             bool appendSystemDns,
             AccessControlProps applicationAccessControl,
+            bool autoSetSystemDns,
             bool bypassPrivateRoute,
             PatchClashConfig patchConfig,
           })
@@ -104,6 +108,7 @@ final class SetupPatchProvider
     ({
       bool appendSystemDns,
       AccessControlProps applicationAccessControl,
+      bool autoSetSystemDns,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
     })
@@ -114,6 +119,7 @@ final class SetupPatchProvider
   ({
     bool appendSystemDns,
     AccessControlProps applicationAccessControl,
+    bool autoSetSystemDns,
     bool bypassPrivateRoute,
     PatchClashConfig patchConfig,
   })
@@ -126,6 +132,7 @@ final class SetupPatchProvider
     ({
       bool appendSystemDns,
       AccessControlProps applicationAccessControl,
+      bool autoSetSystemDns,
       bool bypassPrivateRoute,
       PatchClashConfig patchConfig,
     })
@@ -138,6 +145,7 @@ final class SetupPatchProvider
             ({
               bool appendSystemDns,
               AccessControlProps applicationAccessControl,
+              bool autoSetSystemDns,
               bool bypassPrivateRoute,
               PatchClashConfig patchConfig,
             })
@@ -146,7 +154,7 @@ final class SetupPatchProvider
   }
 }
 
-String _$setupPatchHash() => r'4ebb65e4bcd29c4759c61aaed3e5b0dbc3354b54';
+String _$setupPatchHash() => r'79ca68868bbdcbc36fe6f3c751f2bb370169200d';
 
 @ProviderFor(trayState)
 final trayStateProvider = TrayStateProvider._();
@@ -363,48 +371,6 @@ final class GetHotKeyActionFamily extends $Family
   @override
   String toString() => r'getHotKeyActionProvider';
 }
-
-@ProviderFor(shouldPatchSystemDns)
-final shouldPatchSystemDnsProvider = ShouldPatchSystemDnsProvider._();
-
-final class ShouldPatchSystemDnsProvider
-    extends $FunctionalProvider<bool, bool, bool>
-    with $Provider<bool> {
-  ShouldPatchSystemDnsProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'shouldPatchSystemDnsProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$shouldPatchSystemDnsHash();
-
-  @$internal
-  @override
-  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  bool create(Ref ref) {
-    return shouldPatchSystemDns(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
-    );
-  }
-}
-
-String _$shouldPatchSystemDnsHash() =>
-    r'f74bcdbae504e9528b2e960b8620d097c27f3ca9';
 
 @ProviderFor(sharedState)
 final sharedStateProvider = SharedStateProvider._();
@@ -1801,7 +1767,7 @@ final class ProxyStateProvider
   }
 }
 
-String _$proxyStateHash() => r'76a71ab5da07dca9aeb351282c5c03ab222d0760';
+String _$proxyStateHash() => r'cb9d2ed3109f213556a9862e83679e54c5b69e3e';
 
 /// Watching the delay map instead would drop nodes one probe at a time, and
 /// reading it on any other rebuild would drop them whenever something
@@ -3432,7 +3398,7 @@ final class ClashConfigProvider
   }
 }
 
-String _$clashConfigHash() => r'ed8cfcf34801fae6f54b28ddcf5ea31bc49ad0ba';
+String _$clashConfigHash() => r'0db67c6b79aec51dabefe7110dde22d0ba99009e';
 
 final class ClashConfigFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<ClashConfig>, int> {
@@ -3506,7 +3472,7 @@ final class SetupStateProvider
   }
 }
 
-String _$setupStateHash() => r'eef9f0d2ec0ecb6196c699b1e2c2a73d922f8964';
+String _$setupStateHash() => r'fd4080331b5f4e0df1dc40c93a82397a989af957';
 
 final class SetupStateFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<SetupState>, int?> {

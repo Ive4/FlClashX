@@ -22,6 +22,47 @@ void main() {
     await testDatabase.close();
   });
 
+  test(
+    'combined extension loads the script and the enabled added rules',
+    () async {
+      const profile = Profile(
+        id: 42,
+        type: ProfileType.url,
+        autoUpdateDuration: Duration.zero,
+        extendType: ExtendType.combined,
+        scriptId: 5,
+        exitTargets: {'Media': 'Proxy'},
+      );
+      await testDatabase.profilesDao.putAll([profile.toCompanion()]);
+      await testDatabase.scripts.put(
+        Script(
+          id: 5,
+          label: 'Script',
+          lastUpdateTime: DateTime(2026),
+        ).toCompanion(),
+      );
+      await testDatabase.rulesDao.putRule(
+        Rule.parse(
+          'DOMAIN,example.com,Media',
+          id: 10,
+        ).copyWith(customExit: true),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          profilesProvider.overrideWith(() => TestProfiles([profile])),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(setupStateProvider(profile.id), (_, _) {});
+
+      final setup = await container.read(setupStateProvider(profile.id).future);
+
+      expect(setup.script?.id, 5);
+      expect(setup.addedRules.single.customExit, isTrue);
+      expect(setup.exitTargets, {'Media': 'Proxy'});
+    },
+  );
+
   testWidgets('a custom setup disposed before its queries return resolves', (
     tester,
   ) async {

@@ -22,6 +22,7 @@ UpdateParams updateParams(Ref ref) {
 ({
   PatchClashConfig patchConfig,
   bool appendSystemDns,
+  bool autoSetSystemDns,
   bool bypassPrivateRoute,
   AccessControlProps applicationAccessControl,
 })
@@ -40,6 +41,12 @@ setupPatch(Ref ref) {
     appendSystemDns: ref.watch(
       networkSettingProvider.select((state) => state.appendSystemDns),
     ),
+    autoSetSystemDns:
+        system.isMacOS &&
+        !ref.watch(safeModeProvider) &&
+        ref.watch(
+          networkSettingProvider.select((state) => state.autoSetSystemDns),
+        ),
     // Android's VPN service takes it on its next start instead.
     bypassPrivateRoute:
         system.isDesktop &&
@@ -162,24 +169,6 @@ HotKeyAction getHotKeyAction(Ref ref, HotAction hotAction) {
       return index != -1 ? state[index] : HotKeyAction(action: hotAction);
     }),
   );
-}
-
-@riverpod
-bool shouldPatchSystemDns(Ref ref) {
-  final autoSetSystemDns = ref.watch(
-    networkSettingProvider.select((state) => state.autoSetSystemDns),
-  );
-  if (!autoSetSystemDns || ref.watch(safeModeProvider)) {
-    return false;
-  }
-  final isStart = ref.watch(runTimeProvider.select((state) => state != null));
-  final tunEnable = ref.watch(
-    patchClashConfigProvider.select((state) => state.tun.enable),
-  );
-  final authorizationState = ref.watch(authorizedTunEnableProvider);
-  return isStart &&
-      tunEnable &&
-      authorizationState == TunAuthorizationState.authorized;
 }
 
 @riverpod

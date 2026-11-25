@@ -1058,5 +1058,15 @@
   "mixedPortReset": "혼합 포트는 {value}일 수 없어 {port}(으)로 되돌렸습니다",
   "vpnPermissionNotGranted": "VPN 권한이 허용되지 않아 VPN을 시작하지 않았습니다. 다른 앱이 상시 사용 VPN으로 설정되어 있어도 시작할 수 없습니다.",
   "vpnServiceStartFailed": "VPN 서비스를 시작하지 못했습니다.",
-  "coreConnectionLost": "코어와의 연결이 끊어졌습니다 ({reason})."
+  "coreConnectionLost": "코어와의 연결이 끊어졌습니다 ({reason}).",
+  "findProcessAlways": "항상 검색",
+  "combinedProfileExtension": "규칙 및 스크립트",
+  "combinedProfileExtensionDesc": "스크립트를 실행한 뒤 추가 규칙을 적용합니다.",
+  "pacMode": "PAC 모드",
+  "pacScript": "PAC 스크립트",
+  "namedExit": "이름이 지정된 출구",
+  "namedExits": "이름이 지정된 출구",
+  "exitName": "출구 이름",
+  "invalidExitName": "출구 이름에 쉼표나 줄바꿈을 넣을 수 없습니다.",
+  "updateContinueInBackground": "백그라운드에서 계속"
 }

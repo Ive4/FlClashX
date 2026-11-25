@@ -331,12 +331,20 @@ class GeneralView extends ConsumerWidget {
   List<Widget> _connectionItems() {
     return [
       const DelayTestTimeoutItem(),
-      _clashToggle(
+      ConfigOptionsItem<FindProcessMode>(
         title: (l) => l.findProcessMode,
-        select: (state) => state.findProcessMode == FindProcessMode.always,
-        update: (state, value) => state.copyWith(
-          findProcessMode: value ? FindProcessMode.always : FindProcessMode.off,
+        options: FindProcessMode.values,
+        textBuilder: (mode) => switch (mode) {
+          FindProcessMode.strict => currentAppLocalizations.onDemand,
+          FindProcessMode.always => currentAppLocalizations.findProcessAlways,
+          FindProcessMode.off => currentAppLocalizations.disabled,
+        },
+        selector: patchClashConfigProvider.select(
+          (state) => state.findProcessMode,
         ),
+        onChanged: (ref, mode) => ref
+            .read(patchClashConfigProvider.notifier)
+            .update((state) => state.copyWith(findProcessMode: mode)),
       ),
       _appSettingToggle(
         title: (l) => l.autoCloseConnections,

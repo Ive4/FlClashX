@@ -56,6 +56,11 @@ _Profile _$ProfileFromJson(Map<String, dynamic> json) => _Profile(
       ExtendType.standard,
   scriptId: (json['scriptId'] as num?)?.toInt(),
   matchTarget: json['matchTarget'] as String?,
+  exitTargets:
+      (json['exitTargets'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ) ??
+      const {},
   order: (json['order'] as num?)?.toInt(),
   overrides: json['overrides'] == null
       ? const ProfileOverrides()
@@ -80,6 +85,7 @@ Map<String, dynamic> _$ProfileToJson(_Profile instance) => <String, dynamic>{
   'extendType': _$ExtendTypeEnumMap[instance.extendType]!,
   'scriptId': instance.scriptId,
   'matchTarget': instance.matchTarget,
+  'exitTargets': instance.exitTargets,
   'order': instance.order,
   'overrides': instance.overrides,
 };
@@ -93,4 +99,5 @@ const _$ProfileTypeEnumMap = {
 const _$ExtendTypeEnumMap = {
   ExtendType.standard: 'standard',
   ExtendType.script: 'script',
+  ExtendType.combined: 'combined',
 };

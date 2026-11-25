@@ -28,6 +28,11 @@ class _FakeProxy implements Proxy {
   }
 
   @override
+  Future<bool> startPacProxy(int port, String script) {
+    return _call('start PAC $port: $script');
+  }
+
+  @override
   Future<bool> stopProxy() => _call('stop');
 }
 
@@ -49,6 +54,26 @@ void main() {
     await queue.apply(_state(isStart: false));
 
     expect(proxy.calls, ['start 7890', 'stop']);
+  });
+
+  test('updates PAC and switches back to manual before stopping', () async {
+    final proxy = _FakeProxy();
+    final queue = SystemProxyQueue(proxy);
+    final active = _state(isStart: true);
+
+    await queue.apply(active);
+    await queue.apply(active.copyWith(pacScript: 'first script'));
+    await queue.apply(active.copyWith(pacScript: 'second script', port: 8080));
+    await queue.apply(active);
+    await queue.close();
+
+    expect(proxy.calls, [
+      'start 7890',
+      'start PAC 7890: first script',
+      'start PAC 8080: second script',
+      'start 7890',
+      'stop',
+    ]);
   });
 
   test('close stops last and drops the starts queued before it', () async {

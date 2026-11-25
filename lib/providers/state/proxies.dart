@@ -34,7 +34,12 @@ ProxyState proxyState(Ref ref) {
     networkSettingProvider.select(
       (state) => SystemProxySelectorState(
         systemProxy: state.systemProxy,
-        bypassDomain: state.bypassDomain,
+        bypassDomain: state.pacMode ? const [] : state.bypassDomain,
+        pacScript: state.pacMode
+            ? (state.pacScript.trim().isEmpty
+                  ? defaultPacScript
+                  : state.pacScript)
+            : null,
       ),
     ),
   );
@@ -46,6 +51,7 @@ ProxyState proxyState(Ref ref) {
     systemProxy: systemProxySelector.systemProxy,
     bassDomain: systemProxySelector.bypassDomain,
     port: mixedPort,
+    pacScript: systemProxySelector.pacScript,
   );
 }
 

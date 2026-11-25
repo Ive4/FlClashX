@@ -8991,6 +8991,81 @@ class AppLocalizations {
       args: [reason],
     );
   }
+
+  /// `Always`
+  String get findProcessAlways {
+    return Intl.message(
+      'Always',
+      name: 'findProcessAlways',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Rules and script`
+  String get combinedProfileExtension {
+    return Intl.message(
+      'Rules and script',
+      name: 'combinedProfileExtension',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Run the script, then apply the added rules.`
+  String get combinedProfileExtensionDesc {
+    return Intl.message(
+      'Run the script, then apply the added rules.',
+      name: 'combinedProfileExtensionDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `PAC mode`
+  String get pacMode {
+    return Intl.message('PAC mode', name: 'pacMode', desc: '', args: []);
+  }
+
+  /// `PAC script`
+  String get pacScript {
+    return Intl.message('PAC script', name: 'pacScript', desc: '', args: []);
+  }
+
+  /// `Named exit`
+  String get namedExit {
+    return Intl.message('Named exit', name: 'namedExit', desc: '', args: []);
+  }
+
+  /// `Named exits`
+  String get namedExits {
+    return Intl.message('Named exits', name: 'namedExits', desc: '', args: []);
+  }
+
+  /// `Exit name`
+  String get exitName {
+    return Intl.message('Exit name', name: 'exitName', desc: '', args: []);
+  }
+
+  /// `An exit name cannot contain commas or line breaks.`
+  String get invalidExitName {
+    return Intl.message(
+      'An exit name cannot contain commas or line breaks.',
+      name: 'invalidExitName',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Continue in background`
+  String get updateContinueInBackground {
+    return Intl.message(
+      'Continue in background',
+      name: 'updateContinueInBackground',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {

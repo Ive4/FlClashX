@@ -5,6 +5,7 @@ import 'package:fl_clash/core/event.dart';
 import 'package:fl_clash/core/desktop/model.dart';
 import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/core/method.dart';
+import 'package:fl_clash/core/spill.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,6 +33,7 @@ class _RecordingCoreHandler extends CoreHandlerInterface {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) async {
     calls[method] = arguments;
     final result = switch (method) {
@@ -126,7 +128,7 @@ class _RecordingCoreHandler extends CoreHandlerInterface {
       },
       _ => '',
     };
-    return result as T?;
+    return (model == null ? result : model(result)) as T?;
   }
 }
 
@@ -136,6 +138,7 @@ class _FailingConfigCoreHandler extends _RecordingCoreHandler {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) async {
     if (method == CoreMethod.getConfig) {
       throw const CoreMethodException(
@@ -148,6 +151,7 @@ class _FailingConfigCoreHandler extends _RecordingCoreHandler {
       method: method,
       arguments: arguments,
       timeout: timeout,
+      model: model,
     );
   }
 }
@@ -158,6 +162,7 @@ class _EmptyConfigCoreHandler extends _RecordingCoreHandler {
     required CoreMethod method,
     Object? arguments,
     Duration? timeout,
+    CoreResultModel? model,
   }) async {
     if (method == CoreMethod.getConfig) {
       return null;
@@ -166,6 +171,7 @@ class _EmptyConfigCoreHandler extends _RecordingCoreHandler {
       method: method,
       arguments: arguments,
       timeout: timeout,
+      model: model,
     );
   }
 }
@@ -419,6 +425,10 @@ void main() {
       ),
     );
     expect((await handler.getConnections()).single.id, 'connection-1');
+    expect(
+      await handler.getConnectionsWith((connections) => connections.single.id),
+      'connection-1',
+    );
     expect(await handler.getConnectionCount(), 3);
     expect((await handler.getExternalProviders()).single.name, 'provider-1');
     expect(

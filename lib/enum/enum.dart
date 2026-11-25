@@ -238,7 +238,7 @@ enum CoreEventType {
   dialerLoop,
 }
 
-enum FindProcessMode { always, off }
+enum FindProcessMode { strict, always, off }
 
 enum InterfaceNameMode { clear, follow, custom }
 
@@ -319,7 +319,12 @@ enum DnsOverrideKey with OverrideKey {
   /// groups or rule sets, which change with every update.
   static const normalProfileKeys = {
     listen,
+    useHosts,
+    useSystemHosts,
     ipv6,
+    respectRules,
+    preferH3,
+    cacheAlgorithm,
     enhancedMode,
     fakeIpFilter,
     fakeIpFilterMode,
@@ -821,7 +826,15 @@ extension RulePayloadErrorExt on RulePayloadError {
   }
 }
 
-enum ExtendType { standard, script }
+enum ExtendType {
+  standard,
+  script,
+  combined;
+
+  bool get usesRules => this != script;
+
+  bool get usesScript => this != standard;
+}
 
 enum RuleTarget {
   DIRECT('DIRECT'),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
+import 'package:fl_clash/pages/editor.dart';
 import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/views/config/override.dart';
 import 'package:fl_clash/views/config/tun.dart';
@@ -510,20 +511,61 @@ class VpnSections extends ConsumerWidget {
   }
 }
 
-class SystemProxySection extends StatelessWidget {
+class SystemProxySection extends ConsumerWidget {
   const SystemProxySection({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final appLocalizations = context.appLocalizations;
+    final pacMode = ref.watch(
+      networkSettingProvider.select((state) => state.pacMode),
+    );
     return generateSection(
       title: appLocalizations.system,
       items: [
         const SystemProxyItem(),
-        const BypassDomainItem(),
+        _networkToggle(
+          title: (l) => l.pacMode,
+          select: (state) => state.pacMode,
+          update: (state, value) => state.copyWith(pacMode: value),
+        ),
+        if (pacMode)
+          ListItem(
+            title: Text(appLocalizations.pacScript),
+            onTap: () => _editPacScript(context, ref),
+          )
+        else
+          const BypassDomainItem(),
         if (system.isWindows) const LoopbackItem(),
       ],
-      footer: appLocalizations.bypassDomainDesc,
+      footer: pacMode ? null : appLocalizations.bypassDomainDesc,
+    );
+  }
+
+  Future<void> _editPacScript(BuildContext context, WidgetRef ref) {
+    final settings = ref.read(networkSettingProvider.notifier);
+    final current = ref.read(networkSettingProvider).pacScript;
+    final page = EditorPage(
+      title: context.appLocalizations.pacScript,
+      content: current,
+      language: Language.javaScript,
+      readOnly: false,
+      onPop: (_, _, edited) async {
+        final content = await edited.readText();
+        if (content != current) {
+          settings.update(
+            (state) => state.copyWith(
+              pacScript: content.trim().isEmpty ? defaultPacScript : content,
+            ),
+          );
+        }
+        return true;
+      },
+    );
+    return sheetNavigatorOf(context).push(
+      context.isMobileView
+          ? CommonRoute(builder: (_) => page)
+          : CommonDesktopRoute(builder: (_) => page),
     );
   }
 }

@@ -110,6 +110,56 @@ String? lastMatchTarget(List<String> rules) {
   return null;
 }
 
+Set<String> outboundNamesOf(Map<dynamic, dynamic> config) => {
+  for (final key in const ['proxies', 'proxy-groups'])
+    if (config[key] case final List<dynamic> items)
+      for (final item in items)
+        if (item case {'name': final String name}) name,
+};
+
+List<String> _resolveAddedRules(
+  List<Rule> addedRules,
+  List<String> rules,
+  Map<dynamic, dynamic> rawConfig,
+  MakeRealProfileState data,
+) {
+  if (addedRules.isEmpty) {
+    return const [];
+  }
+  final fallback = data.defaultExitTarget ?? lastMatchTarget(rules);
+  final matchTarget = data.matchTarget?.trim();
+  final legacyTarget = matchTarget?.isNotEmpty == true ? matchTarget : fallback;
+  final outbounds = addedRules.any((rule) => rule.customExit)
+      ? data.outboundNames ?? outboundNamesOf(rawConfig)
+      : const <String>{};
+
+  String resolveNamedExit(String name) {
+    final target = data.exitTargets[name];
+    if (target != null &&
+        (RuleTarget.ruleTargets.contains(target) ||
+            outbounds.contains(target))) {
+      return target;
+    }
+    if (outbounds.contains(name)) {
+      return name;
+    }
+    return fallback ?? RuleTarget.DIRECT.value;
+  }
+
+  return [
+    for (final rule in addedRules)
+      (switch (rule.ruleTarget) {
+        final String target when rule.customExit => rule.copyWith(
+          ruleTarget: resolveNamedExit(target),
+        ),
+        final String target
+            when legacyTarget != null && target.toUpperCase() == 'MATCH' =>
+          rule.copyWith(ruleTarget: legacyTarget),
+        _ => rule,
+      }).rawValue,
+  ];
+}
+
 Map<String, dynamic> inboundConfigOf(
   PatchClashConfig config, {
   required List<String> authentication,
@@ -234,6 +284,11 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
       ...privateRouteAddress,
     ];
   }
+  if (data.defaultTunDnsMode case final mode?
+      when !data.safeMode &&
+          (tun['dns-mode'] == null || tun['dns-mode'] == '')) {
+    tun['dns-mode'] = mode;
+  }
   rawConfig['tun'] = tun;
   rawConfig['geo-auto-update'] = realPatchConfig.geoAutoUpdate;
   rawConfig['geo-update-interval'] = realPatchConfig.geoUpdateInterval;
@@ -299,10 +354,7 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
   }
   rawDns = mergeDnsOverride(
     rawDns,
-    overrides.dns.overrideJson(
-      overrides.dnsOverrideKeys,
-      keepEmpty: data.keepEmptyDnsOverrides,
-    ),
+    overrides.dns.overrideJson(overrides.dnsOverrideKeys),
   );
   rawConfig['dns'] = rawDns;
   final ntpOverride = overrides.ntp.overrideJson(overrides.ntpOverrideKeys);
@@ -336,47 +388,19 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
       };
     }
   }
-  String runtimeRule(Rule rule) => rule.rawValue;
   List<String> rules = [];
   if (data.rules.isEmpty) {
     if (rawConfig['rules'] != null) {
       rules = List<String>.from(rawConfig['rules']);
     }
-    if (addedRules.isNotEmpty) {
-      final hasMatchPlaceholder = addedRules.any(
-        (item) => item.ruleTarget?.toUpperCase() == 'MATCH',
-      );
-      String? replacementTarget = data.matchTarget?.trim();
-      if (replacementTarget?.isEmpty == true) {
-        replacementTarget = null;
-      }
-
-      if (hasMatchPlaceholder && replacementTarget == null) {
-        replacementTarget = lastMatchTarget(rules);
-      }
-      final List<String> finalAddedRules;
-
-      if (replacementTarget?.isNotEmpty == true) {
-        finalAddedRules = [];
-        for (int i = 0; i < addedRules.length; i++) {
-          final parsed = addedRules[i];
-          if (parsed.ruleTarget?.toUpperCase() == 'MATCH') {
-            finalAddedRules.add(
-              runtimeRule(parsed.copyWith(ruleTarget: replacementTarget)),
-            );
-          } else {
-            finalAddedRules.add(runtimeRule(addedRules[i]));
-          }
-        }
-      } else {
-        finalAddedRules = addedRules.map(runtimeRule).toList();
-      }
-      rules = [...finalAddedRules, ...rules];
-    }
+    rules = [
+      ..._resolveAddedRules(addedRules, rules, rawConfig, data),
+      ...rules,
+    ];
   } else {
     rules = data.rules
         .where((rule) => !rule.applicationProxyRule)
-        .map(runtimeRule)
+        .map((rule) => rule.rawValue)
         .toList();
   }
   if (data.accessControlProps.enable) {

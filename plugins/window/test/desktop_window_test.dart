@@ -76,6 +76,27 @@ void main() {
   });
 
   test(
+    'a native hide event received during the command is not replayed',
+    () async {
+      final listener = _RecordingListener();
+      desktopWindow.addListener(listener);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            if (call.method == 'hide') {
+              await emit('hide');
+            }
+            return null;
+          });
+
+      await desktopWindow.hide();
+
+      expect(listener.log, ['event:hide']);
+      expect(calls.map((call) => call.method), ['hide']);
+    },
+  );
+
+  test(
     'events reach the generic and the dedicated callback in order',
     () async {
       final listener = _RecordingListener();

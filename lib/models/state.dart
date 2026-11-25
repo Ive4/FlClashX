@@ -134,6 +134,7 @@ abstract class ProxyState with _$ProxyState {
     required bool systemProxy,
     required List<String> bassDomain,
     required int port,
+    String? pacScript,
   }) = _ProxyState;
 }
 
@@ -152,6 +153,7 @@ abstract class SystemProxySelectorState with _$SystemProxySelectorState {
   const factory SystemProxySelectorState({
     required bool systemProxy,
     required List<String> bypassDomain,
+    String? pacScript,
   }) = _SystemProxySelectorState;
 }
 
@@ -223,9 +225,8 @@ abstract class MakeRealProfileState with _$MakeRealProfileState {
     @Default(ProfileOverrides()) ProfileOverrides overrides,
     @Default(false) bool bypassPrivateRoute,
 
-    /// Set for a subscription, whose own DNS values an emptied entry replaces.
-    @Default(false) bool keepEmptyDnsOverrides,
     required bool appendSystemDns,
+    String? defaultTunDnsMode,
     required List<ProxyGroup> proxyGroups,
     required List<Rule> rules,
     required List<Rule> addedRules,
@@ -234,6 +235,9 @@ abstract class MakeRealProfileState with _$MakeRealProfileState {
     @Default({}) Map<String, dynamic> injectedProxyProviders,
     @Default({}) Map<String, dynamic> injectedRuleProviders,
     String? matchTarget,
+    @Default({}) Map<String, String> exitTargets,
+    Set<String>? outboundNames,
+    String? defaultExitTarget,
     @Default(false) bool safeMode,
   }) = _MakeRealProfileState;
 }
@@ -270,5 +274,6 @@ abstract class SetupState with _$SetupState {
     @Default([]) List<CustomProxy> appProxies,
     @Default({}) Map<int, String> proxyDialers,
     String? matchTarget,
+    @Default({}) Map<String, String> exitTargets,
   }) = _SetupState;
 }

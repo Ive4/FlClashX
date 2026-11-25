@@ -46,14 +46,16 @@ void main() {
     windowVisible = true;
     windowMinimized = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          windowChannel,
-          (call) async => switch (call.method) {
+        .setMockMethodCallHandler(windowChannel, (call) async {
+          if (call.method == 'hide') {
+            windowVisible = false;
+          }
+          return switch (call.method) {
             'isVisible' => windowVisible,
             'isMinimized' => windowMinimized,
             _ => null,
-          },
-        );
+          };
+        });
   });
 
   tearDown(() {
@@ -109,6 +111,21 @@ void main() {
     await tester.pump(const Duration(minutes: 2));
     expect(action.entries, 0);
   });
+
+  testWidgets(
+    'a completed desktop hide starts handoff without a window event',
+    (tester) async {
+      await mount(tester, isDesktop: true);
+      await tester.pump();
+
+      await desktopWindow.hide();
+      await tester.pump(Duration.zero);
+
+      expect(action.entries, 1);
+      expect(action.automaticEntry, isTrue);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('desktop starts hidden even when Flutter reports visible', (
     tester,

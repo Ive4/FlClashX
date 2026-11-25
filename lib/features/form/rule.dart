@@ -48,6 +48,13 @@ class RuleItem extends StatelessWidget {
     BuildContext context,
   ) {
     final message = invalidMessageOf?.call(rule);
+    if (message == null && rule.customExit) {
+      return (
+        invalid: false,
+        color: context.colorScheme.tertiary,
+        message: null,
+      );
+    }
     if (message == null && rule.ruleAction != RuleAction.SUB_RULE) {
       final ruleTarget = (rule.ruleTarget ?? '').toUpperCase();
       final color = switch (ruleTarget) {
@@ -101,6 +108,15 @@ class RuleItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final checkResult = _checkInvalid(context);
     final invalid = checkResult.invalid;
+    final target = rule.realTarget;
+    final targetLabel = switch (target) {
+      null => null,
+      _ when rule.customExit =>
+        '$target · ${context.appLocalizations.namedExit}',
+      _ when hasMatch && target.toUpperCase() == RuleAction.MATCH.value =>
+        context.appLocalizations.matchTarget,
+      _ => target,
+    };
     return SelectedDecorationListItem(
       minVerticalPadding: 0,
       isSelected: isSelected,
@@ -141,15 +157,11 @@ class RuleItem extends StatelessWidget {
                     children: [
                       if (invalid)
                         _buildInfoWidget(context, checkResult.message),
-                      if (rule.realTarget != null)
+                      if (targetLabel != null)
                         Flexible(
                           child: TooltipText(
                             text: Text(
-                              hasMatch &&
-                                      rule.realTarget!.toUpperCase() ==
-                                          RuleAction.MATCH.value
-                                  ? context.appLocalizations.matchTarget
-                                  : rule.realTarget!,
+                              targetLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyle.subheadline
@@ -255,9 +267,13 @@ class RuleForm extends StatefulWidget {
 }
 
 class _RuleFormState extends State<RuleForm> {
+  static final _invalidExitName = RegExp(r'[,\r\n\u0085\u2028\u2029]');
+
   late RuleAction _ruleAction;
   late String _ruleTarget;
   late final TextEditingController _contentController;
+  late final TextEditingController _exitNameController;
+  late bool _customExit;
   late bool _noResolve;
   late bool _src;
   bool _attempted = false;
@@ -266,9 +282,15 @@ class _RuleFormState extends State<RuleForm> {
   void initState() {
     super.initState();
     final rule = widget.rule;
+    _customExit = rule?.customExit ?? false;
     _ruleAction = rule?.ruleAction ?? RuleAction.addedRuleActions.first;
-    _ruleTarget = rule?.ruleTarget ?? RuleTarget.ruleTargetNames.first;
+    _ruleTarget =
+        (_customExit ? null : rule?.ruleTarget) ??
+        RuleTarget.ruleTargetNames.first;
     _contentController = TextEditingController(text: rule?.content);
+    _exitNameController = TextEditingController(
+      text: _customExit ? rule?.ruleTarget : null,
+    );
     _noResolve = rule?.noResolve ?? false;
     _src = rule?.src ?? false;
   }
@@ -276,6 +298,7 @@ class _RuleFormState extends State<RuleForm> {
   @override
   void dispose() {
     _contentController.dispose();
+    _exitNameController.dispose();
     super.dispose();
   }
 
@@ -298,7 +321,17 @@ class _RuleFormState extends State<RuleForm> {
         message: payloadError.getMessage(context),
       );
     }
-    if (_ruleTarget.isEmpty) {
+    if (_customExit) {
+      final name = _exitNameController.text.trim();
+      if (name.isEmpty || _invalidExitName.hasMatch(name)) {
+        return (
+          field: _RuleField.target,
+          message: name.isEmpty
+              ? appLocalizations.emptyTip(appLocalizations.exitName)
+              : appLocalizations.invalidExitName,
+        );
+      }
+    } else if (_ruleTarget.isEmpty) {
       return (
         field: _RuleField.target,
         message: appLocalizations.splitStrategyNotEmpty,
@@ -318,7 +351,8 @@ class _RuleFormState extends State<RuleForm> {
       (widget.rule ?? Rule(id: snowflake.id)).copyWith(
         ruleAction: _ruleAction,
         content: _contentController.text,
-        ruleTarget: _ruleTarget,
+        ruleTarget: _customExit ? _exitNameController.text.trim() : _ruleTarget,
+        customExit: _customExit,
         noResolve: _noResolve,
         src: _src,
       ),
@@ -383,20 +417,46 @@ class _RuleFormState extends State<RuleForm> {
                 onFieldSubmitted: (_) => _handleSubmit(),
               ),
             ),
-            ListItem<String>.options(
-              title: Text(appLocalizations.splitStrategy),
-              options: [
-                if (!targets.contains(_ruleTarget)) _ruleTarget,
-                ...targets,
-              ],
-              value: _ruleTarget,
-              textBuilder: _targetLabel,
-              onChanged: (target) {
+            _buildSwitchRow(
+              title: appLocalizations.namedExit,
+              value: _customExit,
+              onChanged: (value) {
                 setState(() {
-                  _ruleTarget = target;
+                  _customExit = value;
                 });
               },
             ),
+            if (_customExit)
+              FormRow(
+                title: appLocalizations.exitName,
+                invalid: issue?.field == _RuleField.target,
+                trailing: FormRowTextField(
+                  controller: _exitNameController,
+                  autocorrect: false,
+                  inputFormatters: TextInputLimits.limit(TextInputLimits.rule),
+                  onChanged: (_) {
+                    if (_attempted) {
+                      setState(() {});
+                    }
+                  },
+                  onFieldSubmitted: (_) => _handleSubmit(),
+                ),
+              )
+            else
+              ListItem<String>.options(
+                title: Text(appLocalizations.splitStrategy),
+                options: [
+                  if (!targets.contains(_ruleTarget)) _ruleTarget,
+                  ...targets,
+                ],
+                value: _ruleTarget,
+                textBuilder: _targetLabel,
+                onChanged: (target) {
+                  setState(() {
+                    _ruleTarget = target;
+                  });
+                },
+              ),
           ],
         ),
         if (_ruleAction.hasParams)

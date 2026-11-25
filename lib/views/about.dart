@@ -1,4 +1,3 @@
-import 'package:fl_clash/common/app_update.dart';
 import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
@@ -26,20 +25,6 @@ class AboutView extends ConsumerWidget {
     Contributor(avatar: 'assets/images/avatar/arue.jpg', name: 'Arue'),
   ];
 
-  Future<void> _checkUpdate(BuildContext context, WidgetRef ref) async {
-    if (ref.read(loadingProvider(LoadingTag.checkUpdate))) return;
-    final commonAction = ref.read(commonActionProvider.notifier);
-    final result = await globalState.loadingRun(
-      () async => (release: await appUpdater.check()),
-      title: context.appLocalizations.checkUpdate,
-      tag: LoadingTag.checkUpdate,
-    );
-    if (result == null) return;
-    unawaited(
-      commonAction.checkUpdateResultHandle(data: result.release, isUser: true),
-    );
-  }
-
   Widget _buildLinkItem({
     required Glyph glyph,
     required String title,
@@ -60,7 +45,11 @@ class AboutView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appLocalizations = context.appLocalizations;
-    final isLoading = ref.watch(loadingProvider(LoadingTag.checkUpdate));
+    final isLoading = ref.watch(
+      appUpdateActivityProvider.select(
+        (activity) => activity?.phase == AppUpdatePhase.checking,
+      ),
+    );
     return CommonScaffold(
       isLoading: isLoading,
       title: appLocalizations.about,
@@ -73,7 +62,11 @@ class AboutView extends ConsumerWidget {
           _AboutHero(
             isCheckingUpdate: isLoading,
             onCheckUpdate: () {
-              _checkUpdate(context, ref);
+              unawaited(
+                ref
+                    .read(commonActionProvider.notifier)
+                    .checkUpdate(isUser: true),
+              );
             },
             onEnterDeveloperMode: () {
               ref

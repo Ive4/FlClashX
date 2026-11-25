@@ -1,13 +1,34 @@
 part of '../action.dart';
 
+enum AppUpdatePhase { checking, available, downloading, installing }
+
+typedef AppUpdateActivity = ({
+  AppUpdatePhase phase,
+  String? version,
+  double? progress,
+});
+
+final appUpdateActivityProvider =
+    NotifierProvider<AppUpdateActivityNotifier, AppUpdateActivity?>(
+      AppUpdateActivityNotifier.new,
+    );
+
+class AppUpdateActivityNotifier extends Notifier<AppUpdateActivity?> {
+  @override
+  AppUpdateActivity? build() => null;
+
+  set value(AppUpdateActivity? value) => state = value;
+}
+
 @Riverpod(keepAlive: true)
 class CommonAction extends _$CommonAction {
   CoreController get _core => ref.read(coreHandlerProvider);
   bool _isUpdatingTraffic = false;
   bool _isInstallingUpdate = false;
+  CancelToken? _updateCancel;
 
   @override
-  void build() {}
+  void build() => ref.onDispose(cancelUpdate);
 
   void toggleRunning() {
     final running = !ref.read(isStartProvider);
@@ -85,18 +106,83 @@ class CommonAction extends _$CommonAction {
 
   Future<bool> autoCheckUpdate() async {
     if (!ref.read(appSettingProvider).autoCheckUpdate) return false;
+    return checkUpdate();
+  }
+
+  Future<bool> checkUpdate({bool isUser = false}) async {
+    if (_isInstallingUpdate || ref.read(appUpdateActivityProvider) != null) {
+      return false;
+    }
+    final activity = ref.read(appUpdateActivityProvider.notifier);
+    activity.value = (
+      phase: AppUpdatePhase.checking,
+      version: null,
+      progress: null,
+    );
     final AppUpdateRelease? res;
     try {
       res = await appUpdater.check();
     } catch (error) {
-      commonPrint.log(
-        'checkForUpdate failed: ${compactError(error)}',
-        logLevel: LogLevel.warning,
-      );
+      if (isUser && ref.mounted) {
+        dialogs.showNotifier(
+          userFacingErrorMessage(error, currentAppLocalizations),
+          level: MessageLevel.error,
+        );
+      } else {
+        commonPrint.log(
+          'checkForUpdate failed: ${compactError(error)}',
+          logLevel: LogLevel.warning,
+        );
+      }
       return false;
+    } finally {
+      if (ref.mounted) activity.value = null;
     }
-    await checkUpdateResultHandle(data: res);
+    if (!ref.mounted) return false;
+    await checkUpdateResultHandle(data: res, isUser: isUser);
     return res != null;
+  }
+
+  void cancelUpdate() => _updateCancel?.cancel();
+
+  Future<File?> _downloadUpdate(
+    BuildContext context,
+    AppUpdateRelease release,
+    AppUpdateActivityNotifier activity,
+  ) async {
+    final cancel = _updateCancel = CancelToken();
+    void report(double? progress) {
+      if (!ref.mounted || cancel.isCancelled) return;
+      activity.value = (
+        phase: AppUpdatePhase.downloading,
+        version: release.fullVersion,
+        progress: progress,
+      );
+    }
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AppUpdateDialog(),
+    );
+    try {
+      report(0);
+      unawaited(navigator.push(route));
+      final file = await appUpdater.download(release, cancel, report);
+      if (cancel.isCancelled || !ref.mounted) {
+        await discardDownloadedUpdate(file);
+        return null;
+      }
+      return file;
+    } finally {
+      _updateCancel = null;
+      if (route.isCurrent) {
+        navigator.pop();
+      } else if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+    }
   }
 
   TextSpan _releaseSpan(BuildContext context, String tagName, String? body) {
@@ -149,6 +235,7 @@ class CommonAction extends _$CommonAction {
   }) async {
     if (_isInstallingUpdate) return;
     _isInstallingUpdate = true;
+    final activity = ref.read(appUpdateActivityProvider.notifier);
     try {
       final context = globalState.navigatorKey.currentContext!;
       final l = currentAppLocalizations;
@@ -161,6 +248,11 @@ class CommonAction extends _$CommonAction {
         }
         return;
       }
+      activity.value = (
+        phase: AppUpdatePhase.available,
+        version: data.fullVersion,
+        progress: null,
+      );
       final result = await dialogs.showMessage(
         title: l.discoverNewVersion,
         message: TextSpan(
@@ -184,12 +276,13 @@ class CommonAction extends _$CommonAction {
         return;
       }
       if (!context.mounted) return;
-      final installer = await showDialog<File>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AppUpdateDialog(release: data),
-      );
+      final installer = await _downloadUpdate(context, data, activity);
       if (installer == null) return;
+      activity.value = (
+        phase: AppUpdatePhase.installing,
+        version: data.fullVersion,
+        progress: 1,
+      );
       try {
         await preferences.saveConfig(ref.read(configProvider));
       } catch (_) {
@@ -209,9 +302,13 @@ class CommonAction extends _$CommonAction {
       }
       await ref.read(systemActionProvider.notifier).handleExit();
     } catch (error) {
-      dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+      if (ref.mounted &&
+          (error is! DioException || !CancelToken.isCancel(error))) {
+        dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+      }
     } finally {
       _isInstallingUpdate = false;
+      if (ref.mounted) activity.value = null;
     }
   }
 }

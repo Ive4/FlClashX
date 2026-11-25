@@ -48,7 +48,7 @@ void main(List<String> args) {
             if (args.contains('--proxy') && await proxy?.stopProxy() == false) {
               exit(1);
             }
-            await systemDnsCoordinator?.shutdown();
+            await restoreLegacySystemDns();
             if (await preferences.getSystemDnsRecord() != null) {
               exit(1);
             }

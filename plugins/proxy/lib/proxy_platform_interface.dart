@@ -20,6 +20,10 @@ abstract class ProxyPlatform extends PlatformInterface {
     throw UnimplementedError('startProxy() has not been implemented.');
   }
 
+  Future<bool> startPacProxy(Uri url) {
+    throw UnimplementedError('startPacProxy() has not been implemented.');
+  }
+
   Future<bool> stopProxy() {
     throw UnimplementedError('stopProxy() has not been implemented.');
   }

@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:fl_clash/features/connection/tracker_speed_ranker.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,7 +30,7 @@ void main() {
       trackerInfos.map((trackerInfo) => trackerInfo.id).toList();
 
   test('reports no speed on the first sample and ranks by traffic', () {
-    final ranked = TrackerSpeedRanker().rank([
+    final ranked = _Ranker().rank([
       _tracker('a', download: 100),
       _tracker('b', download: 900),
     ], t0);
@@ -38,7 +40,7 @@ void main() {
   });
 
   test('derives speed from the delta over the elapsed time', () {
-    final ranker = TrackerSpeedRanker();
+    final ranker = _Ranker();
     ranker.rank([_tracker('a', upload: 100, download: 1000)], t0);
 
     final ranked = ranker.rank([
@@ -50,7 +52,7 @@ void main() {
   });
 
   test('puts an active connection above a larger idle one', () {
-    final ranker = TrackerSpeedRanker();
+    final ranker = _Ranker();
     ranker.rank([_tracker('idle', download: 1 << 30), _tracker('active')], t0);
 
     final ranked = ranker.rank([
@@ -62,7 +64,7 @@ void main() {
   });
 
   test('keeps the order of connections with similar speeds', () {
-    final ranker = TrackerSpeedRanker();
+    final ranker = _Ranker();
     ranker.rank([_tracker('a'), _tracker('b')], t0);
     final first = ranker.rank([
       _tracker('a', download: 5000),
@@ -80,7 +82,7 @@ void main() {
   });
 
   test('ignores a sample taken too soon after the previous one', () {
-    final ranker = TrackerSpeedRanker();
+    final ranker = _Ranker();
     ranker.rank([_tracker('a')], t0);
     ranker.rank([_tracker('a', download: 1000)], at(1));
 
@@ -88,4 +90,33 @@ void main() {
 
     expect(ranked.single.downloadSpeed, 1000);
   });
+
+  test('carries ranking samples across an isolate boundary', () async {
+    final now = DateTime.now().subtract(const Duration(seconds: 1));
+    final first = rankTrackerInfos(
+      [_tracker('idle', download: 1 << 30), _tracker('active')],
+      TrackerRanking.empty,
+      now,
+    );
+    final rank = rankAfter(first.ranking);
+    final next = [
+      _tracker('idle', download: 1 << 30),
+      _tracker('active', download: 4096),
+    ];
+
+    final second = await Isolate.run(() => rank(next));
+
+    expect(ids(second.trackerInfos), ['active', 'idle']);
+    expect(second.trackerInfos.first.downloadSpeed, greaterThan(0));
+  });
+}
+
+class _Ranker {
+  var _ranking = TrackerRanking.empty;
+
+  List<TrackerInfo> rank(List<TrackerInfo> trackerInfos, DateTime now) {
+    final ranked = rankTrackerInfos(trackerInfos, _ranking, now);
+    _ranking = ranked.ranking;
+    return ranked.trackerInfos;
+  }
 }

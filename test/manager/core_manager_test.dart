@@ -380,7 +380,10 @@ void main() {
     await tester.pump();
 
     expect(container.read(coreStatusProvider), CoreStatus.disconnected);
-    expect(find.text('boom'), findsOneWidget);
+    expect(
+      find.text(AppLocalizations.current.coreConnectionLost('boom')),
+      findsOneWidget,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

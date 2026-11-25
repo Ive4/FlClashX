@@ -278,7 +278,7 @@ class _CoreContainerState extends ConsumerState<CoreManager>
       return;
     }
     final reason = _recovery == null
-        ? context.appLocalizations.coreConnectionLost(message)
+        ? currentAppLocalizations.coreConnectionLost(message)
         : message;
     ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
     ref.read(coreStopReasonProvider.notifier).value = reason;

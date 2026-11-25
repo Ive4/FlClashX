@@ -1071,5 +1071,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "findProcessAlways": "Always",
+  "combinedProfileExtension": "Rules and script",
+  "combinedProfileExtensionDesc": "Run the script, then apply the added rules.",
+  "pacMode": "PAC mode",
+  "pacScript": "PAC script",
+  "namedExit": "Named exit",
+  "namedExits": "Named exits",
+  "exitName": "Exit name",
+  "invalidExitName": "An exit name cannot contain commas or line breaks.",
+  "updateContinueInBackground": "Continue in background"
 }

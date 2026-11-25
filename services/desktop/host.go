@@ -18,11 +18,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 const maxFrameSize = 64 << 20
+const pacPath = "/flclash.pac"
 
 type launchConfig struct {
 	UIPID     int               `json:"uiPid"`
@@ -79,6 +82,8 @@ type host struct {
 	lightweight  bool
 	runningSince *int64
 	cleanupProxy bool
+	pacScript    atomic.Pointer[string]
+	pacRevision  uint64
 	closed       bool
 	quit         func()
 	waitTray     func() error
@@ -100,7 +105,22 @@ func randomID() string {
 }
 
 func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Origin") != "" || r.Host != h.controlURL[len("http://"):] || subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+h.token)) != 1 {
+	if r.Header.Get("Origin") != "" || r.Host != h.controlURL[len("http://"):] {
+		http.Error(w, "unauthorized", http.StatusForbidden)
+		return
+	}
+	if r.URL.Path == pacPath && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
+		script := h.pacScript.Load()
+		if script == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/x-ns-proxy-autoconfig; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		http.ServeContent(w, r, pacPath, time.Time{}, strings.NewReader(*script))
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+h.token)) != 1 {
 		http.Error(w, "unauthorized", http.StatusForbidden)
 		return
 	}
@@ -208,6 +228,22 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		if err = decodeRequest(r, &request); err == nil {
 			response, err = h.attach(request)
 		}
+	case r.Method == http.MethodPost && r.URL.Path == "/pac":
+		var request struct {
+			SessionID string `json:"sessionId"`
+			Script    string `json:"script"`
+		}
+		if err = decodeRequestWithLimit(r, &request, maxFrameSize); err == nil {
+			if h.config.SafeMode || h.lightweight || request.SessionID == "" || request.SessionID != h.frontSession {
+				err = errors.New("inactive frontend")
+			} else if strings.TrimSpace(request.Script) == "" {
+				err = errors.New("empty PAC script")
+			} else {
+				h.pacScript.Store(&request.Script)
+				h.pacRevision++
+				response = map[string]string{"url": fmt.Sprintf("%s%s?v=%d", h.controlURL, pacPath, h.pacRevision)}
+			}
+		}
 	case r.Method == http.MethodPost && r.URL.Path == "/lightweight":
 		var request lightweightRequest
 		if err = decodeRequest(r, &request); err == nil {
@@ -263,7 +299,11 @@ func (h *host) serveHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeRequest(r *http.Request, value any) error {
-	reader := http.MaxBytesReader(nil, r.Body, 16<<10)
+	return decodeRequestWithLimit(r, value, 16<<10)
+}
+
+func decodeRequestWithLimit(r *http.Request, value any, limit int64) error {
+	reader := http.MaxBytesReader(nil, r.Body, limit)
 	decoder := json.NewDecoder(reader)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(value); err != nil {

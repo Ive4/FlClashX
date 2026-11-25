@@ -9,6 +9,48 @@ import 'package:path/path.dart';
 import 'package:yaml/yaml.dart';
 
 void main() {
+  test('resolves named exits after profile outbounds are available', () async {
+    Rule named(String domain, String name) =>
+        Rule.parse('DOMAIN,$domain,$name').copyWith(customExit: true);
+
+    final result = await makeRealProfileTask(
+      MakeRealProfileState(
+        profilesPath: '/profiles',
+        profileId: 1,
+        rawConfig: {
+          'proxy-groups': [
+            {
+              'name': 'Media',
+              'type': 'select',
+              'proxies': ['DIRECT'],
+            },
+          ],
+          'rules': ['MATCH,Proxy'],
+        },
+        realPatchConfig: const PatchClashConfig(),
+        appendSystemDns: false,
+        proxyGroups: const [],
+        rules: const [],
+        addedRules: [
+          named('one.example', 'Media'),
+          named('two.example', 'Work'),
+          named('three.example', 'Unknown'),
+          Rule.parse('DOMAIN,four.example,MATCH'),
+        ],
+        defaultUA: 'FlClash-Test',
+        exitTargets: const {'Work': 'DIRECT', 'Unknown': 'Removed'},
+        matchTarget: 'REJECT',
+      ),
+    );
+
+    expect((loadYaml(result.yaml) as YamlMap)['rules'], [
+      'DOMAIN,one.example,Media',
+      'DOMAIN,two.example,DIRECT',
+      'DOMAIN,three.example,Proxy',
+      'DOMAIN,four.example,REJECT',
+      'MATCH,Proxy',
+    ]);
+  });
   test(
     'blacklist replaces retired policies and preserves manual process rules',
     () async {
@@ -47,7 +89,7 @@ void main() {
             (config['rules'] as YamlList).contains('IN-TYPE,TUN,DIRECT'),
             enabled,
           );
-          expect(config['find-process-mode'], enabled ? 'always' : 'off');
+          expect(config['find-process-mode'], enabled ? 'always' : 'strict');
         }
       }
     },
@@ -257,11 +299,17 @@ void main() {
       expect(config['hosts']['router.local'], ['192.168.1.1', '192.168.1.2']);
       expect(config['sniffer']['sniff']['HTTP']['ports'], ['80', '443']);
       expect(
-        config['proxy-providers']['remote']['path'],
+        (config['proxy-providers']['remote']['path'] as String).replaceAll(
+          r'\',
+          '/',
+        ),
         startsWith('/profiles/providers/7/proxies/'),
       );
       expect(
-        config['rule-providers']['remote']['path'],
+        (config['rule-providers']['remote']['path'] as String).replaceAll(
+          r'\',
+          '/',
+        ),
         startsWith('/profiles/providers/7/rules/'),
       );
       expect(config['rules'], [

@@ -20,6 +20,7 @@ class DesktopWindow {
 
   final ObserverList<WindowListener> _listeners =
       ObserverList<WindowListener>();
+  int _visibilityRevision = 0;
 
   List<WindowListener> get listeners => List<WindowListener>.of(_listeners);
 
@@ -43,6 +44,16 @@ class DesktopWindow {
     );
     if (event == null) {
       return;
+    }
+    _notify(event);
+  }
+
+  void _notify(WindowEvent event) {
+    if (event == WindowEvent.show ||
+        event == WindowEvent.hide ||
+        event == WindowEvent.minimize ||
+        event == WindowEvent.restore) {
+      _visibilityRevision++;
     }
     for (final listener in listeners) {
       if (!_listeners.contains(listener)) {
@@ -107,7 +118,16 @@ class DesktopWindow {
     return _call('show', {'inactive': inactive});
   }
 
-  Future<void> hide() => _call('hide');
+  Future<void> hide() async {
+    final revision = _visibilityRevision;
+    await _call('hide');
+    if (hasListeners &&
+        revision == _visibilityRevision &&
+        !await isVisible() &&
+        revision == _visibilityRevision) {
+      _notify(WindowEvent.hide);
+    }
+  }
 
   Future<bool> isVisible() => _invoke<bool>('isVisible');
 

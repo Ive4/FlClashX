@@ -1,11 +1,14 @@
 import 'package:fl_clash/common/constant.dart';
 import 'package:fl_clash/common/print.dart';
 import 'package:fl_clash/common/system.dart';
+import 'package:fl_clash/core/desktop/background_client.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart' show ProxyState;
 import 'package:proxy/proxy.dart';
 
-final proxy = system.isDesktop && !safeModeBuild ? Proxy() : null;
+final proxy = system.isDesktop && !safeModeBuild
+    ? Proxy(servePac: desktopBackground.servePac)
+    : null;
 
 final systemProxyQueue = proxy == null ? null : SystemProxyQueue(proxy!);
 
@@ -30,7 +33,11 @@ class SystemProxyQueue {
       }
       if (state.isStart && state.systemProxy) {
         _applied = true;
-        if (!await _proxy.startProxy(state.port, state.bassDomain)) {
+        final script = state.pacScript;
+        final applied = script == null
+            ? await _proxy.startProxy(state.port, state.bassDomain)
+            : await _proxy.startPacProxy(state.port, script);
+        if (!applied) {
           _logFailure();
         }
       } else {

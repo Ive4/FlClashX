@@ -454,66 +454,12 @@ class MacOS implements SystemDnsPort {
   }
 
   @visibleForTesting
-  static String? parseDefaultInterface(String routeOutput) {
-    final deviceLine = routeOutput
-        .split('\n')
-        .firstWhere((s) => s.contains('interface:'), orElse: () => '');
-    final lineSplits = deviceLine.trim().split(' ');
-    if (lineSplits.length != 2) {
-      return null;
-    }
-    return lineSplits[1];
-  }
-
-  @visibleForTesting
-  static String? parseServiceName(String serviceOrderOutput, String device) {
-    final currentService = serviceOrderOutput
-        .split('\n\n')
-        .firstWhere((s) => s.contains('Device: $device'), orElse: () => '');
-    if (currentService.isEmpty) {
-      return null;
-    }
-    final nameLine = currentService
-        .split('\n')
-        .firstWhere(
-          (line) => RegExp(r'^\(\d+\).*').hasMatch(line),
-          orElse: () => '',
-        );
-    final name = RegExp(
-      r'^\(\d+\)\s+(.+)$',
-    ).firstMatch(nameLine.trim())?.group(1)?.trim();
-    if (name == null || name.isEmpty) {
-      return null;
-    }
-    return name;
-  }
-
-  @visibleForTesting
   static List<String> parseDnsServers(String getDnsServersOutput) {
     final output = getDnsServersOutput.trim();
     if (output.startsWith("There aren't any DNS Servers set on")) {
       return [];
     }
     return output.split('\n');
-  }
-
-  @override
-  Future<String?> resolveDefaultService() async {
-    final result = await _run('route', ['-n', 'get', 'default']);
-    if (result == null) {
-      return null;
-    }
-    final device = parseDefaultInterface(result.stdout.toString());
-    if (device == null) {
-      return null;
-    }
-    final serviceResult = await _run('networksetup', [
-      '-listnetworkserviceorder',
-    ]);
-    if (serviceResult == null) {
-      return null;
-    }
-    return parseServiceName(serviceResult.stdout.toString(), device);
   }
 
   @override

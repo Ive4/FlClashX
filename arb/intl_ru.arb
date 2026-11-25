@@ -1058,5 +1058,15 @@
   "mixedPortReset": "Смешанный порт не может быть {value}, он возвращён к {port}",
   "vpnPermissionNotGranted": "Разрешение на VPN не выдано, поэтому VPN не запущен. Постоянная VPN, заданная для другого приложения, тоже мешает запуску.",
   "vpnServiceStartFailed": "Не удалось запустить службу VPN.",
-  "coreConnectionLost": "Связь с ядром потеряна ({reason})."
+  "coreConnectionLost": "Связь с ядром потеряна ({reason}).",
+  "findProcessAlways": "Всегда",
+  "combinedProfileExtension": "Правила и сценарий",
+  "combinedProfileExtensionDesc": "Запустить сценарий, затем применить добавленные правила.",
+  "pacMode": "Режим PAC",
+  "pacScript": "Сценарий PAC",
+  "namedExit": "Именованный выход",
+  "namedExits": "Именованные выходы",
+  "exitName": "Название выхода",
+  "invalidExitName": "Название выхода не может содержать запятые или переносы строк.",
+  "updateContinueInBackground": "Продолжить в фоне"
 }

@@ -1058,5 +1058,15 @@
   "mixedPortReset": "混合端口不能是 {value}，已恢复为 {port}",
   "vpnPermissionNotGranted": "未获得 VPN 权限，VPN 没有启动。其他应用设为始终开启的 VPN 时也会如此。",
   "vpnServiceStartFailed": "VPN 服务无法启动。",
-  "coreConnectionLost": "内核连接已断开（{reason}）。"
+  "coreConnectionLost": "内核连接已断开（{reason}）。",
+  "findProcessAlways": "始终查找",
+  "combinedProfileExtension": "规则与脚本",
+  "combinedProfileExtensionDesc": "先执行脚本，再应用附加规则。",
+  "pacMode": "PAC 模式",
+  "pacScript": "PAC 脚本",
+  "namedExit": "命名出口",
+  "namedExits": "命名出口",
+  "exitName": "出口名称",
+  "invalidExitName": "出口名称不能包含逗号或换行。",
+  "updateContinueInBackground": "在后台继续"
 }
