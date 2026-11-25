@@ -15,7 +15,7 @@ enum {
     shift = 8,
     hotkeySignature = 0x464c4348, // FLCH
     auxControlButtons = 8,
-    keyDown = 0x0a,
+    flclashMediaKeyDown = 0x0a,
 };
 
 static EventHandlerRef handler;
@@ -60,7 +60,7 @@ static CGEventRef handleMedia(CGEventTapProxy proxy, CGEventType type, CGEventRe
         if (id == 0) {
             return event;
         }
-        if (((word >> 8) & 0xff) == keyDown) {
+        if (((word >> 8) & 0xff) == flclashMediaKeyDown) {
             flclashHotkeyPressed(id);
         }
         return NULL;
