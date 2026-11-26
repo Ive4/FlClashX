@@ -184,7 +184,6 @@ jobs:
           BUILD: ${{ needs.version.outputs.build }}
           ANDROID_TEST_ONLY: ${{ inputs.android_test_only }}
         run: |
-          set -x
           build_tools="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           test -n "$build_tools"
           build_tools="$(dirname "$build_tools")"
@@ -217,7 +216,7 @@ jobs:
               [[ "$abi_list" == *" '$abi'"* ]]
             fi
             certificate="$("$build_tools/apksigner" verify --print-certs "$apk")"
-            digest="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certificate")"
+            digest="$(sed -n -e 's/^Signer #1 certificate SHA-256 digest: //p' -e 's/^V2 Signer: certificate SHA-256 digest: //p' <<< "$certificate" | head -n 1)"
             test -n "$digest"
             if [[ -n "$signer" && "$signer" != "$digest" ]]; then
               echo 'APK signing certificates differ across ABIs' >&2
