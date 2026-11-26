@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.4 (2026-11-26)
+
+**Features**
+
+- **platform** Migrate the Helper, editor, scripting, and desktop integration to Go (c0a6e08)
+- **app** Follow FlClash 0.9.4 and fix lightweight handoff (bdc4a2b)
+- **core** Switch FlClashX 0.9.4 to official mihomo (92b7506)
+
+**Bug Fixes**
+
+- **access** Keep recording desktop apps with the window closed. Add manual app entries and group request history by name. (5538fca)
+
 ## v0.9.3 (2026-11-19)
 
 **Features**

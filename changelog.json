@@ -2,6 +2,44 @@
   "schemaVersion": 2,
   "versions": [
     {
+      "version": "0.9.4",
+      "tag": "v0.9.4",
+      "date": "2026-11-26",
+      "prerelease": false,
+      "groups": [
+        {
+          "type": "feat",
+          "entries": [
+            {
+              "id": "c0a6e08",
+              "scope": "platform",
+              "text": "Migrate the Helper, editor, scripting, and desktop integration to Go"
+            },
+            {
+              "id": "bdc4a2b",
+              "scope": "app",
+              "text": "Follow FlClash 0.9.4 and fix lightweight handoff"
+            },
+            {
+              "id": "92b7506",
+              "scope": "core",
+              "text": "Switch FlClashX 0.9.4 to official mihomo"
+            }
+          ]
+        },
+        {
+          "type": "fix",
+          "entries": [
+            {
+              "id": "5538fca",
+              "scope": "access",
+              "text": "Keep recording desktop apps with the window closed. Add manual app entries and group request history by name."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.9.3",
       "tag": "v0.9.3",
       "date": "2026-11-19",
