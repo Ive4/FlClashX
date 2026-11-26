@@ -166,6 +166,11 @@ class CommonScaffoldState extends State<CommonScaffold>
     _searchOrigin.value = _measureSearchOrigin();
     _updateSearchState((state) => state?.copyWith(query: ''));
     _moveSearch(open: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isSearch) {
+        _searchFocusNode.requestFocus();
+      }
+    });
   }
 
   Rect? _measureInBar(GlobalKey key) {

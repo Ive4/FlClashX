@@ -386,6 +386,7 @@ class DashboardConnectedButton extends StatelessWidget {
       inMutuallyExclusiveGroup: true,
       label: semanticLabel,
       excludeSemantics: true,
+      onTap: onTap,
       child: ElasticPress(
         child: TweenAnimationBuilder<double>(
           tween: Tween(end: selected ? 1 : 0),

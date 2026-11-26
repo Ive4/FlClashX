@@ -158,6 +158,56 @@ void main() {
       );
     }
   });
+  test('requires the macOS DMG to match the release and installed ABI', () {
+    expect(updateTargetForAbi(Abi.macosX64), 'macos-amd64');
+    expect(updateTargetForAbi(Abi.macosArm64), 'macos-arm64');
+    final payload = manifest();
+    final assets = payload['assets'] as Map<String, dynamic>;
+    assets['macos-arm64'] = {
+      'url':
+          'https://github.com/owner/FlClashX/releases/download/v0.9.2/FlClashX-0.9.2-macos-arm64.dmg',
+      'size': 1024,
+      'sha256': 'a' * 64,
+    };
+    expect(
+      AppUpdateRelease.parse(
+        payload,
+        'owner/FlClashX',
+        'macos-arm64',
+        '',
+      ).isMacOS,
+      isTrue,
+    );
+    assets['macos-amd64'] = assets['macos-arm64'];
+    expect(
+      () =>
+          AppUpdateRelease.parse(payload, 'owner/FlClashX', 'macos-amd64', ''),
+      throwsFormatException,
+    );
+  });
+  test('compares stable and prerelease tags without offering a downgrade', () {
+    AppUpdateRelease build(String tag, int build) => AppUpdateRelease(
+      version: '0.9.5',
+      build: build,
+      url: Uri.parse('https://github.com/Ive4/FlClashX/releases/tag/$tag'),
+      sha256Hex: '',
+      size: 0,
+      notes: '',
+      tag: tag,
+      canInstall: false,
+    );
+
+    final preview = build('v0.9.5-pre.10', 10);
+    expect(
+      preview.isNewerThan('0.9.5', 20, currentTag: 'v0.9.5-pre.9'),
+      isTrue,
+    );
+    expect(preview.isNewerThan('0.9.5', 1, currentTag: 'v0.9.5'), isFalse);
+    expect(
+      build('v0.9.5', 1).isNewerThan('0.9.5', 20, currentTag: 'v0.9.5-pre.10'),
+      isTrue,
+    );
+  });
   test('returns an APK only after download verification', () async {
     final bytes = [1, 2, 3, 4];
     final dio = Dio()..httpClientAdapter = _DownloadAdapter(bytes);

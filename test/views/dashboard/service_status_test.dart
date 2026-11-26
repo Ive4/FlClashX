@@ -1102,18 +1102,19 @@ void main() {
     expect(find.byType(SkeletonText), findsNothing);
   });
 
-  testWidgets('a failure a second attempt repeats is shown and asked again', (
+  testWidgets('a displayed failure stays visible until its recheck recovers', (
     tester,
   ) async {
-    const failing = true;
+    final recovery = Completer<List<ServiceCheckItem>>();
     final asked = <String>[];
     answer((params) {
       asked.add(params.proxyName);
+      if (asked.length == 4) return recovery.future;
       return [
         for (final name in params.names)
           _item(
             name,
-            params.proxyName == directOutbound || !failing
+            params.proxyName == directOutbound
                 ? ServiceProbeStatus.available
                 : ServiceProbeStatus.failed,
           ),
@@ -1131,8 +1132,18 @@ void main() {
     expect(asked, [directOutbound, routedOutbound, routedOutbound]);
 
     await tester.pump(const Duration(minutes: 1));
-    expect(asked, hasLength(3));
+    expect(asked, [
+      directOutbound,
+      routedOutbound,
+      routedOutbound,
+      routedOutbound,
+    ]);
     expect(find.text('Check failed'), findsOneWidget);
+    recovery.complete([_item('google', ServiceProbeStatus.available)]);
+    await tester.pumpAndSettle();
+    expect(find.text('Available'), findsOneWidget);
+    await tester.pump(const Duration(minutes: 6));
+    expect(asked, hasLength(4));
   });
 
   testWidgets('a check that timed out is shown without a second attempt', (

@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:fl_clash/common/common.dart';
+import 'package:fl_clash/common/macos_update.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/plugins/app.dart';
 import 'package:fl_clash/state.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +17,41 @@ const updateRepository = String.fromEnvironment(
   'FLCLASHX_UPDATE_REPOSITORY',
   defaultValue: 'Ive4/FlClashX',
 );
+const _installedTag = String.fromEnvironment('FLCLASHX_UPDATE_TAG');
+
+typedef _ReleaseTag = ({String version, int? prerelease, int build});
+
+final _releaseTagPattern = RegExp(
+  r'^v(\d+\.\d+\.\d+)(?:-pre\.([1-9]\d*)(?:\+(\d+))?|(?:-build|\+)(\d+))?$',
+);
+
+_ReleaseTag? _parseReleaseTag(String? tag) {
+  final match = tag == null ? null : _releaseTagPattern.firstMatch(tag);
+  if (match == null) return null;
+  return (
+    version: match[1]!,
+    prerelease: int.tryParse(match[2] ?? ''),
+    build: int.tryParse(match[3] ?? match[4] ?? '') ?? 0,
+  );
+}
+
+int _compareReleaseTags(_ReleaseTag left, _ReleaseTag right) {
+  final version = compareVersions(left.version, right.version);
+  if (version != 0) return version;
+  final lhs = left.prerelease;
+  final rhs = right.prerelease;
+  if (lhs != rhs) {
+    if (lhs == null) return 1;
+    if (rhs == null) return -1;
+    return lhs.compareTo(rhs);
+  }
+  return left.build.compareTo(right.build);
+}
+
+String installedUpdateVersionLabel(String version) =>
+    _parseReleaseTag(_installedTag)?.prerelease == null
+    ? 'v$version'
+    : _installedTag;
 
 class AppUpdateRelease {
   const AppUpdateRelease({
@@ -25,6 +62,8 @@ class AppUpdateRelease {
     required this.size,
     required this.notes,
     this.androidVersionCode,
+    this.tag,
+    this.canInstall = true,
   });
   final String version;
   final int build;
@@ -33,15 +72,44 @@ class AppUpdateRelease {
   final int size;
   final String notes;
   final int? androidVersionCode;
+  final String? tag;
+  final bool canInstall;
   bool get isAndroid => androidVersionCode != null;
-  String get fullVersion => '$version+$build';
+  bool get isMacOS => url.pathSegments.lastOrNull?.endsWith('.dmg') == true;
+  String get fullVersion {
+    final prerelease = _parseReleaseTag(tag)?.prerelease;
+    return prerelease == null
+        ? '$version+$build'
+        : '$version-pre.$prerelease+$build';
+  }
 
-  bool isNewerThan(String currentVersion, int currentBuild) {
+  Uri get releasePage => Uri.https(
+    'github.com',
+    '/$updateRepository/releases${tag == null ? '' : '/tag/$tag'}',
+  );
+
+  bool isNewerThan(
+    String currentVersion,
+    int currentBuild, {
+    String currentTag = _installedTag,
+  }) {
     final versionCode = androidVersionCode;
+    final releaseTag = _parseReleaseTag(tag);
+    final installedTag = _parseReleaseTag(currentTag);
     return (versionCode == null || versionCode > currentBuild) &&
-        compareVersions(
-              '$version+${versionCode ?? build}',
-              '$currentVersion+$currentBuild',
+        _compareReleaseTags(
+              (
+                version: version,
+                prerelease: releaseTag?.prerelease,
+                build: versionCode ?? build,
+              ),
+              (
+                version: currentVersion,
+                prerelease: installedTag?.version == currentVersion
+                    ? installedTag?.prerelease
+                    : null,
+                build: currentBuild,
+              ),
             ) >
             0;
   }
@@ -52,6 +120,7 @@ class AppUpdateRelease {
     String target,
     String notes, {
     String? tag,
+    bool canInstall = true,
   }) {
     final version = data['version'];
     final build = data['build'];
@@ -60,6 +129,7 @@ class AppUpdateRelease {
         data['schema'] != 1 ||
         version is! String ||
         !RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version) ||
+        (tag != null && _parseReleaseTag(tag)?.version != version) ||
         build is! int ||
         build <= 0 ||
         assets is! Map) {
@@ -94,6 +164,10 @@ class AppUpdateRelease {
         throw const FormatException('Invalid FlClashX Android update asset');
       }
       androidVersionCode = versionCode;
+    } else if (target.startsWith('macos-')) {
+      if (filename != 'FlClashX-$version-$target.dmg') {
+        throw const FormatException('Invalid FlClashX macOS update asset');
+      }
     } else if (!filename.startsWith('FlClashX-') ||
         !filename.endsWith('.exe')) {
       throw const FormatException('Invalid FlClashX Windows update asset');
@@ -106,6 +180,8 @@ class AppUpdateRelease {
       size: size,
       notes: notes,
       androidVersionCode: androidVersionCode,
+      tag: tag,
+      canInstall: canInstall,
     );
   }
 }
@@ -135,13 +211,31 @@ String? updateTargetForAbi(Abi abi) => switch (abi) {
   Abi.androidArm => 'android-armeabi-v7a',
   Abi.androidArm64 => 'android-arm64-v8a',
   Abi.androidX64 => 'android-x86_64',
+  Abi.macosX64 => 'macos-amd64',
+  Abi.macosArm64 => 'macos-arm64',
   _ => null,
 };
 
 class AppUpdater {
   AppUpdater({Dio? client}) : _dio = client ?? request.dio;
   final Dio _dio;
-  Future<AppUpdateRelease?> check() async {
+  late final MacosAppUpdate? macos = _macosUpdater();
+
+  MacosAppUpdate? _macosUpdater() {
+    if (!Platform.isMacOS ||
+        globalState.packageInfo.packageName != 'com.follow.clash') {
+      return null;
+    }
+    final bundle = appBundleOf(Platform.resolvedExecutable);
+    return bundle == null ? null : MacosAppUpdate(bundle);
+  }
+
+  Future<String> get macosFailureMarker async =>
+      p.join(await appPath.homeDirPath, 'macos-update-error.txt');
+
+  Future<AppUpdateRelease?> check({
+    UpdateChannel channel = UpdateChannel.stable,
+  }) async {
     if (!RegExp(
           r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$',
         ).hasMatch(updateRepository) ||
@@ -149,31 +243,42 @@ class AppUpdater {
       throw StateError(currentAppLocalizations.updateSourceMissing);
     }
     final target = updateTargetForAbi(Abi.current());
-    if (target == null ||
-        (Platform.isAndroid && !await app!.supportsAppUpdates())) {
-      throw UnsupportedError(currentAppLocalizations.updateUnavailable);
-    }
-    final response = await _dio.get<Map<String, dynamic>>(
-      'https://api.github.com/repos/$updateRepository/releases/latest',
-      options: Options(receiveTimeout: const Duration(seconds: 30)),
-    );
-    final release = response.data;
-    if (release == null) throw const FormatException('Invalid GitHub release');
-    if (release['draft'] == true || release['prerelease'] == true) return null;
+    final release = await _release(channel);
+    if (release == null) return null;
     final tag = release['tag_name'];
     final assets = release['assets'];
-    if (tag is! String || tag.isEmpty || assets is! List) {
+    final releaseTag = tag is String ? _parseReleaseTag(tag) : null;
+    if (tag is! String ||
+        releaseTag == null ||
+        (releaseTag.prerelease != null) != (release['prerelease'] == true) ||
+        assets is! List) {
       throw const FormatException('Invalid GitHub release');
     }
+    final notes = release['body'] is String ? release['body'] as String : '';
+    final canInstall =
+        target != null &&
+        (!Platform.isAndroid || await app!.supportsAppUpdates()) &&
+        (!Platform.isMacOS || (macos?.canReplace ?? false));
     final manifests = assets
         .whereType<Map>()
         .where((asset) => asset['name'] == 'flclashx-update.json')
         .toList();
-    if (manifests.length != 1) {
+    if (manifests.length > 1) {
       throw const FormatException(
-        'Expected one flclashx-update.json in the latest release',
+        'Expected one flclashx-update.json in the release',
       );
     }
+    final manualUpdate = AppUpdateRelease(
+      version: releaseTag.version,
+      build: releaseTag.build,
+      url: Uri.https('github.com', '/$updateRepository/releases/tag/$tag'),
+      sha256Hex: '',
+      size: 0,
+      notes: notes,
+      tag: tag,
+      canInstall: false,
+    );
+    if (target == null || manifests.isEmpty) return _newer(manualUpdate);
     final rawUrl = manifests.single['browser_download_url'];
     final uri = rawUrl is String ? Uri.tryParse(rawUrl) : null;
     if (uri == null ||
@@ -192,13 +297,23 @@ class AppUpdater {
     if (manifest is! Map<String, dynamic>) {
       throw const FormatException('Invalid FlClashX update manifest');
     }
-    final update = AppUpdateRelease.parse(
-      manifest,
-      updateRepository,
-      target,
-      release['body'] as String? ?? '',
-      tag: tag,
-    );
+    try {
+      return _newer(
+        AppUpdateRelease.parse(
+          manifest,
+          updateRepository,
+          target,
+          notes,
+          tag: tag,
+          canInstall: canInstall,
+        ),
+      );
+    } on UnsupportedError {
+      return _newer(manualUpdate);
+    }
+  }
+
+  AppUpdateRelease? _newer(AppUpdateRelease update) {
     final current = globalState.packageInfo;
     return update.isNewerThan(
           current.version,
@@ -208,18 +323,69 @@ class AppUpdater {
         : null;
   }
 
+  Future<Map<String, dynamic>?> _release(UpdateChannel channel) async {
+    const base = 'https://api.github.com/repos/$updateRepository/releases';
+    final options = Options(receiveTimeout: const Duration(seconds: 30));
+    if (channel == UpdateChannel.stable) {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$base/latest',
+        options: options,
+      );
+      final value = response.data;
+      if (value == null) throw const FormatException('Invalid GitHub release');
+      return value['draft'] == true || value['prerelease'] == true
+          ? null
+          : value;
+    }
+    _ReleaseTag? newest;
+    Map<String, dynamic>? selected;
+    for (var page = 1; page <= 5; page++) {
+      final response = await _dio.get<List<dynamic>>(
+        base,
+        queryParameters: {'per_page': 100, 'page': page},
+        options: options,
+      );
+      final releases = response.data;
+      if (releases == null) {
+        throw const FormatException('Invalid GitHub releases');
+      }
+      for (final release in releases.whereType<Map<String, dynamic>>()) {
+        final tag = release['tag_name'];
+        final version = tag is String ? _parseReleaseTag(tag) : null;
+        if (release['draft'] == true ||
+            version == null ||
+            (version.prerelease != null) != (release['prerelease'] == true)) {
+          continue;
+        }
+        if (newest == null || _compareReleaseTags(version, newest) > 0) {
+          newest = version;
+          selected = release;
+        }
+      }
+      if (releases.length < 100) break;
+    }
+    return selected;
+  }
+
   Future<File> download(
     AppUpdateRelease release,
     CancelToken cancel,
     void Function(double?) progress,
   ) async {
+    if (!release.canInstall) {
+      throw UnsupportedError(currentAppLocalizations.updateUnavailable);
+    }
     final root = Platform.isAndroid
         ? await Directory(
             p.join(await appPath.tempPath, 'app-updates'),
           ).create(recursive: true)
         : Directory.systemTemp;
     final directory = await root.createTemp('FlClashX-update-');
-    final extension = release.isAndroid ? 'apk' : 'exe';
+    final extension = release.isAndroid
+        ? 'apk'
+        : release.isMacOS
+        ? 'dmg'
+        : 'exe';
     final file = File(p.join(directory.path, 'installer.$extension.part'));
     var oversized = false;
     try {
@@ -342,8 +508,12 @@ try {
 
 final appUpdater = AppUpdater();
 
-Future<void> discardDownloadedUpdate(File file) async {
+Future<void> discardDownloadedUpdate(File file, {String? staged}) async {
   try {
+    if (staged != null) {
+      final app = Directory(staged);
+      if (await app.exists()) await app.delete(recursive: true);
+    }
     if (await file.exists()) await file.delete();
     await file.parent.delete();
   } on FileSystemException {

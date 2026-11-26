@@ -852,6 +852,33 @@ void main() {
       expect(await first, isFalse);
     });
 
+    test('a Core restart authorizes TUN before applying the profile', () async {
+      final setupAction = _HandoffSetupAction([AuthorizeCode.success]);
+      final container = ProviderContainer(
+        overrides: [
+          coreActionProvider.overrideWith(_TestCoreAction.new),
+          setupActionProvider.overrideWith(() => setupAction),
+        ],
+      );
+      addTearDown(container.dispose);
+      container
+          .read(patchClashConfigProvider.notifier)
+          .update((state) => state.copyWith.tun(enable: true));
+      final coreAction =
+          container.read(coreActionProvider.notifier) as _TestCoreAction;
+
+      expect(
+        await coreAction.restartCore().timeout(const Duration(seconds: 3)),
+        isTrue,
+      );
+      expect(setupAction.authorizationRequestCount, 1);
+      expect(coreAction.lifecycleRestartCount, 1);
+      expect(
+        container.read(authorizedTunEnableProvider),
+        TunAuthorizationState.authorized,
+      );
+    });
+
     test('a failed authorization leaves tun and system DNS off', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       await AppLocalizations.load(const Locale('en'));
@@ -995,6 +1022,22 @@ class _AuthorizationSetupAction extends SetupAction {
       return pending.future;
     }
     return authorizationResults[index];
+  }
+}
+
+class _HandoffSetupAction extends _AuthorizationSetupAction {
+  _HandoffSetupAction(super.authorizationResults);
+
+  @override
+  Future<bool> applyProfile({
+    bool silence = false,
+    bool force = false,
+    Future<void> Function()? preloadInvoke,
+  }) async {
+    if (!await requestAdmin(ref.read(patchClashConfigProvider).tun.enable)) {
+      return ref.read(coreActionProvider.notifier).restartCore();
+    }
+    return true;
   }
 }
 

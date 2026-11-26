@@ -114,11 +114,17 @@ class CoreAction extends _$CoreAction {
   }
 
   Future<bool> _runRestartWorker() async {
+    final setup = ref.read(setupActionProvider.notifier);
+    var authorizedNow = false;
     try {
       ref.read(coreStopReasonProvider.notifier).value = null;
       ref.read(coreStatusProvider.notifier).value = CoreStatus.connecting;
+      if (ref.read(patchClashConfigProvider).tun.enable) {
+        authorizedNow = !await setup.requestAdmin(true);
+      }
       final result = await restartLifecycle();
       if (!await _applyLifecycleResult(result, statusFirst: true)) {
+        if (authorizedNow) setup._forgetTunAuthorization();
         return false;
       }
 
@@ -126,19 +132,16 @@ class CoreAction extends _$CoreAction {
       var applied = true;
       while (appliedRevision < _requestedRestartRevision) {
         final revision = _requestedRestartRevision;
-        if (ref.read(setupActionProvider.notifier).wantsRunning) {
-          applied = await ref
-              .read(setupActionProvider.notifier)
-              .setRunning(true, initialize: true);
+        if (setup.wantsRunning) {
+          applied = await setup.setRunning(true, initialize: true);
         } else {
-          applied = await ref
-              .read(setupActionProvider.notifier)
-              .applyProfile(force: true);
+          applied = await setup.applyProfile(force: true);
         }
         appliedRevision = revision;
       }
       return applied;
     } catch (error) {
+      if (authorizedNow) setup._forgetTunAuthorization();
       ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
       ref.read(coreStopReasonProvider.notifier).value = compactError(error);
       rethrow;

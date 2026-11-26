@@ -730,6 +730,96 @@ class AppLocalizations {
     );
   }
 
+  /// `The update could not be installed. You can download it from the release page instead.`
+  String get updateInstallFailed {
+    return Intl.message(
+      'The update could not be installed. You can download it from the release page instead.',
+      name: 'updateInstallFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Open release page`
+  String get updateOpenReleasePage {
+    return Intl.message(
+      'Open release page',
+      name: 'updateOpenReleasePage',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Update channel`
+  String get updateChannel {
+    return Intl.message(
+      'Update channel',
+      name: 'updateChannel',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Stable`
+  String get updateChannelStable {
+    return Intl.message(
+      'Stable',
+      name: 'updateChannelStable',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Prerelease`
+  String get updateChannelPrerelease {
+    return Intl.message(
+      'Prerelease',
+      name: 'updateChannelPrerelease',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `All`
+  String get connectionsAll {
+    return Intl.message('All', name: 'connectionsAll', desc: '', args: []);
+  }
+
+  /// `Active`
+  String get connectionsActive {
+    return Intl.message(
+      'Active',
+      name: 'connectionsActive',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Failed`
+  String get connectionsFailed {
+    return Intl.message(
+      'Failed',
+      name: 'connectionsFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Closed`
+  String get connectionClosed {
+    return Intl.message('Closed', name: 'connectionClosed', desc: '', args: []);
+  }
+
+  /// `Related connections`
+  String get relatedConnections {
+    return Intl.message(
+      'Related connections',
+      name: 'relatedConnections',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Verify TLS certificates`
   String get checkCertificate {
     return Intl.message(

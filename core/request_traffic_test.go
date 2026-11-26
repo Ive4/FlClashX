@@ -90,8 +90,9 @@ func TestRequestTrafficKeepsARequestTheManagerHasNotStoredYet(t *testing.T) {
 	if _, watching := collectDelivered(&watch, closed); !watching {
 		t.Fatal("a request announced before it was stored was dropped on its first report")
 	}
-	if _, watching := collectDelivered(&watch, closed); watching {
-		t.Fatal("a closed request was kept past its second report")
+	changed, watching := collectDelivered(&watch, closed)
+	if len(changed) != 1 || !changed[0].Closed || watching {
+		t.Fatalf("a closed request with unchanged traffic was not reported: %v, %v", changed, watching)
 	}
 }
 

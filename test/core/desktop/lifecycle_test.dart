@@ -96,6 +96,64 @@ void main() {
     await _closeRunning(lifecycle, transport, helper.lease, 2);
   });
 
+  test('a restart replaces the Core already launching', () async {
+    final transport = FakeDesktopCoreTransport();
+    final direct = FakeLauncher(owner: CoreProcessOwner.direct, pid: 42);
+    final helper = FakeLauncher(owner: CoreProcessOwner.helper, pid: 84);
+    final resolver = MutableLauncherResolver(direct);
+    final lifecycle = _createLifecycle(
+      transport: transport,
+      resolver: resolver,
+    );
+
+    final start = lifecycle.start();
+    transport.ready();
+    await direct.started;
+    direct.lease.stopGate = Completer<void>();
+    resolver.launcher = helper;
+    final restart = lifecycle.restart();
+    transport.connect(pid: 42);
+    await pumpEventQueue();
+
+    expect(direct.lease.stopCount, 1);
+    transport.disconnect(1);
+    direct.lease.stopGate!.complete();
+    await helper.started;
+    transport.connect(pid: 84, generation: 2);
+
+    expect((await start).outcome, CoreLifecycleOutcome.coalesced);
+    expect((await restart).session?.owner, CoreProcessOwner.helper);
+    await _closeRunning(lifecycle, transport, helper.lease, 2);
+  });
+
+  test('a start after a hung bind opens a new transport', () async {
+    final hung = FakeDesktopCoreTransport()..hangOpen = true;
+    final replacement = FakeDesktopCoreTransport();
+    final transports = [hung, replacement].iterator;
+    final launcher = FakeLauncher(owner: CoreProcessOwner.direct, pid: 42);
+    final lifecycle = DesktopCoreLifecycle(
+      transportFactory: () {
+        transports.moveNext();
+        return transports.current;
+      },
+      launcherResolver: MutableLauncherResolver(launcher),
+      sessionIdFactory: () => _sessionId,
+      timeouts: const DesktopCoreTimeouts(ready: Duration(milliseconds: 30)),
+    );
+    await expectLater(lifecycle.start(), throwsA(_hasCode('start_failed')));
+
+    final start = lifecycle.start();
+    final started = expectLater(start, completion(isA<CoreLifecycleResult>()));
+    await pumpEventQueue();
+    expect(hung.closeCount, 1);
+    replacement.ready();
+    await launcher.started;
+    replacement.connect(pid: 42);
+
+    await started;
+    await _closeRunning(lifecycle, replacement, launcher.lease, 1);
+  });
+
   test('close supersedes an in-flight start and cleans its lease', () async {
     final transport = FakeDesktopCoreTransport();
     final launcher = FakeLauncher(owner: CoreProcessOwner.direct, pid: 42);

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Tag for the prepared release (vX.Y.Z or vX.Y.Z-buildN)
+        description: Tag for the prepared release (vX.Y.Z, vX.Y.Z-buildN, or vX.Y.Z-pre.N)
         required: true
         type: string
 
@@ -15,6 +15,7 @@ env:
   FLUTTER_VERSION: '3.47.6'
   GO_VERSION: '1.27.1'
   FLCLASHX_UPDATE_REPOSITORY: ${{ github.repository }}
+  FLCLASHX_UPDATE_TAG: ${{ inputs.release_tag }}
 
 jobs:
   version:
@@ -42,7 +43,10 @@ jobs:
           if not match:
               raise SystemExit("Expected version+build in pubspec.yaml")
           version, build = match.groups()
-          if os.environ["RELEASE_TAG"] not in (f"v{version}", f"v{version}-build{build}"):
+          tag = os.environ["RELEASE_TAG"]
+          if tag not in (f"v{version}", f"v{version}-build{build}") and not re.fullmatch(
+              rf"v{re.escape(version)}-pre\.[1-9]\d*(?:\+\d+)?", tag
+          ):
               raise SystemExit("Release tag does not match pubspec.yaml")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"version={version}\nbuild={build}\n")
@@ -203,8 +207,69 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
+  macos:
+    needs: version
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: macos-15-intel
+          - arch: arm64
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            core/go.sum
+            services/desktop/go.sum
+            plugins/go_api/native/go.sum
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Select Xcode for Intel package
+        if: matrix.arch == 'amd64'
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app || sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Build and verify DMG
+        env:
+          PACKAGE_ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.version.outputs.version }}
+          FLCLASHX_GITHUB_CLIENT_ID: ${{ vars.FLCLASHX_GITHUB_CLIENT_ID }}
+          FLCLASHX_GITEE_OAUTH_URL: ${{ vars.FLCLASHX_GITEE_OAUTH_URL }}
+        run: |
+          flutter pub get
+          python3 tool/patch_flutter_macos_aot.py "$FLUTTER_ROOT"
+          dart setup.dart macos --env stable --targets dmg
+          app=build/macos/Build/Products/Release/FlClashX.app
+          arch="$PACKAGE_ARCH"
+          if [[ "$arch" == amd64 ]]; then arch=x86_64; fi
+          for binary in FlClashX FlClashCore FlClashDesktop; do
+            lipo "$app/Contents/MacOS/$binary" -verify_arch "$arch"
+          done
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = com.follow.clash
+          test -f "dist/FlClashX-$VERSION-macos-$PACKAGE_ARCH.dmg"
+
+      - name: Upload verified DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
   manifest:
-    needs: [version, windows, android]
+    needs: [version, windows, android, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -224,10 +289,13 @@ jobs:
           mkdir -p dist
           cp release-assets/windows-amd64/*.exe release-assets/windows-arm64/*.exe dist/
           cp release-assets/android-apks/*.apk dist/
+          cp release-assets/macos-amd64/*.dmg release-assets/macos-arm64/*.dmg dist/
           python3 tool/create_update_manifest.py \
             --repository "$FLCLASHX_UPDATE_REPOSITORY" --tag "$RELEASE_TAG" \
             --windows-amd64 release-assets/windows-amd64/*.exe \
             --windows-arm64 release-assets/windows-arm64/*.exe \
+            --macos-amd64 "dist/FlClashX-$VERSION-macos-amd64.dmg" \
+            --macos-arm64 "dist/FlClashX-$VERSION-macos-arm64.dmg" \
             --android-armeabi-v7a "dist/FlClashX-$VERSION-android-armeabi-v7a.apk" \
             --android-arm64-v8a "dist/FlClashX-$VERSION-android-arm64-v8a.apk" \
             --android-x86_64 "dist/FlClashX-$VERSION-android-x86_64.apk"

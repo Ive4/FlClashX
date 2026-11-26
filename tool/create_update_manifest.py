@@ -1,4 +1,4 @@
-"""Generate a FlClashX release manifest from Windows installers and Android APKs."""
+"""Generate a FlClashX release manifest from packaged installers."""
 import argparse
 import hashlib
 import json
@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 WINDOWS_TARGETS = ("windows-amd64", "windows-arm64")
+MACOS_TARGETS = ("macos-amd64", "macos-arm64")
 # Flutter's split APK build adds a target-specific offset to the pubspec build.
 ANDROID_VERSION_OFFSETS = {
     "android-armeabi-v7a": 1000,
@@ -41,6 +42,10 @@ def create_manifest(repository, tag, version, packages):
         elif target in WINDOWS_TARGETS:
             if not path.name.startswith("FlClashX-") or path.suffix.lower() != ".exe":
                 raise ValueError("Expected a FlClashX-*.exe Inno Setup installer")
+        elif target in MACOS_TARGETS:
+            expected = f"FlClashX-{match[1]}-{target}.dmg"
+            if path.name != expected:
+                raise ValueError(f"Expected {expected}")
         else:
             raise ValueError(f"Unsupported target: {target}")
         digest = hashlib.sha256()
@@ -56,7 +61,7 @@ def create_manifest(repository, tag, version, packages):
             **asset,
         }
     if not assets:
-        raise ValueError("Supply at least one Windows installer or Android APK")
+        raise ValueError("Supply at least one packaged installer")
     return {"schema": 1, "app": "FlClashX", "version": match[1],
             "build": build, "assets": assets}
 
@@ -65,7 +70,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--tag", required=True)
-    targets = (*WINDOWS_TARGETS, *ANDROID_VERSION_OFFSETS)
+    targets = (*WINDOWS_TARGETS, *MACOS_TARGETS, *ANDROID_VERSION_OFFSETS)
     for target in targets:
         parser.add_argument(f"--{target}")
     parser.add_argument("--output", default="dist/flclashx-update.json")

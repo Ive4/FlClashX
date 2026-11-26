@@ -63,7 +63,7 @@ void main() {
 
   void seedRequests(List<TrackerInfo> requests) {
     final notifier = container.read(requestsProvider.notifier);
-    notifier.value = FixedList<TrackerInfo>(500);
+    notifier.value = ConnectionLog(500);
     for (final request in requests) {
       notifier.addRequest(request);
     }
@@ -184,6 +184,65 @@ void main() {
 
     expect(find.textContaining('gamma.test'), findsWidgets);
 
+    await teardownView(tester);
+  });
+
+  testWidgets('the counted status menu filters failed requests', (
+    tester,
+  ) async {
+    final at = DateTime.utc(2026);
+    seedRequests([
+      _tracker(id: 'active', host: 'active.test'),
+      _tracker(id: 'closed', host: 'closed.test').copyWith(closedAt: at),
+      _tracker(id: 'failed', host: 'failed.test').copyWith(
+        closedAt: at,
+        failure: const RequestFailure(kind: 'refused', message: 'refused'),
+      ),
+    ]);
+    await pumpRequests(tester);
+
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Status'));
+    await tester.pumpAndSettle();
+    expect(find.text('All (3)'), findsOneWidget);
+    expect(find.text('Active (1)'), findsOneWidget);
+    expect(find.text('Closed (1)'), findsOneWidget);
+    await tester.tap(find.text('Failed (1)'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('failed.test'), findsWidgets);
+    expect(find.textContaining('active.test'), findsNothing);
+    expect(find.textContaining('closed.test'), findsNothing);
+    await teardownView(tester);
+  });
+
+  testWidgets('the Requests menu opens DNS records and related connections', (
+    tester,
+  ) async {
+    seedRequests([
+      _tracker(id: 'resolved', host: 'linked.test').copyWith(dnsQueries: [7]),
+    ]);
+    container
+        .read(dnsQueriesProvider.notifier)
+        .addQuery(
+          DnsQuery(
+            id: 7,
+            domain: 'resolver.test',
+            type: 'A',
+            time: DateTime.utc(2026),
+          ),
+        );
+    await pumpRequests(tester);
+
+    await tester.tap(find.text('Recent requests'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DNS queries'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('resolver.test'));
+    await tester.pumpAndSettle();
+    expect(find.text('Related connections'), findsOneWidget);
+    expect(find.text('linked.test'), findsOneWidget);
     await teardownView(tester);
   });
 

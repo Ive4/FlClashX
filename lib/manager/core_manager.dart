@@ -224,7 +224,7 @@ class _CoreContainerState extends ConsumerState<CoreManager>
 
   @override
   void onRequest(TrackerInfo trackerInfo) async {
-    if (system.isWindows || system.isMacOS) {
+    if (trackerInfo.failure == null && (system.isWindows || system.isMacOS)) {
       unawaited(
         ref
             .read(applicationHistoryProvider)
@@ -248,6 +248,12 @@ class _CoreContainerState extends ConsumerState<CoreManager>
   void onRequestTraffic(Map<String, RequestTraffic> traffic) {
     ref.read(requestsProvider.notifier).updateTraffic(traffic);
     super.onRequestTraffic(traffic);
+  }
+
+  @override
+  void onRequestsClosed(Set<String> ids) {
+    ref.read(requestsProvider.notifier).close(ids);
+    super.onRequestsClosed(ids);
   }
 
   @override

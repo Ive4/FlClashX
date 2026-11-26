@@ -126,7 +126,7 @@ class Bootstrap {
       brightness: WidgetsBinding.instance.platformDispatcher.platformBrightness,
       version: version,
       viewSize: Size.zero,
-      requests: FixedList(maxRequestsLength),
+      requests: ConnectionLog(maxRequestsLength),
       logs: FixedList(maxLogsLength),
       traffics: FixedList(trafficSampleLength),
       totalTraffic: const Traffic(),
@@ -173,7 +173,10 @@ class Bootstrap {
     unawaited(
       _container.read(profilesActionProvider.notifier).autoUpdateProfiles(),
     );
-    unawaited(_container.read(commonActionProvider.notifier).autoCheckUpdate());
+    final updater = _container.read(commonActionProvider.notifier);
+    unawaited(
+      updater.reportMacosUpdateFailure().then((_) => updater.autoCheckUpdate()),
+    );
     unawaited(
       autoLaunch?.updateStatus(_container.read(appSettingProvider).autoLaunch),
     );

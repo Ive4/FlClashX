@@ -10,6 +10,7 @@ class _RecordingListener with CoreEventListener {
   final List<String> loaded = [];
   final List<String> dialerLoops = [];
   final List<Map<String, RequestTraffic>> requestTraffic = [];
+  final List<Set<String>> requestsClosed = [];
 
   @override
   void onLoaded(String providerName) {
@@ -25,6 +26,11 @@ class _RecordingListener with CoreEventListener {
   @override
   void onRequestTraffic(Map<String, RequestTraffic> traffic) {
     requestTraffic.add(traffic);
+  }
+
+  @override
+  void onRequestsClosed(Set<String> ids) {
+    requestsClosed.add(ids);
   }
 }
 
@@ -86,13 +92,16 @@ void main() {
       'type': 'requestTraffic',
       'data': [
         {'id': 'a', 'upload': 460, 'download': 257835},
-        {'id': 'b', 'upload': 0, 'download': 12},
+        {'id': 'b', 'upload': 0, 'download': 12, 'closed': true},
       ],
     }).forEach(coreEventManager.sendEvent);
     await pumpEventQueue();
 
     expect(listener.requestTraffic, [
       {'a': (upload: 460, download: 257835), 'b': (upload: 0, download: 12)},
+    ]);
+    expect(listener.requestsClosed, [
+      {'b'},
     ]);
   });
 }

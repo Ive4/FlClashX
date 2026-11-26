@@ -4,7 +4,7 @@ FlClash is a multi-platform proxy client built with Flutter and the Go mihomo v1
 
 ## Version Notes
 
-- The Core pin follows official FlClash. Keep the `core/Clash.Meta` gitlink and `build_config.yaml` version in sync.
+- The Core pin follows official FlClash v0.9.5. Keep the `core/Clash.Meta` gitlink and `build_config.yaml` version in sync.
 - Flutter stays on the 3.47.x line. Release CI pins 3.47.6 and is the source
   of truth for release builds; `.fvmrc` and local SDKs may sit on another 3.47
   patch. The editor in `plugins/code_forge` came from `code_forge` 10.14.0, which

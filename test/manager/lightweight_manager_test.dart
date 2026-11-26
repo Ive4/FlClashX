@@ -74,12 +74,17 @@ void main() {
     container.read(appVisibleProvider.notifier).value = visible;
   }
 
-  Future<void> mount(WidgetTester tester, {bool isDesktop = false}) async {
+  Future<void> mount(
+    WidgetTester tester, {
+    bool isDesktop = false,
+    bool immediatelyOnClose = false,
+  }) async {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: LightweightManager(
           isDesktop: isDesktop,
+          immediatelyOnClose: immediatelyOnClose,
           child: const SizedBox(),
         ),
       ),
@@ -110,6 +115,23 @@ void main() {
     setMinutes(1);
     await tester.pump(const Duration(minutes: 2));
     expect(action.entries, 0);
+  });
+
+  testWidgets('closing macOS enters as soon as the window is hidden', (
+    tester,
+  ) async {
+    setMinutes(5);
+    await mount(tester, isDesktop: true, immediatelyOnClose: true);
+    await tester.pump();
+
+    desktopWindow.listeners.last.onWindowClose();
+    await tester.pump(Duration.zero);
+    expect(action.entries, 0);
+    await desktopWindow.hide();
+    await tester.pump(Duration.zero);
+    expect(action.entries, 1);
+    expect(action.automaticEntry, isTrue);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(

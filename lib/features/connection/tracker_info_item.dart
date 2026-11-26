@@ -1,8 +1,10 @@
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
+import 'package:fl_clash/providers/app.dart';
 import 'package:fl_clash/providers/config.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
+import 'package:fl_clash/views/dns_queries.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,16 +28,42 @@ String _endpointText(String ip, String port) {
   return ip;
 }
 
+PackageIcon? desktopTrackerIcon(TrackerInfo trackerInfo, double size) {
+  final path = trackerInfo.metadata.processPath;
+  if (path.isEmpty || !(system.isWindows || system.isMacOS)) return null;
+  return PackageIcon(packageName: path, size: size, desktop: true);
+}
+
+String connectionStatusLabel(BuildContext context, ConnectionStatus status) {
+  final labels = context.appLocalizations;
+  return switch (status) {
+    ConnectionStatus.all => labels.connectionsAll,
+    ConnectionStatus.active => labels.connectionsActive,
+    ConnectionStatus.closed => labels.connectionClosed,
+    ConnectionStatus.failed => labels.connectionsFailed,
+  };
+}
+
 void showTrackerInfoDetail(
   BuildContext context,
   TrackerInfo trackerInfo,
   String title,
 ) {
+  final dnsQueries = trackerInfo.dnsQueries.isEmpty
+      ? const <DnsQuery>[]
+      : ProviderScope.containerOf(context, listen: false)
+            .read(dnsQueriesProvider)
+            .list
+            .where((query) => trackerInfo.dnsQueries.contains(query.id))
+            .toList();
   showInSheet<void>(
     context,
     builder: (_) {
       return CommonScaffold(
-        body: TrackerInfoDetailView(trackerInfo: trackerInfo),
+        body: TrackerInfoDetailView(
+          trackerInfo: trackerInfo,
+          dnsQueries: dnsQueries,
+        ),
         title: title,
       );
     },
@@ -85,9 +113,20 @@ class TrackerInfoItem extends ConsumerWidget {
           .copyWith(color: context.colorScheme.onSurfaceVariant),
     );
     if (!isLive) {
+      final status = trackerInfo.connectionStatus;
       return RecordHeader(
         trailing: action,
-        children: [RecordTimestamp(trackerInfo.start.showFull), network],
+        children: [
+          RecordTimestamp(trackerInfo.start.showFull),
+          network,
+          if (status != ConnectionStatus.active)
+            RecordLabel(
+              label: connectionStatusLabel(context, status),
+              tone: status == ConnectionStatus.failed
+                  ? RecordTone.error
+                  : RecordTone.neutral,
+            ),
+        ],
       );
     }
     final color = context.colorScheme.onSurfaceVariant;
@@ -154,7 +193,12 @@ class _TrackerInfoBody extends StatelessWidget {
       ),
     );
     final process = metadata.process;
-    if (!showIcon || process.isEmpty) {
+    final icon =
+        desktopTrackerIcon(trackerInfo, 24) ??
+        (showIcon && process.isNotEmpty
+            ? PackageIcon(packageName: process, size: 24)
+            : null);
+    if (icon == null) {
       return title;
     }
     return Row(
@@ -162,7 +206,7 @@ class _TrackerInfoBody extends StatelessWidget {
       children: [
         GestureDetector(
           onTap: () => onClickKeyword?.call(process),
-          child: PackageIcon(packageName: process, size: 24),
+          child: icon,
         ),
         Flexible(child: title),
       ],
@@ -216,8 +260,13 @@ class _TrackerInfoBody extends StatelessWidget {
 
 class TrackerInfoDetailView extends StatelessWidget {
   final TrackerInfo trackerInfo;
+  final List<DnsQuery> dnsQueries;
 
-  const TrackerInfoDetailView({super.key, required this.trackerInfo});
+  const TrackerInfoDetailView({
+    super.key,
+    required this.trackerInfo,
+    this.dnsQueries = const [],
+  });
 
   Widget _buildChains(BuildContext context) {
     return DetailRow(
@@ -263,6 +312,11 @@ class TrackerInfoDetailView extends StatelessWidget {
           title: appLocalizations.basicInfo,
           items: _buildRows([
             (appLocalizations.creationTime, trackerInfo.start.showFull),
+            (
+              appLocalizations.status,
+              connectionStatusLabel(context, trackerInfo.connectionStatus),
+            ),
+            (appLocalizations.error, trackerInfo.failure?.message ?? ''),
             (appLocalizations.networkType, metadata.network),
             (appLocalizations.process, trackerInfo.progressText),
             (appLocalizations.rule, _ruleText(trackerInfo)),
@@ -301,6 +355,18 @@ class TrackerInfoDetailView extends StatelessWidget {
             _buildChains(context),
           ],
         ),
+        if (dnsQueries.isNotEmpty)
+          generateSection(
+            title: appLocalizations.dnsQueries,
+            items: [
+              for (final query in dnsQueries)
+                DecorationListItem(
+                  title: Text(query.domain),
+                  subtitle: Text(query.type),
+                  onPressed: () => showDnsQueryDetail(context, query),
+                ),
+            ],
+          ),
       ],
     );
   }

@@ -38,11 +38,20 @@ class _LiveConnectionsState extends ConsumerState<_LiveConnections>
 
   @override
   Future<void> poll(PollGuard isCurrent) async {
+    final lineage = ref.read(requestsProvider).lineage;
+    final requestedAt = DateTime.now();
     final ranked = await _readConnections();
     if (!isCurrent()) {
       return;
     }
-    if (ranked != null) _ranking = ranked.ranking;
+    if (ranked != null) {
+      _ranking = ranked.ranking;
+      if (ref.read(coreStatusProvider) == CoreStatus.connected) {
+        ref
+            .read(requestsProvider.notifier)
+            .sync(ranked.trackerInfos, requestedAt, lineage);
+      }
+    }
     _showConnections(ranked?.trackerInfos);
   }
 

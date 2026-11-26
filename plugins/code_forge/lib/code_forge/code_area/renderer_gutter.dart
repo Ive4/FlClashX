@@ -8,12 +8,15 @@ extension _RendererGutter on _CodeFieldRenderer {
         trimmed.endsWith('[');
   }
 
-  void _drawGutter(
+  bool _drawGutter(
     Canvas canvas,
     Offset offset,
     Color bgColor,
-    TextStyle? gutterTextStyle,
-  ) {
+    TextStyle? gutterTextStyle, {
+    required Stopwatch paintWatch,
+    required int budgetUs,
+    required int minColdLines,
+  }) {
     final viewportHeight = vscrollController.position.viewportDimension;
 
     final gutterBgColor = gutterStyle.backgroundColor ?? bgColor;
@@ -45,20 +48,50 @@ extension _RendererGutter on _CodeFieldRenderer {
     final inactiveLineColor =
         baseLineNumberStyle?.color?.withAlpha(120) ?? Colors.grey;
 
+    if (_cachedLineNumberStyle != baseLineNumberStyle ||
+        _cachedLineNumberFontSize != _lineNumberFontSize) {
+      _cachedLineNumberStyle = baseLineNumberStyle;
+      _cachedLineNumberFontSize = _lineNumberFontSize;
+      _lineNumberCache.clear();
+      _activeLineNumberCache.clear();
+    }
+
+    final activeStyle = baseLineNumberStyle!.copyWith(
+      fontSize: _lineNumberFontSize,
+      color: activeLineColor,
+    );
+    final inactiveStyle = baseLineNumberStyle.copyWith(
+      fontSize: _lineNumberFontSize,
+      color: inactiveLineColor,
+    );
+    final activeParaStyle = activeStyle.getParagraphStyle();
+    final activeUiStyle = activeStyle.getTextStyle();
+    final inactiveParaStyle = inactiveStyle.getParagraphStyle();
+    final inactiveUiStyle = inactiveStyle.getTextStyle();
+
+    var builtNumbers = 0;
+    var deferred = false;
     for (final i in _paintLines) {
       final contentTop = _lineTop(i);
-
-      final lineNumberStyle = baseLineNumberStyle!.copyWith(
-        fontSize: _lineNumberFontSize,
-        color: i >= activeFirstLine && i <= activeLastLine
-            ? activeLineColor
-            : inactiveLineColor,
-      );
-
-      final lineNumPara = _buildLineNumberParagraph(
-        '${i + 1}',
-        lineNumberStyle,
-      );
+      final isActive = i >= activeFirstLine && i <= activeLastLine;
+      final cache = isActive ? _activeLineNumberCache : _lineNumberCache;
+      var lineNumPara = cache[i];
+      if (lineNumPara == null) {
+        if (builtNumbers >= minColdLines &&
+            paintWatch.elapsedMicroseconds >= budgetUs) {
+          deferred = true;
+          continue;
+        }
+        if (cache.length >= 400) {
+          cache.clear();
+        }
+        builtNumbers++;
+        lineNumPara = cache[i] = _buildLineNumberParagraph(
+          '${i + 1}',
+          isActive ? activeParaStyle : inactiveParaStyle,
+          isActive ? activeUiStyle : inactiveUiStyle,
+        );
+      }
       final numWidth = lineNumPara.longestLine;
 
       canvas.drawParagraph(
@@ -77,24 +110,31 @@ extension _RendererGutter on _CodeFieldRenderer {
           final icon = foldRange.isFolded
               ? Icons.chevron_right_outlined
               : Icons.keyboard_arrow_down_outlined;
-          final iconColor = gutterStyle.foldIconColor ?? lineNumberStyle.color;
+          final iconColor =
+              gutterStyle.foldIconColor ??
+              (isActive ? activeLineColor : inactiveLineColor);
 
           _drawFoldIcon(
             canvas,
             offset,
             icon,
-            iconColor!,
+            iconColor,
             _foldIconSize,
             contentTop,
           );
         }
       }
     }
+    return deferred;
   }
 
-  ui.Paragraph _buildLineNumberParagraph(String text, TextStyle style) {
-    final builder = ui.ParagraphBuilder(style.getParagraphStyle())
-      ..pushStyle(style.getTextStyle())
+  ui.Paragraph _buildLineNumberParagraph(
+    String text,
+    ui.ParagraphStyle paragraphStyle,
+    ui.TextStyle textStyle,
+  ) {
+    final builder = ui.ParagraphBuilder(paragraphStyle)
+      ..pushStyle(textStyle)
       ..addText(text);
     final p = builder.build();
     p.layout(const ui.ParagraphConstraints(width: double.infinity));
@@ -176,12 +216,14 @@ extension _RendererGutter on _CodeFieldRenderer {
       if (endIndex == 0) return 0;
 
       final indentString = lineText.substring(0, endIndex);
-      final builder = ui.ParagraphBuilder(_paragraphStyle)
-        ..pushStyle(_uiTextStyle)
-        ..addText(indentString);
-      final spacePara = builder.build();
-      spacePara.layout(const ui.ParagraphConstraints(width: double.infinity));
-      return spacePara.maxIntrinsicWidth;
+      return _indentWidthCache[indentString] ??= () {
+        final builder = ui.ParagraphBuilder(_paragraphStyle)
+          ..pushStyle(_uiTextStyle)
+          ..addText(indentString);
+        final spacePara = builder.build();
+        spacePara.layout(const ui.ParagraphConstraints(width: double.infinity));
+        return spacePara.maxIntrinsicWidth;
+      }();
     }
 
     void addBlock({
@@ -234,11 +276,32 @@ extension _RendererGutter on _CodeFieldRenderer {
       }
     }
 
-    final nativeBlocks = controller.rope.computeGuides(
-      firstVisibleLine,
-      lastVisibleLine,
-      tabSize,
-    );
+    final version = controller.contentVersion;
+    final cachedGuides = _viewportGuidesCache;
+    final List<
+      ({int startLine, int endLine, int leadingSpaces, int indentLevel})
+    >
+    nativeBlocks;
+    if (cachedGuides != null &&
+        cachedGuides.version == version &&
+        cachedGuides.first == firstVisibleLine &&
+        cachedGuides.last == lastVisibleLine &&
+        cachedGuides.tabSize == tabSize) {
+      nativeBlocks = cachedGuides.blocks;
+    } else {
+      nativeBlocks = controller.rope.computeGuides(
+        firstVisibleLine,
+        lastVisibleLine,
+        tabSize,
+      );
+      _viewportGuidesCache = (
+        version: version,
+        first: firstVisibleLine,
+        last: lastVisibleLine,
+        tabSize: tabSize,
+        blocks: nativeBlocks,
+      );
+    }
 
     for (final b in nativeBlocks) {
       final lineText = _lineText(b.startLine);

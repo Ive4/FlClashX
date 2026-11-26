@@ -624,11 +624,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "connected": MessageLookupByLibrary.simpleMessage("Connected"),
     "connecting": MessageLookupByLibrary.simpleMessage("Connecting…"),
     "connection": MessageLookupByLibrary.simpleMessage("Connection"),
+    "connectionClosed": MessageLookupByLibrary.simpleMessage("Closed"),
     "connectionStats": MessageLookupByLibrary.simpleMessage("Connection stats"),
     "connectionStatsDesc": MessageLookupByLibrary.simpleMessage(
       "Live connections, recent requests and DNS queries",
     ),
     "connections": MessageLookupByLibrary.simpleMessage("Connections"),
+    "connectionsActive": MessageLookupByLibrary.simpleMessage("Active"),
+    "connectionsAll": MessageLookupByLibrary.simpleMessage("All"),
+    "connectionsFailed": MessageLookupByLibrary.simpleMessage("Failed"),
     "connectivity": MessageLookupByLibrary.simpleMessage("Connectivity: "),
     "content": MessageLookupByLibrary.simpleMessage("Content"),
     "contentNotEmpty": MessageLookupByLibrary.simpleMessage(
@@ -1604,6 +1608,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "redirPort": MessageLookupByLibrary.simpleMessage("Redir port"),
     "redo": MessageLookupByLibrary.simpleMessage("Redo"),
     "regex": MessageLookupByLibrary.simpleMessage("Regex"),
+    "relatedConnections": MessageLookupByLibrary.simpleMessage(
+      "Related connections",
+    ),
     "releaseMemory": MessageLookupByLibrary.simpleMessage("Release memory"),
     "releaseMemoryFailed": MessageLookupByLibrary.simpleMessage(
       "Failed to release memory",
@@ -2135,11 +2142,22 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "The update was signed with a different key than the installed app.",
     ),
+    "updateChannel": MessageLookupByLibrary.simpleMessage("Update channel"),
+    "updateChannelPrerelease": MessageLookupByLibrary.simpleMessage(
+      "Prerelease",
+    ),
+    "updateChannelStable": MessageLookupByLibrary.simpleMessage("Stable"),
     "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
       "Continue in background",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",
+    ),
+    "updateInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "The update could not be installed. You can download it from the release page instead.",
+    ),
+    "updateOpenReleasePage": MessageLookupByLibrary.simpleMessage(
+      "Open release page",
     ),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",

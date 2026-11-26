@@ -120,6 +120,8 @@ enum DelayTestPhase { queued, running }
 
 enum Mode { rule, global, direct }
 
+enum UpdateChannel { stable, prerelease }
+
 enum ViewMode { mobile, laptop, desktop }
 
 enum LogLevel { debug, info, warning, error, silent }

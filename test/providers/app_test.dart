@@ -261,7 +261,7 @@ void main() {
     });
 
     test('Requests.addRequest reaches listeners', () {
-      container.read(requestsProvider.notifier).value = FixedList(3);
+      container.read(requestsProvider.notifier).value = ConnectionLog(3);
       var notifications = 0;
       final subscription = container.listen(
         requestsProvider.select((state) => state.revision),
@@ -297,7 +297,7 @@ void main() {
         rulePayload: 'example.com',
       );
       final notifier = container.read(requestsProvider.notifier);
-      notifier.value = FixedList(3);
+      notifier.value = ConnectionLog(3);
       notifier.addRequest(request('a'));
       notifier.addRequest(request('b'));
       var notifications = 0;

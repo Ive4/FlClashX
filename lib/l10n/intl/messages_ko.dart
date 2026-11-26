@@ -532,11 +532,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "connected": MessageLookupByLibrary.simpleMessage("연결됨"),
     "connecting": MessageLookupByLibrary.simpleMessage("연결 중…"),
     "connection": MessageLookupByLibrary.simpleMessage("연결"),
+    "connectionClosed": MessageLookupByLibrary.simpleMessage("종료됨"),
     "connectionStats": MessageLookupByLibrary.simpleMessage("연결 통계"),
     "connectionStatsDesc": MessageLookupByLibrary.simpleMessage(
       "실시간 연결, 최근 요청, DNS 쿼리",
     ),
     "connections": MessageLookupByLibrary.simpleMessage("연결"),
+    "connectionsActive": MessageLookupByLibrary.simpleMessage("활성"),
+    "connectionsAll": MessageLookupByLibrary.simpleMessage("전체"),
+    "connectionsFailed": MessageLookupByLibrary.simpleMessage("실패"),
     "connectivity": MessageLookupByLibrary.simpleMessage("연결 상태: "),
     "content": MessageLookupByLibrary.simpleMessage("내용"),
     "contentNotEmpty": MessageLookupByLibrary.simpleMessage("내용을 입력하세요"),
@@ -1371,6 +1375,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "redirPort": MessageLookupByLibrary.simpleMessage("Redir 포트"),
     "redo": MessageLookupByLibrary.simpleMessage("다시 실행"),
     "regex": MessageLookupByLibrary.simpleMessage("정규식"),
+    "relatedConnections": MessageLookupByLibrary.simpleMessage("관련 연결"),
     "releaseMemory": MessageLookupByLibrary.simpleMessage("메모리 해제"),
     "releaseMemoryFailed": MessageLookupByLibrary.simpleMessage(
       "메모리를 해제하지 못했습니다",
@@ -1826,12 +1831,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "업데이트의 서명 키가 설치된 앱의 서명 키와 다릅니다.",
     ),
+    "updateChannel": MessageLookupByLibrary.simpleMessage("업데이트 채널"),
+    "updateChannelPrerelease": MessageLookupByLibrary.simpleMessage("프리릴리스"),
+    "updateChannelStable": MessageLookupByLibrary.simpleMessage("정식 버전"),
     "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
       "백그라운드에서 계속",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",
     ),
+    "updateInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "업데이트를 설치할 수 없습니다. 릴리스 페이지에서 직접 다운로드할 수 있습니다.",
+    ),
+    "updateOpenReleasePage": MessageLookupByLibrary.simpleMessage("릴리스 페이지 열기"),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
     ),

@@ -23,6 +23,7 @@ final class FakeDesktopCoreTransport implements DesktopCoreTransport {
   TransportConnected? _connection;
   TransportFailed? _failure;
   Object? closeError;
+  bool hangOpen = false;
   Future<void>? _closeOperation;
   final Completer<void> _closed = Completer<void>();
   int closeCount = 0;
@@ -60,6 +61,9 @@ final class FakeDesktopCoreTransport implements DesktopCoreTransport {
       return;
     }
     state = DesktopTransportState.starting;
+    if (hangOpen) {
+      return Completer<void>().future;
+    }
     final event = await events.firstWhere(
       (event) => event is TransportReady || event is TransportFailed,
     );

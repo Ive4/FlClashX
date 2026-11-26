@@ -52,40 +52,25 @@ class Logs extends _$Logs with AutoDisposeNotifierMixin {
 @Riverpod(keepAlive: true)
 class Requests extends _$Requests with AutoDisposeNotifierMixin {
   @override
-  FixedList<TrackerInfo> build() {
-    return FixedList(maxRequestsLength);
+  ConnectionLog build() => ConnectionLog(maxRequestsLength);
+
+  void addRequest(TrackerInfo value) => _apply((log) => log.open([value]));
+
+  void updateTraffic(Map<String, RequestTraffic> traffic) =>
+      _apply((log) => log.updateTraffic(traffic));
+
+  void close(Iterable<String> ids) =>
+      _apply((log) => log.close(ids, DateTime.now()));
+
+  void sync(List<TrackerInfo> active, DateTime requestedAt, Object lineage) {
+    if (!ref.mounted || !identical(state.lineage, lineage)) return;
+    _apply((log) => log.sync(active, requestedAt));
   }
 
-  void addRequest(TrackerInfo value) {
-    if (!ref.mounted) {
-      return;
-    }
-    this.value = state.append(value);
-  }
-
-  void updateTraffic(Map<String, RequestTraffic> traffic) {
-    if (!ref.mounted) {
-      return;
-    }
-    final pending = Map.of(traffic);
-    final updated = <int, TrackerInfo>{};
-    for (
-      var index = state.length - 1;
-      index >= 0 && pending.isNotEmpty;
-      index--
-    ) {
-      final request = state[index];
-      final item = pending.remove(request.id);
-      if (item != null) {
-        updated[index] = request.copyWith(
-          upload: item.upload,
-          download: item.download,
-        );
-      }
-    }
-    if (updated.isNotEmpty) {
-      value = state.replace(updated);
-    }
+  void _apply(ConnectionLog Function(ConnectionLog) change) {
+    if (!ref.mounted) return;
+    final next = change(state);
+    if (!identical(next, state)) value = next;
   }
 }
 

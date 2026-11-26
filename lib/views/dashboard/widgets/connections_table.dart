@@ -129,8 +129,11 @@ mixin ConnectionsPolling<T extends ConsumerStatefulWidget>
     }
     try {
       if (pollsConnections) {
+        final lineage = ref.read(requestsProvider).lineage;
+        final requestedAt = DateTime.now();
         final (:next, :tcp) = await _core.getConnectionsWith(_newestFirst);
         if (!isCurrent()) return;
+        ref.read(requestsProvider.notifier).sync(next, requestedAt, lineage);
         final sampledAt = DateTime.now();
         connectionCount.value = next.length;
         updateWhenRouteSettled(

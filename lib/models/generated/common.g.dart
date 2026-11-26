@@ -79,6 +79,15 @@ const _$DnsModeEnumMap = {
   DnsMode.hosts: 'hosts',
 };
 
+_RequestFailure _$RequestFailureFromJson(Map<String, dynamic> json) =>
+    _RequestFailure(
+      kind: json['kind'] as String? ?? 'other',
+      message: json['message'] as String? ?? '',
+    );
+
+Map<String, dynamic> _$RequestFailureToJson(_RequestFailure instance) =>
+    <String, dynamic>{'kind': instance.kind, 'message': instance.message};
+
 _TrackerInfo _$TrackerInfoFromJson(Map<String, dynamic> json) => _TrackerInfo(
   id: json['id'] as String,
   upload: (json['upload'] as num?)?.toInt() ?? 0,
@@ -90,6 +99,17 @@ _TrackerInfo _$TrackerInfoFromJson(Map<String, dynamic> json) => _TrackerInfo(
   rulePayload: json['rulePayload'] as String,
   downloadSpeed: (json['downloadSpeed'] as num?)?.toInt(),
   uploadSpeed: (json['uploadSpeed'] as num?)?.toInt(),
+  closedAt: json['closedAt'] == null
+      ? null
+      : DateTime.parse(json['closedAt'] as String),
+  failure: json['failure'] == null
+      ? null
+      : RequestFailure.fromJson(json['failure'] as Map<String, dynamic>),
+  dnsQueries:
+      (json['dnsQueries'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$TrackerInfoToJson(_TrackerInfo instance) =>
@@ -104,6 +124,9 @@ Map<String, dynamic> _$TrackerInfoToJson(_TrackerInfo instance) =>
       'rulePayload': instance.rulePayload,
       'downloadSpeed': instance.downloadSpeed,
       'uploadSpeed': instance.uploadSpeed,
+      'closedAt': instance.closedAt?.toIso8601String(),
+      'failure': instance.failure,
+      'dnsQueries': instance.dnsQueries,
     };
 
 _Log _$LogFromJson(Map<String, dynamic> json) => _Log(
@@ -128,6 +151,7 @@ const _$LogLevelEnumMap = {
 };
 
 _DnsQuery _$DnsQueryFromJson(Map<String, dynamic> json) => _DnsQuery(
+  id: (json['id'] as num?)?.toInt() ?? 0,
   domain: json['domain'] as String,
   type: json['type'] as String,
   initiator: $enumDecodeNullable(
@@ -147,6 +171,7 @@ _DnsQuery _$DnsQueryFromJson(Map<String, dynamic> json) => _DnsQuery(
 );
 
 Map<String, dynamic> _$DnsQueryToJson(_DnsQuery instance) => <String, dynamic>{
+  'id': instance.id,
   'domain': instance.domain,
   'type': instance.type,
   'initiator': _$DnsQueryInitiatorEnumMap[instance.initiator],

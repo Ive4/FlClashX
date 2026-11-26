@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fl_clash/core/desktop/model.dart';
 import 'package:fl_clash/core/lib.dart';
 import 'package:fl_clash/core/method.dart';
@@ -7,6 +9,7 @@ import 'package:fl_clash/plugins/service.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/state.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +23,11 @@ class _FakeService implements Service {
 
   String initError = '';
   String syncError = '';
+  Exception? syncException;
+  Completer<void>? initGate;
+  Completer<void>? syncGate;
+  final initStarted = Completer<void>();
+  final syncStarted = Completer<void>();
   bool shutdownResult = true;
   bool startResult = true;
   bool stopResult = true;
@@ -30,12 +38,19 @@ class _FakeService implements Service {
   @override
   Future<String> init() async {
     calls.add('init');
+    if (!initStarted.isCompleted) initStarted.complete();
+    await initGate?.future;
     return initError;
   }
 
   @override
   Future<String> syncState(SharedState state) async {
     calls.add('syncState');
+    if (!syncStarted.isCompleted) syncStarted.complete();
+    await syncGate?.future;
+    if (syncException case final exception?) {
+      throw exception;
+    }
     return syncError;
   }
 
@@ -153,6 +168,57 @@ void main() {
       expect(retry.outcome, CoreLifecycleOutcome.applied);
       expect(service.calls, ['init', 'syncState']);
     });
+  });
+
+  test(
+    'a thrown sync error closes the gate and permits another start',
+    () async {
+      service.syncException = PlatformException(code: 'sync');
+
+      await expectLater(lib.start(), throwsA(isA<PlatformException>()));
+      expect(service.calls, ['init', 'syncState', 'shutdown']);
+
+      service.syncException = null;
+      service.calls.clear();
+      expect((await lib.start()).outcome, CoreLifecycleOutcome.applied);
+      expect(service.calls, ['init', 'syncState']);
+    },
+  );
+
+  test('a stop during initialization waits for shutdown', () async {
+    final gate = service.initGate = Completer<void>();
+    final start = lib.start();
+    await service.initStarted.future;
+    final stop = lib.stop();
+    gate.complete();
+
+    expect((await start).outcome, CoreLifecycleOutcome.superseded);
+    await stop;
+    expect(service.calls, ['init', 'shutdown']);
+  });
+
+  test('a close during sync waits for shutdown', () async {
+    final gate = service.syncGate = Completer<void>();
+    final start = lib.start();
+    await service.syncStarted.future;
+    final close = lib.close();
+    expect(service.calls, ['init', 'syncState']);
+    gate.complete();
+
+    expect((await start).outcome, CoreLifecycleOutcome.superseded);
+    expect((await close).outcome, CoreLifecycleOutcome.applied);
+    expect(service.calls, ['init', 'syncState', 'shutdown']);
+  });
+
+  test('a stop issued after restart leaves the session stopped', () async {
+    await lib.start();
+    service.calls.clear();
+    final restart = lib.restart();
+    final stop = lib.stop();
+
+    expect((await restart).outcome, CoreLifecycleOutcome.superseded);
+    await stop;
+    expect(service.calls, ['shutdown']);
   });
 
   group('stop', () {

@@ -10,10 +10,12 @@ class LightweightManager extends ConsumerStatefulWidget {
   const LightweightManager({
     super.key,
     required this.isDesktop,
+    this.immediatelyOnClose = false,
     required this.child,
   });
 
   final bool isDesktop;
+  final bool immediatelyOnClose;
   final Widget child;
 
   @override
@@ -27,6 +29,7 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
   int _revision = 0;
   int _windowRevision = 0;
   bool _windowVisible = true;
+  bool _closedMainWindow = false;
 
   bool get _visible =>
       widget.isDesktop ? _windowVisible : ref.read(appVisibleProvider);
@@ -55,9 +58,10 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
     if (_entering || _visible || minutes < 0) {
       return;
     }
-    final delay = retry && minutes == 0
+    final effectiveMinutes = _closedMainWindow ? 0 : minutes;
+    final delay = retry && effectiveMinutes == 0
         ? const Duration(seconds: 5)
-        : Duration(minutes: minutes);
+        : Duration(minutes: effectiveMinutes);
     _timer = Timer(delay, _enter);
   }
 
@@ -110,7 +114,17 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
   }
 
   @override
+  void onWindowClose() {
+    if (widget.immediatelyOnClose &&
+        ref.read(appSettingProvider).minimizeOnExit) {
+      _closedMainWindow = true;
+      if (!_windowVisible) _schedule();
+    }
+  }
+
+  @override
   void onWindowShow() {
+    _closedMainWindow = false;
     _setWindowVisible(true);
     unawaited(_refreshWindowVisibility());
   }
@@ -123,8 +137,7 @@ class _LightweightManagerState extends ConsumerState<LightweightManager>
 
   @override
   void onWindowRestore() {
-    _setWindowVisible(true);
-    unawaited(_refreshWindowVisibility());
+    onWindowShow();
   }
 
   @override

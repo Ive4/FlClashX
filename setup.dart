@@ -135,6 +135,8 @@ Map<String, String> createBuildEnvironment(String env) {
     if (Platform.environment['FLCLASHX_UPDATE_REPOSITORY']
         case final String repository)
       'FLCLASHX_UPDATE_REPOSITORY': repository,
+    if (Platform.environment['FLCLASHX_UPDATE_TAG'] case final String tag)
+      'FLCLASHX_UPDATE_TAG': tag,
   };
 }
 

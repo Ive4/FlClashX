@@ -31,17 +31,17 @@ class Navigation implements NavigationPort {
             : [],
       ),
       NavigationItem(
-        glyph: AppGlyphs.profiles,
-        label: PageLabel.profiles,
-        builder: (_) =>
-            const ProfilesView(key: GlobalObjectKey(PageLabel.profiles)),
-      ),
-      NavigationItem(
         glyph: AppGlyphs.requests,
         label: PageLabel.requests,
         builder: (_) =>
             const RequestsView(key: GlobalObjectKey(PageLabel.requests)),
         modes: [NavigationItemMode.desktop, NavigationItemMode.moreFull],
+      ),
+      NavigationItem(
+        glyph: AppGlyphs.profiles,
+        label: PageLabel.profiles,
+        builder: (_) =>
+            const ProfilesView(key: GlobalObjectKey(PageLabel.profiles)),
       ),
       NavigationItem(
         glyph: AppGlyphs.dns,
@@ -61,9 +61,7 @@ class Navigation implements NavigationPort {
         glyph: AppGlyphs.logs,
         label: PageLabel.logs,
         builder: (_) => const LogsView(key: GlobalObjectKey(PageLabel.logs)),
-        modes: openLogs
-            ? [NavigationItemMode.desktop, NavigationItemMode.more]
-            : [],
+        modes: openLogs ? [NavigationItemMode.more] : [],
       ),
       if (system.isWindows || system.isMacOS)
         NavigationItem(

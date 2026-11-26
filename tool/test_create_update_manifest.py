@@ -27,6 +27,23 @@ class ManifestTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             create_manifest("chen08209/FlClash", "v0.9.2", "0.9.2+1", {})
 
+    def test_macos_assets_are_bound_to_their_architecture(self):
+        with tempfile.TemporaryDirectory() as folder:
+            image = Path(folder) / "FlClashX-0.9.5-macos-arm64.dmg"
+            image.write_bytes(b"DMG fixture")
+            result = create_manifest(
+                "Ive4/FlClashX", "v0.9.5", "0.9.5+2026112602",
+                {"macos-arm64": image},
+            )
+            asset = result["assets"]["macos-arm64"]
+            self.assertTrue(asset["url"].endswith(f"/{image.name}"))
+            self.assertEqual(asset["sha256"], hashlib.sha256(b"DMG fixture").hexdigest())
+            with self.assertRaises(ValueError):
+                create_manifest(
+                    "Ive4/FlClashX", "v0.9.5", "0.9.5+2026112602",
+                    {"macos-amd64": image},
+                )
+
     def test_android_and_windows_share_schema_one(self):
         with tempfile.TemporaryDirectory() as folder:
             android = Path(folder) / "FlClashX-0.9.3-android-arm64-v8a.apk"

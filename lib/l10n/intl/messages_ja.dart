@@ -545,11 +545,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "connected": MessageLookupByLibrary.simpleMessage("接続済み"),
     "connecting": MessageLookupByLibrary.simpleMessage("接続中…"),
     "connection": MessageLookupByLibrary.simpleMessage("接続"),
+    "connectionClosed": MessageLookupByLibrary.simpleMessage("終了済み"),
     "connectionStats": MessageLookupByLibrary.simpleMessage("接続統計"),
     "connectionStatsDesc": MessageLookupByLibrary.simpleMessage(
       "ライブ接続、最近のリクエスト、DNS クエリ",
     ),
     "connections": MessageLookupByLibrary.simpleMessage("接続"),
+    "connectionsActive": MessageLookupByLibrary.simpleMessage("アクティブ"),
+    "connectionsAll": MessageLookupByLibrary.simpleMessage("すべて"),
+    "connectionsFailed": MessageLookupByLibrary.simpleMessage("失敗"),
     "connectivity": MessageLookupByLibrary.simpleMessage("接続状態："),
     "content": MessageLookupByLibrary.simpleMessage("内容"),
     "contentNotEmpty": MessageLookupByLibrary.simpleMessage("内容は空にできません"),
@@ -1394,6 +1398,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "redirPort": MessageLookupByLibrary.simpleMessage("Redirポート"),
     "redo": MessageLookupByLibrary.simpleMessage("やり直す"),
     "regex": MessageLookupByLibrary.simpleMessage("正規表現"),
+    "relatedConnections": MessageLookupByLibrary.simpleMessage("関連する接続"),
     "releaseMemory": MessageLookupByLibrary.simpleMessage("メモリを解放"),
     "releaseMemoryFailed": MessageLookupByLibrary.simpleMessage(
       "メモリの解放に失敗しました",
@@ -1853,12 +1858,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "更新の署名鍵がインストール済みアプリの署名鍵と異なります。",
     ),
+    "updateChannel": MessageLookupByLibrary.simpleMessage("アップデートチャンネル"),
+    "updateChannelPrerelease": MessageLookupByLibrary.simpleMessage("プレリリース版"),
+    "updateChannelStable": MessageLookupByLibrary.simpleMessage("安定版"),
     "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
       "バックグラウンドで続行",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",
     ),
+    "updateInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "更新をインストールできませんでした。リリースページからダウンロードできます。",
+    ),
+    "updateOpenReleasePage": MessageLookupByLibrary.simpleMessage("リリースページを開く"),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",
     ),

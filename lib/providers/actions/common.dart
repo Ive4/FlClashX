@@ -121,7 +121,9 @@ class CommonAction extends _$CommonAction {
     );
     final AppUpdateRelease? res;
     try {
-      res = await appUpdater.check();
+      res = await appUpdater.check(
+        channel: ref.read(appSettingProvider).updateChannel,
+      );
     } catch (error) {
       if (isUser && ref.mounted) {
         dialogs.showNotifier(
@@ -145,7 +147,7 @@ class CommonAction extends _$CommonAction {
 
   void cancelUpdate() => _updateCancel?.cancel();
 
-  Future<File?> _downloadUpdate(
+  Future<({File file, String? staged})?> _downloadUpdate(
     BuildContext context,
     AppUpdateRelease release,
     AppUpdateActivityNotifier activity,
@@ -166,15 +168,28 @@ class CommonAction extends _$CommonAction {
       barrierDismissible: false,
       builder: (_) => const AppUpdateDialog(),
     );
+    File? file;
+    String? staged;
     try {
       report(0);
       unawaited(navigator.push(route));
-      final file = await appUpdater.download(release, cancel, report);
+      file = await appUpdater.download(release, cancel, report);
+      if (release.isMacOS) {
+        final macos = appUpdater.macos;
+        if (macos == null) {
+          throw UnsupportedError(currentAppLocalizations.updateUnavailable);
+        }
+        staged = await macos.stage(file.path, file.parent.path);
+      }
       if (cancel.isCancelled || !ref.mounted) {
-        await discardDownloadedUpdate(file);
+        await discardDownloadedUpdate(file, staged: staged);
         return null;
       }
-      return file;
+      return (file: file, staged: staged);
+    } catch (_) {
+      if (file != null) await discardDownloadedUpdate(file, staged: staged);
+      if (cancel.isCancelled) throw cancel.cancelError!;
+      rethrow;
     } finally {
       _updateCancel = null;
       if (route.isCurrent) {
@@ -183,6 +198,38 @@ class CommonAction extends _$CommonAction {
         navigator.removeRoute(route);
       }
     }
+  }
+
+  Future<void> reportMacosUpdateFailure() async {
+    if (!system.isMacOS) return;
+    try {
+      final failure = await takeMacosInstallFailure(
+        await appUpdater.macosFailureMarker,
+      );
+      if (failure == null || !ref.mounted) return;
+      commonPrint.log(
+        'Update install failed: ${failure.reason}',
+        logLevel: LogLevel.warning,
+      );
+      await _showMacosUpdateFailure(
+        Uri.https(
+          'github.com',
+          '/$updateRepository/releases/tag/${failure.tag}',
+        ),
+      );
+    } catch (error) {
+      commonPrint.log('Update failure report: ${compactError(error)}');
+    }
+  }
+
+  Future<void> _showMacosUpdateFailure(Uri releasePage) async {
+    final l = currentAppLocalizations;
+    final confirmed = await dialogs.showMessage(
+      title: l.checkUpdate,
+      message: TextSpan(text: l.updateInstallFailed),
+      confirmText: l.updateOpenReleasePage,
+    );
+    if (confirmed == true) await dialogs.openUrl(releasePage.toString());
   }
 
   TextSpan _releaseSpan(BuildContext context, String tagName, String? body) {
@@ -257,14 +304,20 @@ class CommonAction extends _$CommonAction {
         title: l.discoverNewVersion,
         message: TextSpan(
           children: [
-            _releaseSpan(context, 'v${data.version}', data.notes),
+            _releaseSpan(context, data.tag ?? 'v${data.version}', data.notes),
             TextSpan(
               text:
-                  '\n\n${data.isAndroid ? l.updateAndroidInstallNotice : l.updateRestartNotice}',
+                  '\n\n${!data.canInstall
+                      ? l.updateUnavailable
+                      : data.isAndroid
+                      ? l.updateAndroidInstallNotice
+                      : l.updateRestartNotice}',
             ),
           ],
         ),
-        confirmText: l.updateDownloadInstall,
+        confirmText: data.canInstall
+            ? l.updateDownloadInstall
+            : l.updateOpenReleasePage,
         cancelText: isUser ? null : l.noLongerRemind,
       );
       if (result != true) {
@@ -276,6 +329,10 @@ class CommonAction extends _$CommonAction {
         return;
       }
       if (!context.mounted) return;
+      if (!data.canInstall) {
+        await dialogs.openUrl(data.releasePage.toString());
+        return;
+      }
       final installer = await _downloadUpdate(context, data, activity);
       if (installer == null) return;
       activity.value = (
@@ -286,25 +343,47 @@ class CommonAction extends _$CommonAction {
       try {
         await preferences.saveConfig(ref.read(configProvider));
       } catch (_) {
-        await discardDownloadedUpdate(installer);
+        await discardDownloadedUpdate(installer.file, staged: installer.staged);
         rethrow;
       }
       if (data.isAndroid) {
-        await appUpdater.installAndroid(data, installer);
+        await appUpdater.installAndroid(data, installer.file);
         return;
       }
-      await preferences.setUpdateResume(ref.read(isStartProvider));
       try {
-        await appUpdater.scheduleInstall(installer);
+        await preferences.setUpdateResume(ref.read(isStartProvider));
+        if (installer.staged case final staged?) {
+          final started = await appUpdater.macos!.install(
+            staged: staged,
+            tag: data.tag ?? 'v${data.version}',
+            marker: await appUpdater.macosFailureMarker,
+          );
+          if (!started) {
+            await preferences.clearUpdateResume();
+            await discardDownloadedUpdate(installer.file, staged: staged);
+            return;
+          }
+        } else {
+          await appUpdater.scheduleInstall(installer.file);
+        }
       } catch (_) {
         await preferences.clearUpdateResume();
+        await discardDownloadedUpdate(installer.file, staged: installer.staged);
         rethrow;
       }
       await ref.read(systemActionProvider.notifier).handleExit();
     } catch (error) {
       if (ref.mounted &&
           (error is! DioException || !CancelToken.isCancel(error))) {
-        dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+        if (data != null && data.isMacOS) {
+          commonPrint.log(
+            'Update install failed: ${compactError(error)}',
+            logLevel: LogLevel.warning,
+          );
+          await _showMacosUpdateFailure(data.releasePage);
+        } else {
+          dialogs.showNotifier(error.toString(), level: MessageLevel.error);
+        }
       }
     } finally {
       _isInstallingUpdate = false;

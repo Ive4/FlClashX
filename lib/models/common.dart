@@ -107,6 +107,17 @@ abstract class Metadata with _$Metadata {
 }
 
 @freezed
+abstract class RequestFailure with _$RequestFailure {
+  const factory RequestFailure({
+    @Default('other') String kind,
+    @Default('') String message,
+  }) = _RequestFailure;
+
+  factory RequestFailure.fromJson(Map<String, Object?> json) =>
+      _$RequestFailureFromJson(json);
+}
+
+@freezed
 abstract class TrackerInfo with _$TrackerInfo {
   const factory TrackerInfo({
     required String id,
@@ -119,6 +130,9 @@ abstract class TrackerInfo with _$TrackerInfo {
     required String rulePayload,
     int? downloadSpeed,
     int? uploadSpeed,
+    DateTime? closedAt,
+    RequestFailure? failure,
+    @Default([]) List<int> dnsQueries,
   }) = _TrackerInfo;
 
   factory TrackerInfo.fromJson(Map<String, Object?> json) =>
@@ -269,6 +283,7 @@ extension TrackerInfosStateExt on TrackerInfosState {
 @freezed
 abstract class DnsQuery with _$DnsQuery {
   const factory DnsQuery({
+    @Default(0) int id,
     required String domain,
     required String type,
     @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)

@@ -1,6 +1,7 @@
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/method.dart';
 import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/features/connection/tracker_info_item.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
@@ -47,8 +48,9 @@ class DnsQueryListController extends ValueNotifier<DnsQueriesState> {
 
 class DnsQueriesView extends ConsumerStatefulWidget {
   final ScrollController? scrollController;
+  final VoidCallback? onShowRequests;
 
-  const DnsQueriesView({super.key, this.scrollController});
+  const DnsQueriesView({super.key, this.scrollController, this.onShowRequests});
 
   @override
   ConsumerState<DnsQueriesView> createState() => _DnsQueriesViewState();
@@ -124,6 +126,13 @@ class _DnsQueriesViewState extends ConsumerState<DnsQueriesView>
     final appLocalizations = context.appLocalizations;
     return CommonScaffold(
       title: PageLabel.dns.label,
+      titleMenuItems: [
+        if (widget.onShowRequests case final showRequests?)
+          CommonPopupMenuItem(
+            label: appLocalizations.requests,
+            onPressed: showRequests,
+          ),
+      ],
       searchState: AppBarSearchState(onSearch: _listController.search),
       onKeywordsUpdate: _listController.updateKeywords,
       iconActions: [
@@ -213,7 +222,7 @@ class _DnsQueriesViewState extends ConsumerState<DnsQueriesView>
   }
 }
 
-void _showDnsQueryDetail(BuildContext context, DnsQuery dnsQuery) {
+void showDnsQueryDetail(BuildContext context, DnsQuery dnsQuery) {
   showInSheet<void>(
     context,
     builder: (_) {
@@ -338,7 +347,7 @@ class _DnsQueryTableRow extends StatelessWidget {
     return RecordTableRow(
       table: table,
       striped: striped,
-      onTap: () => _showDnsQueryDetail(context, dnsQuery),
+      onTap: () => showDnsQueryDetail(context, dnsQuery),
       cells: table.cellsOf(context, dnsQuery),
     );
   }
@@ -356,7 +365,7 @@ class DnsQueryItem extends StatelessWidget {
     final tone = dnsQuery.isFailed ? RecordTone.error : RecordTone.neutral;
     final summary = dnsQuery.summary;
     return RecordListItem(
-      onTap: () => _showDnsQueryDetail(context, dnsQuery),
+      onTap: () => showDnsQueryDetail(context, dnsQuery),
       header: RecordHeader(
         trailing: Text('${dnsQuery.delay} ms'),
         children: [
@@ -404,14 +413,22 @@ class DnsQueryItem extends StatelessWidget {
   }
 }
 
-class DnsQueryDetailView extends StatelessWidget {
+class DnsQueryDetailView extends ConsumerWidget {
   final DnsQuery dnsQuery;
 
   const DnsQueryDetailView({super.key, required this.dnsQuery});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final appLocalizations = context.appLocalizations;
+    final connections = dnsQuery.id == 0
+        ? const <TrackerInfo>[]
+        : ref
+              .read(requestsProvider)
+              .list
+              .reversed
+              .where((request) => request.dnsQueries.contains(dnsQuery.id))
+              .toList();
     final entries = [
       (appLocalizations.time, dnsQuery.time.showFull),
       (appLocalizations.domain, dnsQuery.domain),
@@ -449,6 +466,21 @@ class DnsQueryDetailView extends StatelessWidget {
             items: [
               for (final answer in dnsQuery.answers)
                 DetailRow(title: answer, copyText: answer),
+            ],
+          ),
+        if (connections.isNotEmpty)
+          generateSection(
+            title: appLocalizations.relatedConnections,
+            items: [
+              for (final request in connections)
+                DecorationListItem(
+                  title: Text(request.title),
+                  onPressed: () => showTrackerInfoDetail(
+                    context,
+                    request,
+                    appLocalizations.details(appLocalizations.connection),
+                  ),
+                ),
             ],
           ),
       ],

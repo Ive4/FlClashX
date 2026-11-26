@@ -34,12 +34,12 @@ class OutboundModeCard extends ConsumerWidget {
     final tone = DashboardColors.of(context).tone;
     final style = AppTextStyle.footnote.of(context, emphasized: true);
     return DashboardCard(
-      semanticLabel: context.appLocalizations.outboundMode,
+      semanticLabel: context.appLocalizations.outbound,
       child: Column(
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.split,
-            title: context.appLocalizations.outboundMode,
+            title: context.appLocalizations.outbound,
           ),
           const SizedBox(height: 12),
           DashboardConnectedGroup(
@@ -102,7 +102,7 @@ class OutboundModeBar extends ConsumerWidget {
     final outer = dashboardCardRadius(density) - _inset;
     final style = AppTextStyle.subheadline.of(context, emphasized: true);
     return DashboardCard(
-      semanticLabel: appLocalizations.outboundMode,
+      semanticLabel: appLocalizations.outbound,
       padding: EdgeInsetsDirectional.fromSTEB(
         dashboardCardPadding(density).left,
         _inset,
@@ -121,7 +121,7 @@ class OutboundModeBar extends ConsumerWidget {
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: constraints.maxWidth / 4),
               child: Text(
-                appLocalizations.outboundMode,
+                appLocalizations.outbound,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: DashboardText.cardTitle(context),

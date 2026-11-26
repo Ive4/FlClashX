@@ -166,6 +166,13 @@ class CoreMethodException implements Exception {
   String toString() => 'CoreMethodException($code, $message, $details)';
 }
 
+bool isUnansweredCoreError(Object? error) => switch (error) {
+  TimeoutException() => true,
+  CoreMethodException(:final code, :final isCoreUnavailable) =>
+    isCoreUnavailable || code == 'no_response',
+  _ => false,
+};
+
 LogLevel coreFailureLogLevel(Object? error) {
   if (error is TimeoutException) {
     return LogLevel.debug;

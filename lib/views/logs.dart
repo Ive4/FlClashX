@@ -53,6 +53,7 @@ class LogsView extends ConsumerStatefulWidget {
 class _LogsViewState extends ConsumerState<LogsView>
     with RouteMotionHoldMixin<LogsView> {
   final _listController = LogListController();
+  final _levels = <LogLevel>{};
   late final ScrollController _scrollController;
   late final _physics = FollowEndScrollPhysics(
     isFollowing: () => _listController.value.autoScrollToEnd,
@@ -79,6 +80,37 @@ class _LogsViewState extends ConsumerState<LogsView>
         onPressed: _handleExport,
       ),
     ];
+  }
+
+  Widget _buildFilterAction() {
+    final labels = context.appLocalizations;
+    return CommonPopupBox(
+      targetBuilder: (open) => AppBarActionButton(
+        data: IconButtonData(
+          glyph: AppGlyphs.filter,
+          tooltip: labels.filter,
+          isSelected: _levels.isNotEmpty,
+          onPressed: open,
+        ),
+      ),
+      popupBuilder: (_) => CommonPopupMenu(
+        items: [
+          for (final level in LogLevel.values)
+            if (level != LogLevel.silent)
+              CommonPopupMenuItem(
+                label: level.name,
+                checked: _levels.contains(level),
+                onPressed: () => setState(() => _levels.addOrRemove(level)),
+              ),
+          if (_levels.isNotEmpty)
+            CommonPopupMenuItem(
+              label: labels.reset,
+              section: const CommonPopupMenuSection(),
+              onPressed: () => setState(_levels.clear),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -117,18 +149,43 @@ class _LogsViewState extends ConsumerState<LogsView>
   Widget build(BuildContext context) {
     final appLocalizations = context.appLocalizations;
     final selectable = !ViewScope.isMobileOf(context);
+    final logLevel = ref.watch(
+      patchClashConfigProvider.select((state) => state.logLevel),
+    );
     return CommonScaffold(
+      actions: [_buildFilterAction()],
       iconActions: _buildActions(),
+      menuItems: [
+        CommonPopupMenuItem(
+          glyph: AppGlyphs.sliders,
+          label: appLocalizations.logLevel,
+          subtitle: logLevel.name,
+          subItems: [
+            for (final level in LogLevel.values)
+              CommonPopupMenuItem(
+                label: level.name,
+                checked: level == logLevel,
+                onPressed: () => ref
+                    .read(patchClashConfigProvider.notifier)
+                    .update((state) => state.copyWith(logLevel: level)),
+              ),
+          ],
+        ),
+      ],
       onKeywordsUpdate: _listController.updateKeywords,
       searchState: AppBarSearchState(onSearch: _listController.search),
       title: appLocalizations.logs,
       body: ValueListenableBuilder<LogsState>(
         valueListenable: _listController,
         builder: (context, state, _) {
-          final logs = state.list;
+          final logs = _levels.isEmpty
+              ? state.list
+              : state.list
+                    .where((log) => _levels.contains(log.logLevel))
+                    .toList();
           return NullStatusSwitcher(
             isEmpty: logs.isEmpty,
-            isSearching: state.isSearching,
+            isSearching: state.isSearching || _levels.isNotEmpty,
             nullStatus: NullStatus(
               illustration: NullStatusIllustration.logs,
               label: appLocalizations.nullTip(appLocalizations.logs),

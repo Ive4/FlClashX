@@ -83,15 +83,19 @@ class TestSetupAction extends SetupAction {
   int trafficResets = 0;
   int applyProfileCalls = 0;
   final List<bool> appliedForce = [];
+  Completer<void>? profileGate;
   bool blockCoreCalls = false;
   Error? coreRunningError;
+  Exception? coreRunningException;
   final Set<bool> unansweredCoreCalls = {};
   int authorizeCalls = 0;
   AuthorizeCode authorizeResult = AuthorizeCode.none;
   DateTime? serviceStart;
+  Completer<DateTime?>? serviceRead;
 
   @override
-  Future<DateTime?> serviceStartTime() async => serviceStart;
+  Future<DateTime?> serviceStartTime() =>
+      serviceRead?.future ?? Future.value(serviceStart);
 
   @override
   Duration get minApplyDebounce => const Duration(milliseconds: 100);
@@ -114,6 +118,9 @@ class TestSetupAction extends SetupAction {
     if (error != null) {
       throw error;
     }
+    if (coreRunningException case final exception?) {
+      throw exception;
+    }
     return !unansweredCoreCalls.contains(running);
   }
 
@@ -128,6 +135,9 @@ class TestSetupAction extends SetupAction {
   }) async {
     applyProfileCalls++;
     appliedForce.add(force);
+    if (profileGate case final gate?) {
+      await gate.future;
+    }
     await preloadInvoke?.call();
     return true;
   }
@@ -167,7 +177,6 @@ void main() {
       ],
     );
     globalState.container = container;
-    globalState.needInitStatus = true;
     container.read(setupActionProvider.notifier);
   });
 
@@ -175,6 +184,7 @@ void main() {
     desktopBackground.resumeState = null;
     action.blockCoreCalls = false;
     action.coreRunningError = null;
+    action.coreRunningException = null;
     action.unansweredCoreCalls.clear();
     for (final gate in action.pendingCoreCalls) {
       if (!gate.isCompleted) {
@@ -183,7 +193,6 @@ void main() {
     }
     await container.read(setupActionProvider.notifier).setRunning(false);
     container.dispose();
-    globalState.needInitStatus = true;
   });
 
   void markInitialized() {
@@ -205,7 +214,6 @@ void main() {
 
       expect(action.coreRunningCalls, [true]);
       expect(action.applyProfileCalls, 1);
-      expect(globalState.needInitStatus, isFalse);
     });
 
     test('safe mode runs the profile but never touches the listener', () async {
@@ -312,6 +320,27 @@ void main() {
       expect(container.read(isStartProvider), isFalse);
       expect(container.read(runTimeProvider), isNull);
       expect(container.read(runningVpnOptionsProvider), isNull);
+      expect(action.trafficResets, 1);
+    });
+
+    test('a stop whose transport drops the response stays stopped', () async {
+      markInitialized();
+      final setup = container.read(setupActionProvider.notifier);
+      await setup.setRunning(true);
+      action.coreRunningException = const CoreMethodException(
+        code: 'transport_disconnected',
+        message: 'Core transport disconnected',
+      );
+
+      await expectLater(
+        setup.setRunning(false),
+        throwsA(isA<CoreMethodException>()),
+      );
+      setup.onCoreLost();
+
+      expect(container.read(isStartProvider), isFalse);
+      expect(container.read(runningVpnOptionsProvider), isNull);
+      expect(setup.wantsRunning, isFalse);
       expect(action.trafficResets, 1);
     });
 
@@ -705,7 +734,6 @@ void main() {
         expect(action.coreRunningCalls, isEmpty);
         expect(action.applyProfileCalls, 0);
         expect(container.read(runningVpnOptionsProvider), isNotNull);
-        expect(globalState.needInitStatus, isFalse);
         expect(desktopBackground.resumeState, isNull);
         expect(container.read(patchClashConfigProvider).mode, Mode.global);
         container.read(runTimeProvider.notifier).value = 0;
@@ -729,12 +757,33 @@ void main() {
     );
 
     test('is a no-op once the status has already been initialized', () async {
-      globalState.needInitStatus = false;
+      final setup = container.read(setupActionProvider.notifier);
+      await setup.setRunning(true, initialize: true);
+      await setup.initStatus();
 
-      await container.read(setupActionProvider.notifier).initStatus();
+      expect(action.coreRunningCalls, [true]);
+      expect(action.applyProfileCalls, 1);
+    });
 
-      expect(action.coreRunningCalls, isEmpty);
-      expect(action.applyProfileCalls, 0);
+    test('waits for a start requested while reading the service', () async {
+      await mockPreferences({});
+      final snapshot = action.serviceRead = Completer<DateTime?>();
+      final gate = action.profileGate = Completer<void>();
+      final setup = container.read(setupActionProvider.notifier);
+      var ready = false;
+      final initializing = setup.initStatus().then((_) => ready = true);
+      await pumpEventQueue();
+      final starting = setup.setRunning(true, initialize: true);
+      snapshot.complete(DateTime.now().subtract(const Duration(minutes: 1)));
+      await pumpEventQueue();
+      expect(action.applyProfileCalls, 1);
+      expect(ready, isFalse);
+
+      gate.complete();
+      await initializing;
+      expect(await starting, isTrue);
+      expect(action.appliedForce, [true]);
+      expect(container.read(isStartProvider), isTrue);
     });
 
     test('starts the core when autoRun is enabled', () async {
@@ -745,7 +794,6 @@ void main() {
       await container.read(setupActionProvider.notifier).initStatus();
 
       expect(action.coreRunningCalls, [true]);
-      expect(globalState.needInitStatus, isFalse);
     });
 
     test('only applies the profile when autoRun is disabled', () async {

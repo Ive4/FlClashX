@@ -24,14 +24,47 @@ List<RecordColumn<TrackerInfo>> trackerInfoColumns(
     if (!isLive)
       RecordColumn(
         TableColumn('time', appLocalizations.time, width: 80),
-        cell: (_, info) =>
-            RecordCellText(info.start.showTime.trim(), muted: true),
+        cell: (context, info) {
+          final status = info.connectionStatus;
+          final time = RecordCellText(info.start.showTime.trim(), muted: true);
+          if (status == ConnectionStatus.active) return time;
+          final colors = context.colorScheme;
+          return Row(
+            spacing: 4,
+            children: [
+              Tooltip(
+                message: connectionStatusLabel(context, status),
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: AppShape.circle,
+                    color: status == ConnectionStatus.failed
+                        ? colors.error
+                        : colors.outline,
+                  ),
+                  child: const SizedBox.square(dimension: 6),
+                ),
+              ),
+              Expanded(child: time),
+            ],
+          );
+        },
         sortKey: (info) => info.start,
         descendingFirst: true,
       ),
     RecordColumn(
       TableColumn('process', appLocalizations.process, width: wide ? 160 : 140),
-      cell: (_, info) => RecordCellText(info.progressText),
+      cell: (_, info) {
+        final icon = desktopTrackerIcon(info, 20);
+        final text = RecordCellText(info.progressText);
+        if (icon == null) return text;
+        return Row(
+          spacing: 6,
+          children: [
+            icon,
+            Expanded(child: text),
+          ],
+        );
+      },
       sortKey: (info) => info.progressText.toLowerCase(),
     ),
     RecordColumn(

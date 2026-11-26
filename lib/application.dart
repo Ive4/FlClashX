@@ -34,6 +34,7 @@ Widget buildManagerStack({
   final state = AppStateManager(
     child: LightweightManager(
       isDesktop: isDesktop,
+      immediatelyOnClose: isDesktop && system.isMacOS,
       child: CoreManager(
         child: ConnectivityManager(
           onConnectivityChanged: onConnectivityChanged,

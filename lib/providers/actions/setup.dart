@@ -41,6 +41,8 @@ class SetupAction extends _$SetupAction {
   final _setupScheduler = SerialTaskScheduler();
   final _listenerScheduler = SerialTaskScheduler();
   _RunRequest? _latestRunRequest;
+  Future<void>? _initialStatus;
+  Future<void>? _initialRun;
   DateTime? _startTime;
   var _resumeOnRestart = false;
   _SetupInputs? _appliedInputs;
@@ -88,7 +90,9 @@ class SetupAction extends _$SetupAction {
     ref.read(delayDataSourceProvider.notifier).value = {};
     final setupResult = applyProfile(force: true);
     ref.read(logsProvider.notifier).value = FixedList(maxLogsLength);
-    ref.read(requestsProvider.notifier).value = FixedList(maxRequestsLength);
+    ref.read(requestsProvider.notifier).value = ConnectionLog(
+      maxRequestsLength,
+    );
     ref.read(dnsQueriesProvider.notifier).value = FixedList(
       maxDnsQueriesLength,
     );
@@ -153,15 +157,34 @@ class SetupAction extends _$SetupAction {
   @protected
   Future<DateTime?> serviceStartTime() async => service?.getRunTime();
 
-  Future<void> initStatus() async {
-    if (!globalState.needInitStatus) {
-      return;
+  Future<void> initStatus() => _initialStatus ??= _initStatus();
+
+  Future<void> _initStatus() async {
+    if (_initialRun == null) {
+      await _restoreStatus();
     }
+    Future<void>? joined;
+    while (!identical(joined, _initialRun)) {
+      joined = _initialRun;
+      await joined;
+    }
+  }
+
+  Future<void> _restoreStatus() async {
     final desktopResume =
         desktopBackground.resumeState ?? OhosCoreTransport.resumeState;
     if (desktopResume != null) {
       desktopBackground.resumeState = null;
       OhosCoreTransport.resumeState = null;
+      final startTime = desktopResume.runningSince;
+      final running = startTime?.isBeforeNow ?? false;
+      final digest = desktopResume.coreReused
+          ? await preferences.getAppliedConfigMd5()
+          : null;
+      final options = desktopResume.coreReused && running
+          ? await ref.read(vpnOptionsProvider.future)
+          : null;
+      if (_initialRun != null) return;
       final mode = switch (desktopResume.mode) {
         'rule' => Mode.rule,
         'global' => Mode.global,
@@ -173,7 +196,7 @@ class SetupAction extends _$SetupAction {
             .read(patchClashConfigProvider.notifier)
             .update((state) => state.copyWith(mode: mode));
       }
-      _startTime = desktopResume.runningSince;
+      _startTime = startTime;
       if (desktopResume.coreReused) {
         final profile = ref.read(currentProfileProvider);
         if (profile != null &&
@@ -190,21 +213,14 @@ class SetupAction extends _$SetupAction {
                 ),
               );
         }
-        globalState.lastConfigMd5 = await preferences.getAppliedConfigMd5();
-        _setLocalRunning(_isRunning);
-        if (_isRunning) {
-          ref.read(runningVpnOptionsProvider.notifier).value = await ref.read(
-            vpnOptionsProvider.future,
-          );
-        }
-        globalState.needInitStatus = false;
+        globalState.lastConfigMd5 = digest;
+        _setLocalRunning(running);
+        ref.read(runningVpnOptionsProvider.notifier).value = options;
         return;
       }
-      if (_isRunning) {
-        globalState.lastConfigMd5 = desktopResume.coreReused
-            ? await preferences.getAppliedConfigMd5()
-            : null;
-        await _run(true, initialize: true, resume: desktopResume.coreReused);
+      if (running) {
+        globalState.lastConfigMd5 = null;
+        await _run(true, initialize: true);
       } else {
         _setLocalRunning(false);
         await globalState.safeRun(() => applyProfile(force: true));
@@ -214,9 +230,14 @@ class SetupAction extends _$SetupAction {
     final resumeAfterUpdate = await preferences.takeUpdateResume();
     final lightweightResume =
         system.isAndroid && await preferences.takeLightweightResume();
-    _startTime = await serviceStartTime();
-    if (_isRunning) {
-      globalState.lastConfigMd5 = await preferences.getAppliedConfigMd5();
+    final startTime = await serviceStartTime();
+    final running = startTime?.isBeforeNow ?? false;
+    if (_initialRun != null) return;
+    final digest = running ? await preferences.getAppliedConfigMd5() : null;
+    if (_initialRun != null) return;
+    _startTime = startTime;
+    if (running) {
+      globalState.lastConfigMd5 = digest;
       await _run(true, initialize: true, resume: true);
     } else if (lightweightResume) {
       _setLocalRunning(false);
@@ -261,10 +282,11 @@ class SetupAction extends _$SetupAction {
       ref.read(coreStopReasonProvider.notifier).value = null;
     }
     _setLocalRunning(running);
-    if (request.initialize) {
-      globalState.needInitStatus = false;
+    final task = running ? _start(request) : _stop(request);
+    if (!ref.read(initProvider)) {
+      _initialRun = task.then<void>((_) {}, onError: (Object _) {});
     }
-    return running ? _start(request) : _stop(request);
+    return task;
   }
 
   Future<bool> _start(_RunRequest request) async {
@@ -307,21 +329,32 @@ class SetupAction extends _$SetupAction {
     final bool answered;
     try {
       answered = await _setCoreRunning(request);
-    } catch (_) {
-      _rollbackRunning(request);
+    } catch (error) {
+      if (_isCurrent(request)) {
+        if (isUnansweredCoreError(error)) {
+          _clearStoppedTraffic();
+        } else {
+          _rollbackRunning(request);
+        }
+      }
       rethrow;
     }
     if (!_isCurrent(request)) {
       return true;
     }
-    resetCoreTraffic();
-    ref.read(trafficsProvider.notifier).clear();
-    ref.read(totalTrafficProvider.notifier).value = const Traffic();
+    _clearStoppedTraffic();
     // A silent Core is gone or hung; running again would proxy traffic to it.
     if (!answered) {
       throw _unanswered(CoreMethod.stopListener);
     }
     return true;
+  }
+
+  void _clearStoppedTraffic() {
+    ref.read(runningVpnOptionsProvider.notifier).value = null;
+    resetCoreTraffic();
+    ref.read(trafficsProvider.notifier).clear();
+    ref.read(totalTrafficProvider.notifier).value = const Traffic();
   }
 
   Future<bool> _setCoreRunning(_RunRequest request) {
@@ -543,10 +576,14 @@ class SetupAction extends _$SetupAction {
     try {
       return await ref.read(coreActionProvider.notifier).restartCore();
     } catch (_) {
-      ref.read(authorizedTunEnableProvider.notifier).value =
-          TunAuthorizationState.none;
+      _forgetTunAuthorization();
       rethrow;
     }
+  }
+
+  void _forgetTunAuthorization() {
+    ref.read(authorizedTunEnableProvider.notifier).value =
+        TunAuthorizationState.none;
   }
 
   /// With a base, [BuiltProfile.yaml] is only the overlay the Core applies.

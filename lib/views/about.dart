@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:fl_clash/common/app_update.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/ui/icons/icons.dart';
 import 'package:fl_clash/ui/ui.dart';
+import 'package:fl_clash/widgets/config_item.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -79,6 +81,35 @@ class AboutView extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 8),
+          generateSection(
+            title: appLocalizations.update,
+            items: [
+              ConfigToggleItem(
+                title: (l) => l.autoCheckUpdate,
+                selector: appSettingProvider.select(
+                  (state) => state.autoCheckUpdate,
+                ),
+                onChanged: (ref, value) => ref
+                    .read(appSettingProvider.notifier)
+                    .update((state) => state.copyWith(autoCheckUpdate: value)),
+              ),
+              ConfigOptionsItem<UpdateChannel>(
+                title: (l) => l.updateChannel,
+                options: UpdateChannel.values,
+                textBuilder: (channel) => switch (channel) {
+                  UpdateChannel.stable => appLocalizations.updateChannelStable,
+                  UpdateChannel.prerelease =>
+                    appLocalizations.updateChannelPrerelease,
+                },
+                selector: appSettingProvider.select(
+                  (state) => state.updateChannel,
+                ),
+                onChanged: (ref, value) => ref
+                    .read(appSettingProvider.notifier)
+                    .update((state) => state.copyWith(updateChannel: value)),
+              ),
+            ],
+          ),
           generateSection(
             title: appLocalizations.more,
             items: [
@@ -172,7 +203,9 @@ class _AboutHero extends StatelessWidget {
             alignment: WrapAlignment.center,
             children: [
               _Pill(
-                label: 'v${globalState.packageInfo.version}',
+                label: installedUpdateVersionLabel(
+                  globalState.packageInfo.version,
+                ),
                 color: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
               ),

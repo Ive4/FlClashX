@@ -146,6 +146,7 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
   CoreProcessLease? _unconfirmedLease;
   Future<CoreLifecycleResult>? _closeResult;
   int _revision = 0;
+  int _launchRevision = 0;
   _LifecycleIntent _desired = const _LifecycleIntent(
     0,
     _LifecycleTarget.stopped,
@@ -264,7 +265,7 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
       try {
         final achievement = await _reconcile(intent);
         final settled = _desired;
-        if (!_satisfies(achievement, settled.target)) {
+        if (!_satisfies(achievement, settled)) {
           continue;
         }
         _completeCommands(settled);
@@ -399,6 +400,7 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
       if (!await _ensureTransportReady()) {
         return false;
       }
+      final launchRevision = _revision;
       final launcher = await launcherResolver.resolve();
       if (!_wantsRunning) {
         return false;
@@ -450,6 +452,7 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
         connectionGeneration: connected.generation,
       );
       _session = session;
+      _launchRevision = launchRevision;
       _sessionDisconnect = _SessionDisconnect(session);
       leaseReleased = true;
       _publish(DesktopCoreRunning(session));
@@ -479,7 +482,8 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
   }
 
   Future<bool> _ensureTransportReady() async {
-    if (_transport.state == DesktopTransportState.failed ||
+    if (_transport.state == DesktopTransportState.starting ||
+        _transport.state == DesktopTransportState.failed ||
         _transport.state == DesktopTransportState.closed ||
         (_transport.state == DesktopTransportState.connected &&
             _session == null)) {
@@ -646,13 +650,14 @@ final class DesktopCoreLifecycle implements DesktopCoreLifecycleController {
     }
   }
 
-  bool _satisfies(_LifecycleAchievement achievement, _LifecycleTarget target) {
-    return switch (target) {
+  bool _satisfies(_LifecycleAchievement achievement, _LifecycleIntent intent) {
+    return switch (intent.target) {
       _LifecycleTarget.running =>
         achievement == _LifecycleAchievement.runningExisting ||
             achievement == _LifecycleAchievement.runningFresh,
       _LifecycleTarget.restarted =>
-        achievement == _LifecycleAchievement.runningFresh,
+        achievement == _LifecycleAchievement.runningFresh &&
+            _launchRevision >= intent.revision,
       _LifecycleTarget.stopped => achievement == _LifecycleAchievement.idle,
       _LifecycleTarget.closed => achievement == _LifecycleAchievement.closed,
     };

@@ -670,6 +670,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "connected": MessageLookupByLibrary.simpleMessage("Conectado"),
     "connecting": MessageLookupByLibrary.simpleMessage("Conectando…"),
     "connection": MessageLookupByLibrary.simpleMessage("Conexión"),
+    "connectionClosed": MessageLookupByLibrary.simpleMessage("Cerrada"),
     "connectionStats": MessageLookupByLibrary.simpleMessage(
       "Estadísticas de conexión",
     ),
@@ -677,6 +678,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "Conexiones activas, solicitudes recientes y consultas DNS",
     ),
     "connections": MessageLookupByLibrary.simpleMessage("Conexiones"),
+    "connectionsActive": MessageLookupByLibrary.simpleMessage("Activas"),
+    "connectionsAll": MessageLookupByLibrary.simpleMessage("Todas"),
+    "connectionsFailed": MessageLookupByLibrary.simpleMessage("Fallidas"),
     "connectivity": MessageLookupByLibrary.simpleMessage("Conectividad: "),
     "content": MessageLookupByLibrary.simpleMessage("Contenido"),
     "contentNotEmpty": MessageLookupByLibrary.simpleMessage(
@@ -1724,6 +1728,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "redirPort": MessageLookupByLibrary.simpleMessage("Puerto Redir"),
     "redo": MessageLookupByLibrary.simpleMessage("Rehacer"),
     "regex": MessageLookupByLibrary.simpleMessage("Expresión regular"),
+    "relatedConnections": MessageLookupByLibrary.simpleMessage(
+      "Conexiones relacionadas",
+    ),
     "releaseMemory": MessageLookupByLibrary.simpleMessage("Liberar memoria"),
     "releaseMemoryFailed": MessageLookupByLibrary.simpleMessage(
       "No se pudo liberar la memoria",
@@ -2293,11 +2300,24 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateAndroidSignatureMismatch": MessageLookupByLibrary.simpleMessage(
       "La actualización está firmada con una clave distinta de la de la aplicación instalada.",
     ),
+    "updateChannel": MessageLookupByLibrary.simpleMessage(
+      "Canal de actualización",
+    ),
+    "updateChannelPrerelease": MessageLookupByLibrary.simpleMessage(
+      "Versión preliminar",
+    ),
+    "updateChannelStable": MessageLookupByLibrary.simpleMessage("Estable"),
     "updateContinueInBackground": MessageLookupByLibrary.simpleMessage(
       "Continuar en segundo plano",
     ),
     "updateDownloadInstall": MessageLookupByLibrary.simpleMessage(
       "Download and install update",
+    ),
+    "updateInstallFailed": MessageLookupByLibrary.simpleMessage(
+      "No se pudo instalar la actualización. Puedes descargarla desde la página de la versión.",
+    ),
+    "updateOpenReleasePage": MessageLookupByLibrary.simpleMessage(
+      "Abrir página de la versión",
     ),
     "updateRestartNotice": MessageLookupByLibrary.simpleMessage(
       "After downloading, the app will install the update, restart, and restore the previous service state. Windows may request administrator permission.",

@@ -133,7 +133,7 @@ class RuleItem extends StatelessWidget {
               context,
             ).style.toJetBrainsMono;
             final actionWidth = globalState.measure
-                .computeTextSize(Text(rule.ruleAction.name, style: labelStyle))
+                .computeTextSize(Text(rule.ruleAction.value, style: labelStyle))
                 .width;
             final maxWidth = constraints.maxWidth;
             final targetMaxWidth = (maxWidth - _labelTargetGap - actionWidth)
@@ -201,7 +201,7 @@ class _RuleItemLabel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          rule.ruleAction.name,
+          rule.ruleAction.value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: style,

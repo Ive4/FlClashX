@@ -65,4 +65,25 @@ void main() {
       );
     });
   });
+
+  test('recognizes calls that never got an answer', () {
+    for (final code in [
+      'transport_disconnected',
+      'transport_error',
+      'no_response',
+    ]) {
+      expect(
+        isUnansweredCoreError(CoreMethodException(code: code, message: '')),
+        isTrue,
+        reason: code,
+      );
+    }
+    expect(isUnansweredCoreError(TimeoutException('timed out')), isTrue);
+    expect(
+      isUnansweredCoreError(
+        const CoreMethodException(code: 'core_error', message: ''),
+      ),
+      isFalse,
+    );
+  });
 }
