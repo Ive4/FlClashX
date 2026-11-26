@@ -203,10 +203,17 @@ jobs:
             esac
             apk="build/app/outputs/flutter-apk/app-$abi-release.apk"
             badging="$("$build_tools/aapt" dump badging "$apk")"
-            grep -Fq "package: name='$package_id' versionCode='$version_code' versionName='$VERSION'" <<< "$badging"
-            grep -Fxq "native-code: '$abi'" <<< "$badging"
+            printf 'APK metadata for %s\n' "$abi"
+            sed -n '/^package: /p; /^native-code: /p' <<< "$badging"
+            package_line="$(sed -n '/^package: /p' <<< "$badging")"
+            [[ "$package_line" == "package: name='$package_id' "* && "$package_line" == *" versionName='$VERSION'"* ]]
+            abi_list="$(sed -n '/^native-code: /p' <<< "$badging")"
             if [[ "$ANDROID_TEST_ONLY" != true ]]; then
+              [[ "$package_line" == *" versionCode='$version_code'"* ]]
+              grep -Exq "native-code: '$abi'[[:space:]]*" <<< "$abi_list"
               grep -Fq "uses-permission: name='android.permission.REQUEST_INSTALL_PACKAGES'" <<< "$badging"
+            else
+              [[ "$abi_list" == *" '$abi'"* ]]
             fi
             certificate="$("$build_tools/apksigner" verify --print-certs "$apk")"
             digest="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certificate")"
