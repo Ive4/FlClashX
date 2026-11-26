@@ -184,6 +184,7 @@ jobs:
           BUILD: ${{ needs.version.outputs.build }}
           ANDROID_TEST_ONLY: ${{ inputs.android_test_only }}
         run: |
+          set -x
           build_tools="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           test -n "$build_tools"
           build_tools="$(dirname "$build_tools")"
