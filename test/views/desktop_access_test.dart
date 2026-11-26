@@ -76,6 +76,28 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('desktop settings label the default route as Proxy or Direct', (
+    tester,
+  ) async {
+    await open(tester, windows: true);
+    for (final (label, mode) in [
+      ('Direct', AccessControlMode.acceptSelected),
+      ('Proxy', AccessControlMode.rejectSelected),
+    ]) {
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Default proxy rule'), findsOneWidget);
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+
+      expect(container.read(accessControlStateProvider).mode, mode);
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
     'an existing selection remains selected after a version upgrade',
     (tester) async {
@@ -96,52 +118,85 @@ void main() {
         await history.record([_connection(newer)], true, DateTime.utc(2026, 2));
       });
       await open(tester, windows: true);
-      final row = tester.widget<PackageListItem>(find.byType(PackageListItem));
-      expect(row.value, isTrue);
-      expect(row.package.applicationPath, newer);
+      await tester.tap(find.text('node.exe'));
+      await tester.pumpAndSettle();
+      final path = find.text(newer);
+      final row = find.ancestor(
+        of: path,
+        matching: find.byType(PackageListItem),
+      );
+      expect(tester.widget<PackageListItem>(row).value, isFalse);
       expect(find.byTooltip('Save'), findsNothing);
-      await tester.tap(find.byType(PackageListItem));
+      await tester.tap(path);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Save'));
       await tester.pumpAndSettle();
       expect(
-        container.read(vpnSettingProvider).accessControlProps.rejectList,
-        isEmpty,
+        container.read(vpnSettingProvider).accessControlProps.desktopRules,
+        {
+          r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe': false,
+          r'windows:PROCESS-PATH:c:\nvm\v22.14.0\node.exe': true,
+        },
       );
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 
   testWidgets(
-    'Windows chooses remembered programs through the original blacklist',
+    'Windows applies a name rule to new paths and restores a path exception',
     (tester) async {
+      const primary = r'C:\Apps\Browser.exe';
+      const portable = r'D:\Other\Browser.exe';
       await tester.runAsync(
         () => history.record(
-          [
-            _connection(r'C:\Apps\Browser.exe'),
-            _connection(r'D:\Other\Browser.exe'),
-          ],
+          [_connection(primary), _connection(portable)],
           true,
           DateTime.utc(2026),
+        ),
+      );
+      container.read(vpnSettingProvider.notifier).value = const VpnProps(
+        accessControlProps: AccessControlProps(
+          enable: true,
+          mode: AccessControlMode.acceptSelected,
         ),
       );
       await open(tester, windows: true);
       expect(find.text('Browser.exe'), findsOneWidget);
       expect(find.byType(PackageListItem), findsNothing);
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Browser.exe'));
       await tester.pumpAndSettle();
       expect(find.byType(PackageListItem), findsNWidgets(2));
-      await tester.tap(find.byType(PackageListItem).first);
+
+      Finder row(String path) => find.byWidgetPredicate(
+        (widget) =>
+            widget is PackageListItem && widget.package.applicationPath == path,
+      );
+      expect(tester.widget<PackageListItem>(row(portable)).value, isTrue);
+      await tester.tap(find.text(portable));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Save'));
       await tester.pumpAndSettle();
-      expect(container.read(vpnSettingProvider).accessControlProps.rejectList, [
-        r'windows:PROCESS-PATH:c:\apps\browser.exe',
-      ]);
-      expect(
-        container.read(vpnSettingProvider).accessControlProps.mode,
-        AccessControlMode.rejectSelected,
+      await tester.runAsync(
+        () => history.record(
+          [_connection(r'E:\New\Browser.exe')],
+          true,
+          DateTime.utc(2026, 2),
+        ),
       );
+      await tester.pumpAndSettle();
+      expect(tester.widget<PackageListItem>(row(portable)).value, isFalse);
+      expect(
+        tester.widget<PackageListItem>(row(r'E:\New\Browser.exe')).value,
+        isTrue,
+      );
+      await tester.tap(find.text('Use app name rule'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<PackageListItem>(row(portable)).value, isTrue);
+      await tester.tap(find.text('Use default rule'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<PackageListItem>(row(portable)).value, isFalse);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
@@ -162,9 +217,9 @@ void main() {
     );
     await tester.tap(find.byTooltip('Save').hitTestable());
     await tester.pumpAndSettle();
-    expect(container.read(vpnSettingProvider).accessControlProps.rejectList, [
-      r'windows:PROCESS-PATH:d:\tools\tool.exe',
-    ]);
+    expect(container.read(vpnSettingProvider).accessControlProps.desktopRules, {
+      r'windows:PROCESS-PATH:d:\tools\tool.exe': false,
+    });
     await tester.tap(find.text('Request history'));
     await tester.pumpAndSettle();
     expect(find.byType(PackageListItem), findsNothing);
@@ -210,18 +265,21 @@ void main() {
         ),
       );
       await open(tester, windows: false);
-      expect(find.byType(PackageListItem), findsNWidgets(3));
+      expect(find.byType(PackageListItem), findsNothing);
       expect(find.text('Chat.app'), findsOneWidget);
       expect(find.text('Old.app'), findsOneWidget);
       await tester.tap(find.text('Chat.app'));
       await tester.pumpAndSettle();
+      expect(find.byType(PackageListItem), findsOneWidget);
+      await tester.tap(find.text('/Applications/Chat.app'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Save'));
       await tester.pumpAndSettle();
       final saved = container.read(vpnSettingProvider).accessControlProps;
-      expect(
-        saved.acceptList,
-        containsAll([selected, 'macos:PROCESS-PATH:/Applications/Chat.app']),
-      );
+      expect(saved.desktopRules, {
+        selected: true,
+        'macos:PROCESS-PATH:/Applications/Chat.app': true,
+      });
       expect(saved.rejectList, ['macos:PROCESS-PATH:/Applications/Other.app']);
       await tester.pumpWidget(const SizedBox.shrink());
     },

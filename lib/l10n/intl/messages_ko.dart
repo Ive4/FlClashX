@@ -614,9 +614,17 @@ class MessageLookup extends MessageLookupByLibrary {
       "ClashMeta 기반의 멀티 플랫폼 프록시 클라이언트로, 간편하게 사용할 수 있으며 오픈 소스이고 광고가 없습니다.",
     ),
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage("앱 추가"),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage("프록시 허용"),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage("앱 이름으로 설정"),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("감지된 앱"),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "기본 프록시 규칙",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "프록시에서 제외한 앱은 Core DIRECT를 사용하며 트래픽은 계속 TUN을 통과합니다.",
+      "선택한 앱은 현재 프로필을 따릅니다. 선택하지 않은 앱은 TUN을 통해 직접 연결됩니다.",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "기본 규칙 따름",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
       "이름이 같은 앱 묶기",
@@ -629,11 +637,20 @@ class MessageLookup extends MessageLookupByLibrary {
       "프로세스 이름 또는 전체 경로",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage(
+      "경로 예외",
+    ),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
       "요청 기록",
     ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "앱 목록을 적용하려면 TUN과 규칙 모드를 켜세요.",
+      "앱별 규칙을 적용하려면 TUN과 규칙 모드를 켜세요.",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage(
+      "기본 규칙 사용",
+    ),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "앱 이름 규칙 사용",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("목적지"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage("목적지 GeoIP"),
@@ -1320,6 +1337,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("프록시"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("프록시 체인"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("프록시 그룹"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage("프록시 그룹이 비어 있습니다"),

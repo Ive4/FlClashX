@@ -744,11 +744,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
       "Добавить приложение",
     ),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage(
+      "Разрешить прокси",
+    ),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage(
+      "По имени приложения",
+    ),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
       "Обнаруженные приложения",
     ),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "Правило прокси по умолчанию",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "Приложения вне списка прокси используют Core DIRECT. Трафик по-прежнему проходит через TUN.",
+      "Отмеченные приложения используют текущий профиль. Остальные подключаются напрямую через TUN.",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "По правилу по умолчанию",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
       "Группировать приложения по имени",
@@ -763,11 +775,20 @@ class MessageLookup extends MessageLookupByLibrary {
       "Имя процесса или полный путь",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage(
+      "Исключения по пути",
+    ),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
       "История запросов",
     ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "Для применения списков включите TUN и режим правил.",
+      "Для применения правил по приложениям включите TUN и режим правил.",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage(
+      "Применить правило по умолчанию",
+    ),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "Применить правило имени",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("Назначение"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage(
@@ -1615,6 +1636,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("Прокси"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("Цепочка прокси"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("Группа прокси"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage(

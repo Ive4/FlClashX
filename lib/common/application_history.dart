@@ -63,7 +63,7 @@ class ApplicationHistory extends ChangeNotifier {
     final history = await compute(_decode, raw);
     var changed = false;
     for (final entry in history) {
-      final previous = entries[entry.identity.forRouting.selectionKey];
+      final previous = entries[entry.identity.selectionKey];
       if (previous == null ||
           entry.firstSeen.isBefore(previous.firstSeen) ||
           entry.lastSeen.isAfter(previous.lastSeen)) {
@@ -99,7 +99,7 @@ class ApplicationHistory extends ChangeNotifier {
   }
 
   bool _merge(ApplicationHistoryEntry entry) {
-    final key = entry.identity.forRouting.selectionKey;
+    final key = entry.identity.selectionKey;
     final old = entries[key];
     if (old == null) {
       entries[key] = entry;
@@ -155,12 +155,14 @@ class ApplicationHistory extends ChangeNotifier {
         if (value.identity.windows == windows) key: value.identity,
     };
     final selected = <String>{};
-    for (final key in {...access.acceptList, ...access.rejectList}) {
+    final savedKeys =
+        access.desktopRules?.keys ??
+        {...access.acceptList, ...access.rejectList};
+    for (final key in savedKeys) {
       final identity = ApplicationIdentity.fromSelection(key, windows: windows);
       if (identity == null) continue;
-      final routingKey = identity.forRouting.selectionKey;
-      selected.add(routingKey);
-      identities.putIfAbsent(routingKey, () => identity);
+      selected.add(identity.selectionKey);
+      identities.putIfAbsent(identity.selectionKey, () => identity);
     }
     final lastSeen = <String, DateTime>{};
     if (windows) {

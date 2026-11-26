@@ -720,11 +720,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
       "Add application",
     ),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage(
+      "Allow proxy",
+    ),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage("By app name"),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
       "Discovered apps",
     ),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "Default proxy rule",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.",
+      "Checked apps follow the current profile. Unchecked apps connect directly through TUN.",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "Follows default rule",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
       "Group apps by name",
@@ -739,11 +749,20 @@ class MessageLookup extends MessageLookupByLibrary {
       "Process name or full path",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage(
+      "Path exceptions",
+    ),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
       "Request history",
     ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "Enable TUN and Rule mode for the application lists to take effect.",
+      "Enable TUN and Rule mode to apply rules by app.",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage(
+      "Use default rule",
+    ),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "Use app name rule",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("Destination"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage(
@@ -1547,6 +1566,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("Proxy"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("Proxy chain"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("Proxy group"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage(

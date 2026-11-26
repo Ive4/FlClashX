@@ -306,6 +306,7 @@ abstract class AccessControlProps with _$AccessControlProps {
     @Default(AccessControlMode.rejectSelected) AccessControlMode mode,
     @Default([]) List<String> acceptList,
     @Default([]) List<String> rejectList,
+    @JsonKey(includeIfNull: false) Map<String, bool>? desktopRules,
     @Default(AccessSortType.none) AccessSortType sort,
     @Default(true) bool isFilterSystemApp,
     @Default(true) bool isFilterNonInternetApp,
@@ -316,16 +317,22 @@ abstract class AccessControlProps with _$AccessControlProps {
 }
 
 extension AccessControlPropsExt on AccessControlProps {
-  bool get hasPackages => acceptList.isNotEmpty || rejectList.isNotEmpty;
+  bool get hasPackages =>
+      acceptList.isNotEmpty ||
+      rejectList.isNotEmpty ||
+      (desktopRules?.isNotEmpty ?? false);
 
   AccessControlProps get forRouting => enable
       ? AccessControlProps(
           enable: true,
           mode: mode,
-          acceptList: mode == AccessControlMode.acceptSelected
+          desktopRules: desktopRules,
+          acceptList:
+              desktopRules == null && mode == AccessControlMode.acceptSelected
               ? acceptList
               : const [],
-          rejectList: mode == AccessControlMode.rejectSelected
+          rejectList:
+              desktopRules == null && mode == AccessControlMode.rejectSelected
               ? rejectList
               : const [],
         )

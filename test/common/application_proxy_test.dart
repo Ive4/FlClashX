@@ -77,10 +77,10 @@ void main() {
       const old = r'windows:PROCESS-PATH:C:\nvm\v20.19.0\node.exe';
       const newer = r'windows:PROCESS-PATH:C:\nvm\v22.14.0\node.exe';
       const access = AccessControlProps(enable: true, rejectList: [old, newer]);
-      final grouped = groupVersionedApplications(access, windows: true);
-      expect(grouped.rejectList, [
-        r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe',
-      ]);
+      final grouped = access.withDesktopRules;
+      expect(grouped.desktopRules, {
+        r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe': false,
+      });
       final rule = applicationAccessRules(access, windows: true).single;
       expect(applicationAccessRules(grouped, windows: true), [rule]);
       const prefix = 'AND,((IN-TYPE,TUN),(PROCESS-PATH-REGEX,(?i)';
@@ -131,16 +131,72 @@ void main() {
         r'windows:PROCESS-PATH:D:\Runtimes\zulu-21.54.109.0\bin\java.exe',
       ],
     );
-    final grouped = groupVersionedApplications(access, windows: true);
-    expect(grouped.rejectList, [
-      r'windows:PROCESS-PATH-REGEX:c:\runtimes\zulu-*\bin\java.exe',
-      r'windows:PROCESS-PATH-REGEX:c:\runtimes\cpython-*\python.exe',
-      r'windows:PROCESS-PATH-REGEX:d:\runtimes\zulu-*\bin\java.exe',
-    ]);
-    expect(groupVersionedApplications(grouped, windows: true), grouped);
+    final grouped = access.withDesktopRules;
+    expect(grouped.desktopRules, {
+      r'windows:PROCESS-PATH-REGEX:c:\runtimes\zulu-*\bin\java.exe': false,
+      r'windows:PROCESS-PATH-REGEX:c:\runtimes\cpython-*\python.exe': false,
+      r'windows:PROCESS-PATH-REGEX:d:\runtimes\zulu-*\bin\java.exe': false,
+    });
+    expect(grouped.withDesktopRules, grouped);
     expect(
       applicationAccessRules(grouped, windows: true),
       applicationAccessRules(access, windows: true),
+    );
+  });
+
+  test('desktop defaults and path exceptions survive serialization', () {
+    const access = AccessControlProps(
+      enable: true,
+      mode: AccessControlMode.acceptSelected,
+      desktopRules: {
+        'windows:PROCESS-NAME:browser.exe': true,
+        r'windows:PROCESS-PATH:d:\portable\browser.exe': false,
+      },
+    );
+    final restored = AccessControlProps.fromJson(access.toJson());
+    expect(restored, access);
+    final portable = ApplicationIdentity.fromManualInput(
+      r'D:\Portable\BROWSER.exe',
+      windows: true,
+    )!;
+    final updated = ApplicationIdentity.fromManualInput(
+      r'E:\Updated\Browser.exe',
+      windows: true,
+    )!;
+    final unrelated = ApplicationIdentity.fromManualInput(
+      'other.exe',
+      windows: true,
+    )!;
+    expect(restored.allowsProxy(portable), isFalse);
+    expect(restored.allowsProxy(updated), isTrue);
+    expect(restored.allowsProxy(unrelated), isFalse);
+    final changed = restored.copyWith(mode: AccessControlMode.rejectSelected);
+    expect(changed.allowsProxy(portable), isFalse);
+    expect(changed.allowsProxy(updated), isTrue);
+    expect(changed.allowsProxy(unrelated), isTrue);
+    expect(applicationAccessRules(restored.forRouting, windows: true), [
+      r'AND,((IN-TYPE,TUN),(OR,((PROCESS-PATH-REGEX,(?i)^d:\\portable\\browser\.exe$),(NOT,((PROCESS-NAME-REGEX,(?i)^browser\.exe$)))))),DIRECT',
+    ]);
+  });
+
+  test('macOS bundle name covers renamed directories and bundle helpers', () {
+    const access = AccessControlProps(
+      enable: true,
+      desktopRules: {
+        'macos:PROCESS-NAME:chat.app': false,
+        'macos:PROCESS-PATH:/Users/demo/Chat.app': true,
+      },
+    );
+    final rule = applicationAccessRules(
+      access.forRouting,
+      windows: false,
+    ).single;
+    expect(rule, contains(r'^(?:(?!\.app/Contents/).)*/chat\.app/Contents/'));
+    expect(
+      rule,
+      contains(
+        r'(NOT,((PROCESS-PATH-REGEX,^/Users/demo/Chat\.app/Contents/)))',
+      ),
     );
   });
 

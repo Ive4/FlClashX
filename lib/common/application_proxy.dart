@@ -81,14 +81,23 @@ class ApplicationIdentity {
     return identity.canRoute ? identity : null;
   }
 
-  String get _normalizedContent =>
-      windows ? p.windows.normalize(content).toLowerCase() : content;
+  String get _normalizedContent => windows
+      ? p.windows.normalize(content).toLowerCase()
+      : action == RuleAction.PROCESS_NAME
+      ? content.toLowerCase()
+      : content;
   String get _separator => windows ? r'\' : '/';
   String get key => '${action.value}:$_normalizedContent';
   String get selectionKey => '${windows ? 'windows' : 'macos'}:$key';
   String get name => action == RuleAction.PROCESS_NAME
       ? content
       : (windows ? p.windows : p.posix).basename(content);
+
+  ApplicationIdentity get byName => ApplicationIdentity(
+    action: RuleAction.PROCESS_NAME,
+    content: name,
+    windows: windows,
+  );
 
   ApplicationIdentity get forRouting {
     if (action != RuleAction.PROCESS_PATH) return this;
@@ -168,22 +177,34 @@ String _escapeRuleRegex(String value) => RegExp.escape(value)
     .replaceAll(r'\)', r'\x29')
     .replaceAll(',', r'\x2c');
 
-AccessControlProps groupVersionedApplications(
-  AccessControlProps access, {
-  required bool windows,
-}) {
-  List<String> group(List<String> values) => {
-    for (final value in values)
-      ApplicationIdentity.fromSelection(
-            value,
-            windows: windows,
-          )?.forRouting.selectionKey ??
-          value,
-  }.toList();
-  return access.copyWith(
-    acceptList: group(access.acceptList),
-    rejectList: group(access.rejectList),
-  );
+extension DesktopApplicationAccess on AccessControlProps {
+  bool get defaultProxy => mode == AccessControlMode.rejectSelected;
+
+  AccessControlProps get withDesktopRules => desktopRules == null
+      ? copyWith(desktopRules: importDesktopRules(currentList))
+      : this;
+
+  Map<String, bool> importDesktopRules(Iterable<String> rules) {
+    final imported = <String, bool>{};
+    for (final key in rules) {
+      final identity = ApplicationIdentity.fromSelection(
+        key,
+        windows: key.startsWith('windows:'),
+      );
+      if (identity != null) {
+        imported[identity.forRouting.selectionKey] = !defaultProxy;
+      }
+    }
+    return imported;
+  }
+
+  bool allowsProxy(ApplicationIdentity identity) {
+    final rules = desktopRules ?? const <String, bool>{};
+    return rules[identity.selectionKey] ??
+        rules[identity.forRouting.selectionKey] ??
+        rules[identity.byName.selectionKey] ??
+        defaultProxy;
+  }
 }
 
 typedef ApplicationConnection = ({
@@ -216,6 +237,9 @@ List<String> applicationAccessRules(
   required bool windows,
 }) {
   if (!access.enable) return const [];
+  if (access.desktopRules != null) {
+    return _desktopApplicationAccessRules(access, windows: windows);
+  }
   final conditions = <String>{};
   for (final value in access.currentList) {
     final identity = ApplicationIdentity.fromSelection(
@@ -232,9 +256,65 @@ List<String> applicationAccessRules(
   if (conditions.isEmpty) {
     return whitelist ? const ['IN-TYPE,TUN,DIRECT'] : const [];
   }
-  var condition = conditions.length == 1
-      ? conditions.single
-      : '(OR,(${conditions.join(',')}))';
+  var condition = _anyApplicationCondition(conditions.toList());
   if (whitelist) condition = '(NOT,($condition))';
   return ['AND,((IN-TYPE,TUN),$condition),DIRECT'];
+}
+
+List<String> _desktopApplicationAccessRules(
+  AccessControlProps access, {
+  required bool windows,
+}) {
+  final proxy = <RuleAction, List<String>>{};
+  final direct = <RuleAction, List<String>>{};
+  for (final MapEntry(:key, :value) in access.desktopRules!.entries) {
+    final identity = ApplicationIdentity.fromSelection(key, windows: windows);
+    if (identity == null) continue;
+    final conditions = value ? proxy : direct;
+    (conditions[identity.action] ??= []).add(_applicationCondition(identity));
+  }
+
+  var allDirect = !access.defaultProxy;
+  String? condition;
+  for (final action in [
+    RuleAction.PROCESS_NAME,
+    RuleAction.PROCESS_PATH_REGEX,
+    RuleAction.PROCESS_PATH,
+  ]) {
+    if (proxy[action] case final allows?) {
+      final exclusion = '(NOT,(${_anyApplicationCondition(allows)}))';
+      if (allDirect) {
+        allDirect = false;
+        condition = exclusion;
+      } else if (condition != null) {
+        condition = '(AND,($exclusion,$condition))';
+      }
+    }
+    final exclusions = direct[action];
+    if (!allDirect && exclusions != null) {
+      condition = _anyApplicationCondition([...exclusions, ?condition]);
+    }
+  }
+  if (allDirect) return const ['IN-TYPE,TUN,DIRECT'];
+  return condition == null
+      ? const []
+      : ['AND,((IN-TYPE,TUN),$condition),DIRECT'];
+}
+
+String _anyApplicationCondition(List<String> conditions) =>
+    conditions.length == 1
+    ? conditions.single
+    : '(OR,(${conditions.join(',')}))';
+
+String _applicationCondition(ApplicationIdentity identity) {
+  if (identity.action == RuleAction.PROCESS_NAME) {
+    if (!identity.windows && identity.content.toLowerCase().endsWith('.app')) {
+      final bundle = _escapeRuleRegex(identity.content);
+      return '(PROCESS-PATH-REGEX,'
+          r'^(?:(?!\.app/Contents/).)*'
+          '/$bundle/Contents/)';
+    }
+    return '(PROCESS-NAME-REGEX,${identity._rulePattern})';
+  }
+  return '(PROCESS-PATH-REGEX,${identity._rulePattern})';
 }

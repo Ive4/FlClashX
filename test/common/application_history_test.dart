@@ -121,7 +121,7 @@ void main() {
   );
 
   test(
-    'legacy versioned history is compacted once and stays grouped',
+    'versioned paths remain individually available for exceptions',
     () async {
       const old = r'C:\nvm\v20.19.0\node.exe';
       const newer = r'C:\nvm\v22.14.0\node.exe';
@@ -153,40 +153,30 @@ void main() {
 
       final history = store();
       addTearDown(history.dispose);
-      const grouped = r'windows:PROCESS-PATH-REGEX:c:\nvm\v*\node.exe';
       await history.load();
-      expect(history.entries, hasLength(2));
-      expect(history.entries[grouped]?.identity.content, newer);
-      expect(history.entries[grouped]?.firstSeen, first);
-      expect(history.entries[grouped]?.lastSeen, last);
+      expect(history.entries, hasLength(3));
       final packages = history.packages(
-        const AccessControlProps(
-          rejectList: [r'windows:PROCESS-PATH:C:\nvm\v20.19.0\node.exe'],
-        ),
+        const AccessControlProps(),
         windows: true,
       );
-      expect(packages, hasLength(2));
       expect(
-        packages
-            .singleWhere((app) => app.packageName == grouped)
-            .applicationPath,
-        newer,
+        packages.map((app) => app.applicationPath),
+        unorderedEquals([old, newer, other]),
       );
+      expect(writes, 0);
+      await history.record([connection(upgraded)], true, upgradeTime);
       expect(writes, 1);
       final restored = store();
       addTearDown(restored.dispose);
       await restored.load();
-      expect(restored.entries, hasLength(2));
-      expect(restored.entries[grouped]?.firstSeen, first);
+      expect(restored.entries, hasLength(4));
+      expect(
+        restored
+            .entries[r'windows:PROCESS-PATH:c:\nvm\v20.19.0\node.exe']
+            ?.firstSeen,
+        first,
+      );
       expect(writes, 1);
-
-      await restored.record([connection(upgraded)], true, upgradeTime);
-      await restored.record([connection(old)], true, last);
-      expect(restored.entries, hasLength(2));
-      expect(restored.entries[grouped]?.identity.content, upgraded);
-      expect(restored.entries[grouped]?.firstSeen, first);
-      expect(restored.entries[grouped]?.lastSeen, upgradeTime);
-      expect(writes, 2);
     },
   );
 

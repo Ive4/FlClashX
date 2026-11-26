@@ -629,9 +629,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
       "アプリを追加",
     ),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage("プロキシを許可"),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage("アプリ名で指定"),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("検出したアプリ"),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "既定のプロキシルール",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "対象外のアプリは Core DIRECT を使用します。通信は引き続き TUN を通ります。",
+      "チェックしたアプリは現在のプロファイルに従います。他のアプリは TUN 経由で直接接続します。",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "既定のルールに従う",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
       "同名アプリをまとめる",
@@ -644,11 +652,20 @@ class MessageLookup extends MessageLookupByLibrary {
       "プロセス名またはフルパス",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage(
+      "パスの例外",
+    ),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
       "リクエスト履歴",
     ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "アプリのリストを適用するには TUN とルールモードを有効にしてください。",
+      "アプリごとのルールを適用するには TUN とルールモードを有効にしてください。",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage(
+      "既定のルールを使用",
+    ),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "アプリ名のルールを使用",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("宛先"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage("宛先GeoIP"),
@@ -1341,6 +1358,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("プロキシ"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("プロキシチェーン"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("プロキシグループ"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage("プロキシグループが空です"),

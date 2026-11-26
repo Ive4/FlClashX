@@ -770,11 +770,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
       "Añadir aplicación",
     ),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage(
+      "Permitir proxy",
+    ),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage(
+      "Por nombre de aplicación",
+    ),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
       "Apps detectadas",
     ),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "Regla de proxy predeterminada",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "Las aplicaciones excluidas usan Core DIRECT. El tráfico sigue pasando por TUN.",
+      "Las aplicaciones marcadas siguen el perfil actual. Las demás se conectan directamente a través de TUN.",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "Sigue la regla predeterminada",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
       "Agrupar apps por nombre",
@@ -789,11 +801,20 @@ class MessageLookup extends MessageLookupByLibrary {
       "Nombre del proceso o ruta completa",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage(
+      "Excepciones por ruta",
+    ),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
       "Historial de solicitudes",
     ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "Activa TUN y el modo Reglas para aplicar las listas de aplicaciones.",
+      "Activa TUN y el modo Reglas para aplicar las reglas por aplicación.",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage(
+      "Usar la regla predeterminada",
+    ),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "Usar la regla del nombre",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("Destino"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage(
@@ -1661,6 +1682,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("Proxy"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("Cadena de proxies"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("Grupo de proxies"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage(

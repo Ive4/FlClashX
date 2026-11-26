@@ -149,7 +149,11 @@ class BackupAction extends _$BackupAction {
       return;
     }
     final savedAccess = config.vpnProps.accessControlProps;
-    final savedApps = [...savedAccess.acceptList, ...savedAccess.rejectList];
+    final savedApps = [
+      ...savedAccess.acceptList,
+      ...savedAccess.rejectList,
+      ...?savedAccess.desktopRules?.keys,
+    ];
     final desktop = system.isWindows || system.isMacOS;
     final compatibleApps = desktop
         ? savedApps.any(

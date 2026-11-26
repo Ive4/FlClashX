@@ -8563,6 +8563,66 @@ class AppLocalizations {
     );
   }
 
+  /// `Use default rule`
+  String get desktopAccessRestoreDefault {
+    return Intl.message(
+      'Use default rule',
+      name: 'desktopAccessRestoreDefault',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Use app name rule`
+  String get desktopAccessRestoreNameRule {
+    return Intl.message(
+      'Use app name rule',
+      name: 'desktopAccessRestoreNameRule',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `By app name`
+  String get desktopAccessByName {
+    return Intl.message(
+      'By app name',
+      name: 'desktopAccessByName',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Follows default rule`
+  String get desktopAccessFollowsDefault {
+    return Intl.message(
+      'Follows default rule',
+      name: 'desktopAccessFollowsDefault',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Path exceptions`
+  String get desktopAccessPathExceptions {
+    return Intl.message(
+      'Path exceptions',
+      name: 'desktopAccessPathExceptions',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Allow proxy`
+  String get desktopAccessAllowProxy {
+    return Intl.message(
+      'Allow proxy',
+      name: 'desktopAccessAllowProxy',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `No matching apps`
   String get applicationNoMatches {
     return Intl.message(
@@ -8983,24 +9043,39 @@ class AppLocalizations {
     );
   }
 
-  /// `Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.`
+  /// `Checked apps follow the current profile. Unchecked apps connect directly through TUN.`
   String get desktopAccessDirectDesc {
     return Intl.message(
-      'Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.',
+      'Checked apps follow the current profile. Unchecked apps connect directly through TUN.',
       name: 'desktopAccessDirectDesc',
       desc: '',
       args: [],
     );
   }
 
-  /// `Enable TUN and Rule mode for the application lists to take effect.`
+  /// `Enable TUN and Rule mode to apply rules by app.`
   String get desktopAccessRequiresTun {
     return Intl.message(
-      'Enable TUN and Rule mode for the application lists to take effect.',
+      'Enable TUN and Rule mode to apply rules by app.',
       name: 'desktopAccessRequiresTun',
       desc: '',
       args: [],
     );
+  }
+
+  /// `Default proxy rule`
+  String get desktopAccessDefaultProxyRule {
+    return Intl.message(
+      'Default proxy rule',
+      name: 'desktopAccessDefaultProxyRule',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Proxy`
+  String get proxy {
+    return Intl.message('Proxy', name: 'proxy', desc: '', args: []);
   }
 
   /// `Match by program name: {name}`

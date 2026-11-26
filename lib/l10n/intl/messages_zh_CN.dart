@@ -576,9 +576,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
       "手动新增软件",
     ),
+    "desktopAccessAllowProxy": MessageLookupByLibrary.simpleMessage("允许代理"),
+    "desktopAccessByName": MessageLookupByLibrary.simpleMessage("按名称设置"),
     "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("候选软件"),
+    "desktopAccessDefaultProxyRule": MessageLookupByLibrary.simpleMessage(
+      "默认代理规则",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
-      "不参与代理的应用使用内核直连，流量仍经过 TUN。",
+      "勾选的应用按当前配置分流，未勾选的应用通过 TUN 直连。",
+    ),
+    "desktopAccessFollowsDefault": MessageLookupByLibrary.simpleMessage(
+      "跟随默认规则",
     ),
     "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage("合并同名软件"),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
@@ -589,9 +597,14 @@ class MessageLookup extends MessageLookupByLibrary {
       "进程名或完整路径",
     ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessPathExceptions": MessageLookupByLibrary.simpleMessage("路径例外"),
     "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage("历史请求"),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
-      "请开启 TUN 和规则模式，使应用黑白名单生效。",
+      "请开启 TUN 和规则模式，使应用代理规则生效。",
+    ),
+    "desktopAccessRestoreDefault": MessageLookupByLibrary.simpleMessage("恢复默认"),
+    "desktopAccessRestoreNameRule": MessageLookupByLibrary.simpleMessage(
+      "恢复同名规则",
     ),
     "destination": MessageLookupByLibrary.simpleMessage("目标地址"),
     "destinationGeoIP": MessageLookupByLibrary.simpleMessage("目标地理定位"),
@@ -1220,6 +1233,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesProfileLabel": m71,
     "proxiesRemovedTip": m72,
     "proxiesReplacedTip": m73,
+    "proxy": MessageLookupByLibrary.simpleMessage("代理"),
     "proxyChains": MessageLookupByLibrary.simpleMessage("代理链"),
     "proxyGroup": MessageLookupByLibrary.simpleMessage("策略组"),
     "proxyGroupEmpty": MessageLookupByLibrary.simpleMessage("策略组为空"),
