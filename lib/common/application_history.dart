@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:fl_clash/common/application_proxy.dart';
+import 'package:fl_clash/common/path.dart';
 import 'package:fl_clash/common/preferences.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 class ApplicationHistoryEntry {
   const ApplicationHistoryEntry(this.identity, this.firstSeen, this.lastSeen);
@@ -16,14 +19,18 @@ class ApplicationHistoryEntry {
 class ApplicationHistory extends ChangeNotifier {
   ApplicationHistory({
     Future<String?> Function()? read,
+    Future<String?> Function()? readBackground,
     Future<void> Function(String)? write,
   }) : _read = read ?? preferences.getApplicationHistory,
+       _readBackground = readBackground,
        _write = write ?? preferences.saveApplicationHistory;
 
   final Future<String?> Function() _read;
+  final Future<String?> Function()? _readBackground;
   final Future<void> Function(String) _write;
   final entries = <String, ApplicationHistoryEntry>{};
   Future<void>? _loading;
+  Future<void>? _refreshing;
   Future<void> _writes = Future.value();
   DateTime? _lastSave;
 
@@ -32,34 +39,63 @@ class ApplicationHistory extends ChangeNotifier {
   Future<void> _load() async {
     final raw = await _read();
     var merged = false;
-    if (raw != null) {
-      try {
-        final data = jsonDecode(raw) as Map<String, dynamic>;
-        for (final row in data['entries'] as List) {
-          try {
-            final identity = ApplicationIdentity(
-              action: row['path'] == true
-                  ? RuleAction.PROCESS_PATH
-                  : RuleAction.PROCESS_NAME,
-              content: row['content'] as String,
-              windows: row['windows'] == true,
-            );
-            if (!identity.canRoute) continue;
-            final first = DateTime.parse(row['first'] as String);
-            final last = DateTime.parse(row['last'] as String);
-            merged |= !_merge(ApplicationHistoryEntry(identity, first, last));
-          } catch (_) {
-            /* Skip a damaged entry, retaining the others. */
-          }
-        }
-      } catch (_) {
-        /* Old or damaged history does not prevent startup. */
-      }
+    for (final entry in _decode(raw)) {
+      merged |= !_merge(entry);
     }
     notifyListeners();
     if (merged) {
       await _save().catchError((Object _) {});
     }
+  }
+
+  Future<void> refreshBackground() =>
+      _refreshing ??= _mergeBackground().whenComplete(() => _refreshing = null);
+
+  Future<void> _mergeBackground() async {
+    final String? raw;
+    try {
+      raw = await _readBackground?.call();
+    } on FileSystemException {
+      return;
+    }
+    if (raw == null) return;
+    await load();
+    final history = await compute(_decode, raw);
+    var changed = false;
+    for (final entry in history) {
+      final previous = entries[entry.identity.forRouting.selectionKey];
+      if (previous == null ||
+          entry.firstSeen.isBefore(previous.firstSeen) ||
+          entry.lastSeen.isAfter(previous.lastSeen)) {
+        _merge(entry);
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
+  static List<ApplicationHistoryEntry> _decode(String? raw) {
+    if (raw == null) return const [];
+    final result = <ApplicationHistoryEntry>[];
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      for (final row in data['entries'] as List) {
+        try {
+          final identity = ApplicationIdentity(
+            action: row['path'] == true
+                ? RuleAction.PROCESS_PATH
+                : RuleAction.PROCESS_NAME,
+            content: row['content'] as String,
+            windows: row['windows'] == true,
+          );
+          if (!identity.canRoute) continue;
+          final first = DateTime.parse(row['first'] as String);
+          final last = DateTime.parse(row['last'] as String);
+          result.add(ApplicationHistoryEntry(identity, first, last));
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return result;
   }
 
   bool _merge(ApplicationHistoryEntry entry) {
@@ -84,8 +120,9 @@ class ApplicationHistory extends ChangeNotifier {
   Future<void> record(
     List<ApplicationConnection> connections,
     bool windows,
-    DateTime at, {
+    DateTime? at, {
     bool preservePaths = true,
+    bool persist = true,
   }) async {
     await load();
     var added = false;
@@ -98,15 +135,17 @@ class ApplicationHistory extends ChangeNotifier {
       );
       if (!identity.canRoute) continue;
       recorded = true;
-      added |= _merge(ApplicationHistoryEntry(identity, at, at));
+      final seen = at ?? connection.start;
+      added |= _merge(ApplicationHistoryEntry(identity, seen, seen));
     }
     if (!recorded) return;
+    final now = at ?? DateTime.now();
     if (added ||
         _lastSave == null ||
-        at.difference(_lastSave!).inSeconds >= 30) {
-      _lastSave = at;
+        now.difference(_lastSave!).inSeconds >= 30) {
+      _lastSave = now;
       notifyListeners();
-      await _save();
+      if (persist) await _save();
     }
   }
 
@@ -184,4 +223,26 @@ class ApplicationHistory extends ChangeNotifier {
   }
 }
 
-final applicationHistory = ApplicationHistory();
+Future<String?> Function() _backgroundHistoryReader() {
+  FileStat? lastRead;
+  return () async {
+    final file = File(
+      p.join(await appPath.homeDirPath, 'application-history.json'),
+    );
+    final stat = await file.stat();
+    if (stat.type != FileSystemEntityType.file) {
+      lastRead = null;
+      return null;
+    }
+    if (lastRead?.modified == stat.modified && lastRead?.size == stat.size) {
+      return null;
+    }
+    final raw = await file.readAsString();
+    lastRead = stat;
+    return raw;
+  };
+}
+
+final applicationHistory = ApplicationHistory(
+  readBackground: _backgroundHistoryReader(),
+);

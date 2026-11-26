@@ -50,6 +50,37 @@ class ApplicationIdentity {
   final String content;
   final bool windows;
 
+  static ApplicationIdentity? fromManualInput(
+    String value, {
+    required bool windows,
+  }) {
+    final path = windows ? p.windows : p.posix;
+    var content = value.trim();
+    final isPath = path.isAbsolute(content);
+    if (isPath) {
+      if (path.basename(content).isEmpty ||
+          (windows && path.rootPrefix(content).length < 2)) {
+        return null;
+      }
+      content = path.normalize(content);
+      if (!windows) {
+        final bundle = content.indexOf('.app/Contents/');
+        if (bundle >= 0) content = content.substring(0, bundle + 4);
+      }
+    } else if (content == '.' ||
+        content == '..' ||
+        path.basename(content) != content ||
+        (windows && content.contains(':'))) {
+      return null;
+    }
+    final identity = ApplicationIdentity(
+      action: isPath ? RuleAction.PROCESS_PATH : RuleAction.PROCESS_NAME,
+      content: content,
+      windows: windows,
+    );
+    return identity.canRoute ? identity : null;
+  }
+
   String get _normalizedContent =>
       windows ? p.windows.normalize(content).toLowerCase() : content;
   String get _separator => windows ? r'\' : '/';

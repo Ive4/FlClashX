@@ -613,13 +613,25 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "ClashMeta 기반의 멀티 플랫폼 프록시 클라이언트로, 간편하게 사용할 수 있으며 오픈 소스이고 광고가 없습니다.",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage("앱 추가"),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("감지된 앱"),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "프록시에서 제외한 앱은 Core DIRECT를 사용하며 트래픽은 계속 TUN을 통과합니다.",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "이름이 같은 앱 묶기",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "프로세스 식별을 켠 뒤 앱에서 네트워크를 사용하세요. 식별한 프로그램은 종료 후에도 목록에 저장됩니다.",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage("최근 요청"),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "프로세스 이름 또는 전체 경로",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "요청 기록",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "앱 목록을 적용하려면 TUN과 규칙 모드를 켜세요.",
     ),

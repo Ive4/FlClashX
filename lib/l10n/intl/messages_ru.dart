@@ -741,13 +741,31 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "Многоплатформенный прокси-клиент на основе ClashMeta: простой и удобный, с открытым исходным кодом и без рекламы.",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "Добавить приложение",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
+      "Обнаруженные приложения",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "Приложения вне списка прокси используют Core DIRECT. Трафик по-прежнему проходит через TUN.",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "Группировать приложения по имени",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "Включите определение процессов и запустите сетевой запрос из приложения. Программы сохраняются в списке после завершения.",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage(
+      "Последний запрос",
+    ),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "Имя процесса или полный путь",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "История запросов",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "Для применения списков включите TUN и режим правил.",
     ),
@@ -1134,10 +1152,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Введите содержимое правила",
     ),
-    "installedAppsPermissionDeniedMessage":
-        MessageLookupByLibrary.simpleMessage(
-          "Разрешение на список приложений отклонено, поэтому установленные приложения недоступны. Предоставьте его вручную в системных настройках.",
-        ),
+    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
+      "Разрешение на список приложений отклонено, поэтому установленные приложения недоступны. Предоставьте его вручную в системных настройках.",
+    ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Эта система не выдаёт список установленных приложений без разрешения. Предоставьте его, чтобы настроить прокси для отдельных приложений.",
     ),

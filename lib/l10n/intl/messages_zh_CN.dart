@@ -573,13 +573,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "基于ClashMeta的多平台代理客户端，简单易用，开源无广告。",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "手动新增软件",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("候选软件"),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "不参与代理的应用使用内核直连，流量仍经过 TUN。",
     ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage("合并同名软件"),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "开启进程识别后，让需要的程序联网。识别到的程序会记在这里，退出后仍可选择。",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage("最近请求"),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "进程名或完整路径",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage("历史请求"),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "请开启 TUN 和规则模式，使应用黑白名单生效。",
     ),

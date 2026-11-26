@@ -4,6 +4,34 @@ import 'package:fl_clash/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('manual desktop input keeps process names and full paths distinct', () {
+    expect(
+      ApplicationIdentity.fromManualInput(
+        ' Browser.exe ',
+        windows: true,
+      )?.selectionKey,
+      'windows:PROCESS-NAME:browser.exe',
+    );
+    expect(
+      ApplicationIdentity.fromManualInput(
+        r'D:\Other\Browser.exe',
+        windows: true,
+      )?.selectionKey,
+      r'windows:PROCESS-PATH:d:\other\browser.exe',
+    );
+    expect(
+      ApplicationIdentity.fromManualInput(r'Apps\Browser.exe', windows: true),
+      isNull,
+    );
+    expect(
+      ApplicationIdentity.fromManualInput(
+        '/Applications/Chat.app/Contents/MacOS/Chat',
+        windows: false,
+      )?.selectionKey,
+      'macos:PROCESS-PATH:/Applications/Chat.app',
+    );
+  });
+
   test('disabled lists and empty blacklist leave profile rules alone', () {
     expect(
       applicationAccessRules(const AccessControlProps(), windows: true),

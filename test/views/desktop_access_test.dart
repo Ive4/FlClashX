@@ -126,6 +126,10 @@ void main() {
         ),
       );
       await open(tester, windows: true);
+      expect(find.text('Browser.exe'), findsOneWidget);
+      expect(find.byType(PackageListItem), findsNothing);
+      await tester.tap(find.text('Browser.exe'));
+      await tester.pumpAndSettle();
       expect(find.byType(PackageListItem), findsNWidgets(2));
       await tester.tap(find.byType(PackageListItem).first);
       await tester.pumpAndSettle();
@@ -141,6 +145,41 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets('adds an unobserved executable to the draft list', (
+    tester,
+  ) async {
+    await open(tester, windows: true);
+    await tester.tap(find.byTooltip('Add application'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), r'D:\Tools\Tool.exe');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('tool.exe'), findsOneWidget);
+    expect(
+      container.read(vpnSettingProvider).accessControlProps.rejectList,
+      isEmpty,
+    );
+    await tester.tap(find.byTooltip('Save').hitTestable());
+    await tester.pumpAndSettle();
+    expect(container.read(vpnSettingProvider).accessControlProps.rejectList, [
+      r'windows:PROCESS-PATH:d:\tools\tool.exe',
+    ]);
+    await tester.tap(find.text('Request history'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PackageListItem), findsNothing);
+    await tester.runAsync(
+      () => history.record(
+        [_connection(r'D:\Tools\Tool.exe')],
+        true,
+        DateTime.utc(2026, 11, 26),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tool.exe'), findsOneWidget);
+    expect(find.textContaining('Last request'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
     'Mac helpers share one remembered app and both lists are retained',

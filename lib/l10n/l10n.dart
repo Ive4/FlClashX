@@ -8283,7 +8283,8 @@ class AppLocalizations {
   String customImportDroppedSubRules(num count, Object label) {
     return Intl.plural(
       count,
-      one: '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
+      one:
+          '1 SUB-RULE rule was dropped, since custom profiles do not support sub-rules',
       other:
           '$label SUB-RULE rules were dropped, since custom profiles do not support sub-rules',
       name: 'customImportDroppedSubRules',
@@ -8497,6 +8498,66 @@ class AppLocalizations {
     return Intl.message(
       'No history yet. Identified app connections are recorded automatically',
       name: 'applicationHistoryEmpty',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Discovered apps`
+  String get desktopAccessCandidates {
+    return Intl.message(
+      'Discovered apps',
+      name: 'desktopAccessCandidates',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Request history`
+  String get desktopAccessRequestHistory {
+    return Intl.message(
+      'Request history',
+      name: 'desktopAccessRequestHistory',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add application`
+  String get desktopAccessAddApplication {
+    return Intl.message(
+      'Add application',
+      name: 'desktopAccessAddApplication',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Process name or full path`
+  String get desktopAccessManualEntry {
+    return Intl.message(
+      'Process name or full path',
+      name: 'desktopAccessManualEntry',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Group apps by name`
+  String get desktopAccessGroupByName {
+    return Intl.message(
+      'Group apps by name',
+      name: 'desktopAccessGroupByName',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last request`
+  String get desktopAccessLastSeen {
+    return Intl.message(
+      'Last request',
+      name: 'desktopAccessLastSeen',
       desc: '',
       args: [],
     );

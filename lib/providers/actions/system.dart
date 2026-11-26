@@ -159,6 +159,9 @@ class SystemAction extends _$SystemAction {
   Future<List<Package>> getDesktopPackages({required bool windows}) async {
     final history = ref.read(applicationHistoryProvider);
     await history.load();
+    await history.refreshBackground().catchError((Object error) {
+      commonPrint.log('application history: $error');
+    });
     final packages = history.packages(
       ref.read(vpnSettingProvider).accessControlProps,
       windows: windows,
@@ -172,7 +175,8 @@ class SystemAction extends _$SystemAction {
               (connections) => history.record(
                 applicationConnectionsOf(connections),
                 windows,
-                DateTime.now(),
+                null,
+                persist: false,
               ),
             )
             .catchError((Object error) {

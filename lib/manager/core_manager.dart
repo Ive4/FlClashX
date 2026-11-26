@@ -231,7 +231,8 @@ class _CoreContainerState extends ConsumerState<CoreManager>
             .record(
               applicationConnectionsOf([trackerInfo]),
               system.isWindows,
-              DateTime.now(),
+              null,
+              persist: false,
             )
             .catchError((Object error) {
               commonPrint.log('application history: $error');

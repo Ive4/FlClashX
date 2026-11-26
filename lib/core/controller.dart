@@ -246,8 +246,9 @@ class CoreController {
           .record(
             applications,
             system.isWindows,
-            DateTime.now(),
+            system.isWindows || system.isMacOS ? null : DateTime.now(),
             preservePaths: system.isWindows || system.isMacOS,
+            persist: !system.isWindows && !system.isMacOS,
           )
           .catchError((Object error) {
             commonPrint.log('application history: $error');

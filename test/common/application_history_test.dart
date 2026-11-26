@@ -20,6 +20,28 @@ ApplicationConnection connection(
 );
 
 void main() {
+  test('loads requests made before the desktop interface was opened', () async {
+    final history = ApplicationHistory(
+      read: () async => null,
+      readBackground: () async => '''
+        {"entries":[{"content":"C:/Apps/Browser.exe","path":true,
+        "windows":true,"first":"2026-11-25T12:00:00Z",
+        "last":"2026-11-26T12:00:00Z"}]}
+        ''',
+      write: (_) async {},
+    );
+    await history.refreshBackground();
+    final package = history
+        .packages(const AccessControlProps(), windows: true)
+        .single;
+    expect(package.packageName, r'windows:PROCESS-PATH:c:\apps\browser.exe');
+    expect(
+      package.lastUpdateTime,
+      DateTime.utc(2026, 11, 26, 12).millisecondsSinceEpoch,
+    );
+    history.dispose();
+  });
+
   test(
     'memory survives restart and distinguishes same-name programs',
     () async {

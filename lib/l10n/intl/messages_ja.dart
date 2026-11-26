@@ -626,13 +626,27 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "ClashMetaベースのマルチプラットフォーム対応プロキシクライアント。シンプルで使いやすく、オープンソースで広告もありません。",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "アプリを追加",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage("検出したアプリ"),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "対象外のアプリは Core DIRECT を使用します。通信は引き続き TUN を通ります。",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "同名アプリをまとめる",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "プロセス識別を有効にしてアプリを通信させてください。識別したプログラムは終了後も記憶されます。",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage("最後のリクエスト"),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "プロセス名またはフルパス",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "リクエスト履歴",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "アプリのリストを適用するには TUN とルールモードを有効にしてください。",
     ),

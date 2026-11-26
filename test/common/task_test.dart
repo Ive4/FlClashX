@@ -89,7 +89,12 @@ void main() {
             (config['rules'] as YamlList).contains('IN-TYPE,TUN,DIRECT'),
             enabled,
           );
-          expect(config['find-process-mode'], enabled ? 'always' : 'strict');
+          expect(
+            config['find-process-mode'],
+            enabled || Platform.isWindows || Platform.isMacOS
+                ? 'always'
+                : 'strict',
+          );
         }
       }
     },

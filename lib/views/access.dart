@@ -35,11 +35,15 @@ class _AccessViewState extends ConsumerState<AccessView>
   List<String>? _pinedList;
   bool _isInit = false;
   bool _installedAppsPermissionGranted = true;
+  bool _showHistory = false;
+  bool _groupByName = true;
+  final _expandedNames = <String>{};
   bool get _isOhos => widget.isOhos ?? system.isOhos;
   bool get _isDesktop =>
       widget.isDesktop ?? (system.isWindows || system.isMacOS);
   bool get _isWindows => widget.isWindows ?? system.isWindows;
   late final ApplicationHistory _history;
+  Timer? _historyRefresh;
 
   final _completer = Completer();
 
@@ -67,6 +71,9 @@ class _AccessViewState extends ConsumerState<AccessView>
     if (_isDesktop) {
       _history = ref.read(applicationHistoryProvider);
       _history.addListener(_historyChanged);
+      _historyRefresh = Timer.periodic(const Duration(seconds: 2), (_) {
+        unawaited(_history.refreshBackground());
+      });
     }
     _completer.complete(_loadPackages());
   }
@@ -149,6 +156,7 @@ class _AccessViewState extends ConsumerState<AccessView>
 
   @override
   void dispose() {
+    _historyRefresh?.cancel();
     if (_isDesktop) _history.removeListener(_historyChanged);
     _controller.dispose();
     super.dispose();
@@ -222,6 +230,43 @@ class _AccessViewState extends ConsumerState<AccessView>
         ..addOrRemove(packageName);
       return state.copyWithNewList(newSet.toList());
     });
+  }
+
+  Future<void> _addDesktopApplication() async {
+    final labels = context.appLocalizations;
+    final value = await dialogs.showCommonDialog<String>(
+      child: InputDialog(
+        title: labels.desktopAccessAddApplication,
+        value: '',
+        hintText: labels.desktopAccessManualEntry,
+        selectAll: true,
+        inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
+        validator: (value) =>
+            ApplicationIdentity.fromManualInput(
+                  value ?? '',
+                  windows: _isWindows,
+                ) ==
+                null
+            ? labels.applicationProxyInvalidProcess
+            : null,
+      ),
+    );
+    if (!mounted || value == null) return;
+    final identity = ApplicationIdentity.fromManualInput(
+      value,
+      windows: _isWindows,
+    );
+    if (identity == null) return;
+    _update(
+      (state) => state.copyWithNewList(
+        {...state.currentList, identity.forRouting.selectionKey}.toList(),
+      ),
+    );
+    setState(() {
+      _showHistory = false;
+      _expandedNames.add(identity.name.toLowerCase());
+    });
+    _historyChanged();
   }
 
   void _update(AccessControlProps Function(AccessControlProps state) update) {
@@ -368,6 +413,13 @@ class _AccessViewState extends ConsumerState<AccessView>
             onSelected: (sort) =>
                 _update((state) => state.copyWith(sort: sort)),
           ),
+          if (_isDesktop)
+            CommonPopupMenuItem(
+              label: appLocalizations.desktopAccessGroupByName,
+              checked: _groupByName,
+              section: CommonPopupMenuSection(title: appLocalizations.source),
+              onPressed: () => setState(() => _groupByName = !_groupByName),
+            ),
           if (!_isDesktop)
             CommonPopupMenuItem(
               label: appLocalizations.systemApp,
@@ -427,19 +479,24 @@ class _AccessViewState extends ConsumerState<AccessView>
     required Set<String> selected,
     required bool isSearching,
   }) {
-    final needsProcessLookup =
-        (_isOhos || _isDesktop) &&
-        !(_isDesktop &&
-            ref.watch(
-              vpnSettingProvider.select(
-                (state) => state.accessControlProps.enable,
-              ),
-            )) &&
-        ref.watch(
-              patchClashConfigProvider.select((state) => state.findProcessMode),
-            ) !=
-            FindProcessMode.always;
-    return FutureBuilder(
+    final processMode = ref.watch(
+      patchClashConfigProvider.select((state) => state.findProcessMode),
+    );
+    final needsProcessLookup = _isDesktop
+        ? processMode == FindProcessMode.off &&
+              !ref.watch(
+                vpnSettingProvider.select(
+                  (state) => state.accessControlProps.enable,
+                ),
+              )
+        : _isOhos && processMode != FindProcessMode.always;
+    final groups = _isDesktop && _groupByName
+        ? groupBy(
+            packages,
+            (package) => package.label.toLowerCase(),
+          ).values.toList()
+        : null;
+    final list = FutureBuilder(
       future: _completer.future,
       builder: (context, snapshot) {
         final appLocalizations = context.appLocalizations;
@@ -481,28 +538,124 @@ class _AccessViewState extends ConsumerState<AccessView>
             child: ListView.builder(
               controller: _controller,
               padding: EdgeInsets.only(
-                top: context.contentTopPadding,
+                top: _isDesktop ? 0 : context.contentTopPadding,
                 bottom: context.bottomInset,
               ),
               scrollCacheExtent: arrivalScrollCacheExtent(routeSettled),
-              itemCount: packages.length,
-              itemExtent: 72,
+              itemCount: groups?.length ?? packages.length,
+              itemExtent: _isDesktop ? null : 72,
               itemBuilder: (_, index) {
-                final package = packages[index];
-                return PackageListItem(
-                  key: Key(package.packageName),
-                  package: package,
-                  value: selected.contains(package.packageName),
-                  desktop: _isDesktop,
-                  onChanged: (value) {
-                    _handleSelected(package.packageName);
-                  },
+                if (groups == null) {
+                  return _packageRow(packages[index], selected);
+                }
+                final group = groups[index];
+                if (group.length == 1) {
+                  return _packageRow(group.single, selected);
+                }
+                final name = group.first.label.toLowerCase();
+                final expanded = _expandedNames.contains(name);
+                return Column(
+                  key: ValueKey(name),
+                  children: [
+                    ListItem(
+                      title: Text(group.first.label),
+                      subtitle: Text(
+                        appLocalizations.accessControlSelectedCount(
+                          group
+                              .where(
+                                (package) =>
+                                    selected.contains(package.packageName),
+                              )
+                              .length,
+                        ),
+                      ),
+                      leading: const GlyphIcon(AppGlyphs.appsList, size: 32),
+                      trailing: RotatedBox(
+                        quarterTurns: expanded ? 1 : 0,
+                        child: const GlyphIcon(AppGlyphs.chevronForward),
+                      ),
+                      onTap: () =>
+                          setState(() => _expandedNames.addOrRemove(name)),
+                    ),
+                    if (expanded)
+                      for (final package in group)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 20),
+                          child: _packageRow(
+                            package,
+                            selected,
+                            showName: false,
+                          ),
+                        ),
+                  ],
                 );
               },
             ),
           ),
         );
       },
+    );
+    return _isDesktop ? _buildDesktopTools(list) : list;
+  }
+
+  Widget _buildDesktopTools(Widget list) {
+    final labels = context.appLocalizations;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(
+            16,
+            context.contentTopPadding,
+            16,
+            4,
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final history in [false, true])
+                Semantics(
+                  selected: _showHistory == history,
+                  child: TonalButton(
+                    size: TonalButtonSize.section,
+                    glyph: _showHistory == history ? AppGlyphs.check : null,
+                    label: history
+                        ? labels.desktopAccessRequestHistory
+                        : labels.desktopAccessCandidates,
+                    onPressed: () => setState(() => _showHistory = history),
+                  ),
+                ),
+              Tooltip(
+                message: labels.desktopAccessAddApplication,
+                child: TonalButton(
+                  size: TonalButtonSize.section,
+                  glyph: AppGlyphs.add,
+                  label: labels.desktopAccessAddApplication,
+                  onPressed: _addDesktopApplication,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  Widget _packageRow(
+    Package package,
+    Set<String> selected, {
+    bool showName = true,
+  }) {
+    return PackageListItem(
+      key: Key(package.packageName),
+      package: package,
+      value: selected.contains(package.packageName),
+      desktop: _isDesktop,
+      showName: showName,
+      showLastSeen: _showHistory,
+      onChanged: (_) => _handleSelected(package.packageName),
     );
   }
 
@@ -532,10 +685,13 @@ class _AccessViewState extends ConsumerState<AccessView>
     final query = SearchQuery(ref.watch(queryProvider(QueryTag.access)));
     final packages = ref.watch(packagesProvider);
     final accessControl = ref.watch(accessControlStateProvider);
-    final viewPackages = packages
+    final visibleSource = _showHistory
+        ? packages.where((package) => package.lastUpdateTime > 0).toList()
+        : packages;
+    final viewPackages = visibleSource
         .getViewList(
-          pinedList: _pinedList ?? [],
-          sortType: accessControl.sort,
+          pinedList: _showHistory ? const [] : _pinedList ?? [],
+          sortType: _showHistory ? AccessSortType.time : accessControl.sort,
           isFilterNonInternetApp:
               !_isDesktop && accessControl.isFilterNonInternetApp,
           isFilterSystemApp: !_isDesktop && accessControl.isFilterSystemApp,
@@ -614,7 +770,7 @@ class _AccessViewState extends ConsumerState<AccessView>
                       _update((state) => state.copyWith(enable: true)),
                 ),
                 body: DisabledMask(
-                  status: !accessControl.enable,
+                  status: !_isDesktop && !accessControl.enable,
                   child: _buildContent(
                     packages: viewPackages,
                     selected: selected,
@@ -718,6 +874,8 @@ class PackageListItem extends StatelessWidget {
   final bool value;
   final void Function(bool?) onChanged;
   final bool desktop;
+  final bool showName;
+  final bool showLastSeen;
 
   const PackageListItem({
     super.key,
@@ -725,6 +883,8 @@ class PackageListItem extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.desktop = false,
+    this.showName = true,
+    this.showLastSeen = false,
   });
 
   @override
@@ -738,6 +898,16 @@ class PackageListItem extends StatelessWidget {
     final subtitle = identity?.action == RuleAction.PROCESS_NAME
         ? context.appLocalizations.desktopAccessNameOnly(identity!.content)
         : package.applicationPath ?? identity?.content ?? package.packageName;
+    final shownAt = showLastSeen && package.lastUpdateTime > 0
+        ? DateTime.fromMillisecondsSinceEpoch(package.lastUpdateTime)
+        : null;
+    final material = MaterialLocalizations.of(context);
+    final lastSeen = shownAt == null
+        ? null
+        : '${context.appLocalizations.desktopAccessLastSeen} · '
+              '${material.formatCompactDate(shownAt)} '
+              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(shownAt))}';
+    final details = [if (showName) subtitle, ?lastSeen].join('\n');
     return ListItem.checkbox(
       leading: desktop
           ? switch (package.applicationPath) {
@@ -750,15 +920,17 @@ class PackageListItem extends StatelessWidget {
             }
           : PackageIcon(packageName: package.packageName, size: 48),
       title: Text(
-        package.label,
+        showName ? package.label : subtitle,
         style: const TextStyle(overflow: TextOverflow.ellipsis),
         maxLines: 1,
       ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(overflow: TextOverflow.ellipsis),
-        maxLines: 1,
-      ),
+      subtitle: details.isEmpty
+          ? null
+          : Text(
+              details,
+              style: const TextStyle(overflow: TextOverflow.ellipsis),
+              maxLines: showName && lastSeen != null ? 2 : 1,
+            ),
       value: value,
       onChanged: onChanged,
     );

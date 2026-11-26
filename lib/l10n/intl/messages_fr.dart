@@ -761,13 +761,31 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "Un client proxy multiplateforme basé sur ClashMeta, simple d’utilisation, open source et sans publicité.",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "Ajouter une application",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
+      "Apps détectées",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "Les applications exclues utilisent Core DIRECT. Le trafic passe toujours par TUN.",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "Regrouper les apps par nom",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "Activez la détection des processus et connectez une application. Les programmes reconnus restent mémorisés après leur fermeture.",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage(
+      "Dernière requête",
+    ),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "Nom du processus ou chemin complet",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "Historique des requêtes",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "Activez TUN et le mode Règles pour appliquer les listes.",
     ),
@@ -1162,10 +1180,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Saisissez le contenu de la règle",
     ),
-    "installedAppsPermissionDeniedMessage":
-        MessageLookupByLibrary.simpleMessage(
-          "L’autorisation de la liste des apps a été refusée ; les apps installées ne peuvent donc pas être listées. Veuillez l’accorder manuellement dans les réglages du système.",
-        ),
+    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
+      "L’autorisation de la liste des apps a été refusée ; les apps installées ne peuvent donc pas être listées. Veuillez l’accorder manuellement dans les réglages du système.",
+    ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Ce système masque la liste des apps installées tant que l’autorisation n’est pas accordée. Accordez-la pour configurer le proxy par app.",
     ),

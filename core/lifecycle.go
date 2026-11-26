@@ -31,6 +31,7 @@ func handleInitClash(params *InitParams) bool {
 	sdkVersion.Store(int32(params.Version))
 	constant.SetHomeDir(params.HomeDir)
 	initOwnership(params.HomeDir)
+	initApplicationHistory(params.HomeDir)
 	clearSpilledResponses()
 	isInit.Store(true)
 	return true
@@ -57,6 +58,7 @@ func handleStopListener() bool {
 	defer configMu.Unlock()
 	isRunning.Store(false)
 	listener.StopListener()
+	flushDesktopApplicationHistory()
 	resolver.ResetConnection()
 	bumpRouteEpoch()
 	return true
@@ -97,6 +99,7 @@ func handleShutdown() bool {
 	listener.StopListener()
 	updater.StopGeoUpdater()
 	executor.Shutdown()
+	flushDesktopApplicationHistory()
 	currentConfig = nil
 	isInit.Store(false)
 	configMu.Unlock()

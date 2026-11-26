@@ -182,6 +182,7 @@ Future<RealProfile> _makeRealProfileTask(MakeRealProfileState data) async {
   final rawConfig = Map.from(data.rawConfig);
   final realPatchConfig = data.realPatchConfig.withApplicationProxy(
     data.accessControlProps.enable,
+    discoverApplications: Platform.isWindows || Platform.isMacOS,
   );
   final profilesPath = data.profilesPath;
   final profileId = data.profileId;

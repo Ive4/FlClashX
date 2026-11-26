@@ -742,6 +742,7 @@ class SetupAction extends _$SetupAction {
   PatchClashConfig _effectivePatchConfig(PatchClashConfig patchConfig) {
     final config = patchConfig.withApplicationProxy(
       _desktopAccessControl.enable,
+      discoverApplications: system.isWindows || system.isMacOS,
     );
     if (ref.read(safeModeProvider)) {
       return config.copyWith(

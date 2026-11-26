@@ -767,13 +767,31 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "Un cliente proxy multiplataforma basado en ClashMeta, sencillo de usar, de código abierto y sin anuncios.",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "Añadir aplicación",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
+      "Apps detectadas",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "Las aplicaciones excluidas usan Core DIRECT. El tráfico sigue pasando por TUN.",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "Agrupar apps por nombre",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "Activa la identificación de procesos y conecta una aplicación. Los programas reconocidos se recuerdan incluso después de cerrarlos.",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage(
+      "Última solicitud",
+    ),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "Nombre del proceso o ruta completa",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "Historial de solicitudes",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "Activa TUN y el modo Reglas para aplicar las listas de aplicaciones.",
     ),
@@ -1168,10 +1186,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Introduce el contenido de la regla",
     ),
-    "installedAppsPermissionDeniedMessage":
-        MessageLookupByLibrary.simpleMessage(
-          "Se denegó el permiso de lista de apps, por lo que no se pueden mostrar las apps instaladas. Concédelo manualmente en los ajustes del sistema.",
-        ),
+    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
+      "Se denegó el permiso de lista de apps, por lo que no se pueden mostrar las apps instaladas. Concédelo manualmente en los ajustes del sistema.",
+    ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "Este sistema oculta la lista de apps instaladas hasta que se concede el permiso. Autorízalo para configurar el proxy por app.",
     ),

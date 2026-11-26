@@ -717,13 +717,31 @@ class MessageLookup extends MessageLookupByLibrary {
     "desc": MessageLookupByLibrary.simpleMessage(
       "A multi-platform proxy client based on ClashMeta, simple and easy to use, open-source and ad-free.",
     ),
+    "desktopAccessAddApplication": MessageLookupByLibrary.simpleMessage(
+      "Add application",
+    ),
+    "desktopAccessCandidates": MessageLookupByLibrary.simpleMessage(
+      "Discovered apps",
+    ),
     "desktopAccessDirectDesc": MessageLookupByLibrary.simpleMessage(
       "Apps outside the proxy list use Core DIRECT. Traffic still passes through TUN.",
+    ),
+    "desktopAccessGroupByName": MessageLookupByLibrary.simpleMessage(
+      "Group apps by name",
     ),
     "desktopAccessHistoryDesc": MessageLookupByLibrary.simpleMessage(
       "Run an app with process lookup enabled. Recognized programs are remembered here, even after they exit.",
     ),
+    "desktopAccessLastSeen": MessageLookupByLibrary.simpleMessage(
+      "Last request",
+    ),
+    "desktopAccessManualEntry": MessageLookupByLibrary.simpleMessage(
+      "Process name or full path",
+    ),
     "desktopAccessNameOnly": m26,
+    "desktopAccessRequestHistory": MessageLookupByLibrary.simpleMessage(
+      "Request history",
+    ),
     "desktopAccessRequiresTun": MessageLookupByLibrary.simpleMessage(
       "Enable TUN and Rule mode for the application lists to take effect.",
     ),
@@ -1096,10 +1114,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "inputRuleContent": MessageLookupByLibrary.simpleMessage(
       "Enter the rule content",
     ),
-    "installedAppsPermissionDeniedMessage":
-        MessageLookupByLibrary.simpleMessage(
-          "The app list permission was denied, so installed apps cannot be listed. Please grant it manually in system settings.",
-        ),
+    "installedAppsPermissionDeniedMessage": MessageLookupByLibrary.simpleMessage(
+      "The app list permission was denied, so installed apps cannot be listed. Please grant it manually in system settings.",
+    ),
     "installedAppsPermissionDesc": MessageLookupByLibrary.simpleMessage(
       "This system hides the installed app list until the permission is granted. Authorize it to configure the per-app proxy.",
     ),
