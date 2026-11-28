@@ -279,8 +279,12 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(RequestFeed.recent) RequestFeed requestFeed,
   }) = _AppSettingProps;
 
-  factory AppSettingProps.fromJson(Map<String, Object?> json) =>
-      _$AppSettingPropsFromJson(json);
+  factory AppSettingProps.fromJson(Map<String, Object?> json, {bool? isOhos}) =>
+      _$AppSettingPropsFromJson(
+        (isOhos ?? system.isOhos) && json['autoLightweightMinutes'] == null
+            ? {...json, 'autoLightweightMinutes': -1}
+            : json,
+      );
 
   factory AppSettingProps.safeFromJson(Map<String, Object?>? json) {
     if (json == null) {
@@ -537,20 +541,24 @@ abstract class Config with _$Config {
   factory Config.fromJson(Map<String, Object?> json) =>
       decodeSalvaging('config', json, Config.strictFromJson);
 
-  factory Config.strictFromJson(Map<String, Object?> json) =>
-      _withLegacyOverrideDns(
-        _$ConfigFromJson(_withLegacyTestUrl(_withLegacyRouteMode(json))),
-        json,
-      );
+  factory Config.strictFromJson(Map<String, Object?> json) {
+    final config = _$ConfigFromJson(
+      _withLegacyTestUrl(_withLegacyRouteMode(json)),
+    );
+    return _withLegacyOverrideDns(
+      system.isOhos && json['appSettingProps'] == null
+          ? config.copyWith(appSettingProps: AppSettingProps.fromJson(const {}))
+          : config,
+      json,
+    );
+  }
 
   factory Config.realFromJson(Map<String, Object?>? json) {
     if (json == null) {
       return Config(
         themeProps: defaultThemeProps,
         hotKeyActions: defaultHotKeyActions,
-        appSettingProps: AppSettingProps(
-          dashboardWidgets: platformDefaultDashboardWidgets,
-        ),
+        appSettingProps: AppSettingProps.fromJson(const {}),
       );
     }
     return Config.fromJson(json);

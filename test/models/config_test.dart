@@ -118,6 +118,30 @@ void main() {
 
   group('AppSettingProps JSON round-trip', () {
     test(
+      'HarmonyOS disables automatic lightweight mode when no delay was saved',
+      () {
+        expect(
+          AppSettingProps.fromJson({}, isOhos: true).autoLightweightMinutes,
+          -1,
+        );
+        expect(
+          AppSettingProps.fromJson({
+            'autoLightweightMinutes': null,
+          }, isOhos: true).autoLightweightMinutes,
+          -1,
+        );
+        for (final minutes in [-1, 0, 7]) {
+          expect(
+            AppSettingProps.fromJson({
+              'autoLightweightMinutes': minutes,
+            }, isOhos: true).autoLightweightMinutes,
+            minutes,
+          );
+        }
+      },
+    );
+
+    test(
       'remembers the requests feed and defaults older settings to recent',
       () {
         const props = AppSettingProps(requestFeed: RequestFeed.live);
